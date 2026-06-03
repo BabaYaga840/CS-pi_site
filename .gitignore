@@ -1,0 +1,22 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+
+# Local servers / logs
+*.log
+.serve/
+
+# Raw video drops (too large for GitHub; convert to web MP4 before adding)
+*.MOV
+*.mov
+*.mp4
+# ...but keep the converted, web-sized hardware clips
+!assets/hardware/*.mp4
+

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS-Pi: Constraint-Satisfying Flow Policy Sampling</title>
+<meta name="description" content="CS-Pi: training-free sampling of safe, in-distribution actions from a flow-matching robot policy. Draw, project, renoise, re-run. No gradients based on proxies.">
+<meta property="og:title" content="CS-Pi: Constraint-Satisfying Flow Policy Sampling">
+<meta property="og:description" content="Training-free sampling of safe, in-distribution actions from a flow-matching robot policy.">
+<meta property="og:image" content="assets/concept.png">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script>
+  // set theme before first paint to avoid a flash
+  (function () {
+    try {
+      var q = new URLSearchParams(location.search).get('theme');
+      var t = (q === 'light' || q === 'dark') ? q : localStorage.getItem('theme');
+      if (t !== 'light' && t !== 'dark')
+        t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  })();
+</script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- nav -->
+<nav class="nav"><div class="wrap">
+  <span class="brand" id="brand">CS-Pi</span>
+  <span class="spacer"></span>
+  <a class="navlink" href="#abstract">Abstract</a>
+  <a class="navlink" href="#idea">Idea</a>
+  <a class="navlink" href="#method">Method</a>
+  <a class="navlink" href="#explorer">Rollouts</a>
+  <a class="navlink" href="#results">Results</a>
+  <a class="navlink" href="#hardware">Hardware</a>
+  <a class="navlink" href="#cite">Cite</a>
+  <button class="themebtn" id="themeToggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode"></button>
+</div></nav>
+
+<!-- hero -->
+<header class="hero"><div class="wrap hero-center">
+  <span class="badge" id="heroBadge">CoRL 2026 submission</span>
+  <h1 id="heroTitle">CS-Pi</h1>
+  <div class="sub" id="heroSub">Constraint-Satisfying Flow Policy Sampling</div>
+  <div class="authors" id="heroAuthors">Anonymous Authors</div>
+  <div class="affil" id="heroAffil">CoRL 2026 submission</div>
+  <p class="tagline" id="heroTagline"></p>
+  <div class="btnrow" id="btnrow"></div>
+
+  <!-- animated CS-Pi loop -->
+  <div class="hero-viz">
+    <div class="vizbar">
+      <span class="title"><span class="cs">CS-Pi</span> loop</span>
+      <span class="stage" id="vizStage">flow ODE · draw sample</span>
+      <span class="spacer"></span>
+      <span class="stat" id="statIter">iter 1</span>
+      <span class="stat" id="statDelta">δ = 0.000</span>
+      <span class="stat" id="statN">n = —</span>
+    </div>
+    <canvas id="heroCanvas"></canvas>
+    <div class="vizfoot">
+      <span><span class="legend-dot" style="background:#1d6fd4"></span>draw / project</span>
+      <span><span class="legend-dot" style="background:#1f9d57"></span>feasible · goal</span>
+      <span><span class="legend-dot" style="background:#e0533d"></span>obstacle (unseen at training)</span>
+      <span class="spacer" style="flex:1"></span>
+      <span>draw → project → renoise to n = k/(k+δ) → re-run · click to restart</span>
+    </div>
+  </div>
+</div></header>
+
+<!-- headline stats -->
+<section style="border-top:none;padding-top:40px"><div class="wrap">
+  <div class="stats" id="statStrip"></div>
+</div></section>
+
+<!-- hardware (lead demo) -->
+<section id="hardware" class="faceoff"><div class="wrap">
+  <p class="section-kicker">Hardware</p>
+  <h2>Zero-shot on a Franka with π₀.₅</h2>
+  <p class="lead mt">Task: pick the apple, place it on the blue plate. The constraint set is obstacle
+    bounding boxes from a ZED 2 RGB-D vision pipeline; deployment is zero-shot, no finetuning.
+    <span class="cs">CS-Pi</span> completes the pick-and-place while the baselines fail.
+    <b>All clips play at 4× speed.</b></p>
+  <div class="hw-video-grid" id="hwVideos"></div>
+
+  <h3 class="hw-subhead">Annotated rollout frames</h3>
+  <p class="lead" style="font-size:15px">Green strips are <span class="cs">CS-Pi</span>;
+    red strips are the same policy run unguided. Frames run left to right.</p>
+  <div class="hw-strip" id="hwStrips"></div>
+</div></section>
+
+<!-- abstract -->
+<section id="abstract"><div class="wrap">
+  <p class="section-kicker">Abstract</p>
+  <h2>Satisfy a deployment-time constraint without leaving the policy</h2>
+  <p class="lead mt">
+    A flow-matching policy deployed in the field must often satisfy a constraint that
+    was absent from its demonstrations, such as a collision-free path or a particular
+    grasp orientation. Existing training-free samplers either guide the denoising
+    trajectory with a constraint gradient at noisy intermediates, where a hard
+    constraint gives no usable gradient, or project the finished sample onto the
+    feasible set and execute it, which yields an action the policy would never draw.
+  </p>
+  <p class="lead mt">
+    Our key insight is that the projection is a cheap, clean, feasible signal, and the
+    only mistake is executing it. <span class="cs">CS-Pi</span> draws from the policy,
+    projects the clean sample to the nearest feasible point, and resamples from the
+    flow model biased toward that point rather than executing it. Iterating drives the
+    samples toward constraint satisfaction, with no noisy-state gradient, no auxiliary
+    network, and no per-deployment tuning; it extends to arbitrary costs with just a
+    change to the projection. Across a 2D diagnostic, a 7-DoF shelf pick-and-place, and
+    a zero-shot Franka deployment, <span class="cs">CS-Pi</span> is the only sampler
+    that stays in-distribution wherever the constraint permits, departing from the
+    policy only as far as the constraint forces.
+  </p>
+</div></section>
+
+<!-- idea / concept figure + method cards -->
+<section id="idea"><div class="wrap">
+  <p class="section-kicker">The idea</p>
+  <h2>Four ways to enforce a constraint, one that keeps the policy</h2>
+  <p class="lead mt">Guidance steers with a proxy gradient and drifts off-manifold.
+    Projection is feasible but off-distribution. Rejection is in-distribution but slow.
+    <span class="cs">CS-Pi</span> runs the unmodified flow, projects, and renoises to a
+    depth set by the violation, so every draw stays in-distribution while iterating to
+    feasibility.</p>
+  <figure class="figcard mt">
+    <img src="assets/concept.png" alt="Concept: gradient guidance vs projection vs rejection vs CS-Pi">
+    <figcaption><b>Inference-time constraint enforcement on a flow-matching policy.</b>
+      Gradient guidance steers each ODE step with the constraint gradient at an estimate of
+      the final sample. Projection runs the unmodified flow and snaps the endpoint onto the
+      feasible set. Rejection redraws complete samples until one is feasible.
+      <span class="cs">CS-Pi</span> (ours) runs the flow, projects, and renoises to a depth
+      set by the projection residual δ (deeper for the larger δ₁, shallower for δ₂), then
+      re-runs the flow; every draw stays in-distribution and iterating drives δ toward zero.</figcaption>
+  </figure>
+  <div class="methodgrid" id="methodGrid"></div>
+</div></section>
+
+<!-- method figure -->
+<section id="method"><div class="wrap">
+  <p class="section-kicker">Method</p>
+  <h2>Draw, project, renoise to n = k/(k+δ), re-run</h2>
+  <p class="lead mt">The renoising depth is the whole algorithm: a large violation triggers
+    deep renoising so the next draw can reach a different policy mode (a different route
+    around the obstacle); a small violation triggers shallow renoising that refines the
+    current mode. The depth n = k/(k+δ) follows directly from the violation δ.</p>
+  <figure class="figcard mt" style="max-width:860px;margin-left:auto;margin-right:auto">
+    <img src="assets/method.png" alt="CS-Pi algorithm: flow ODE, project, renoise by depth n, iterate">
+    <figcaption><b>One <span class="cs">CS-Pi</span> trajectory.</b> Run the flow ODE to a clean
+      sample, project to the feasible set with residual δ₁, renoise to depth n₁ = k/(k+δ₁) = 0.6
+      and re-run; the next sample has a smaller residual δ₂, so it renoises shallower
+      (n₂ = 0.8) and converges. The renoise depth shrinks with the projection error.</figcaption>
+  </figure>
+</div></section>
+
+<!-- face-off -->
+<section id="faceoff" class="faceoff"><div class="wrap">
+  <p class="section-kicker">Head to head</p>
+  <h2>Same scenario, same policy: <span class="cs">CS-Pi</span> vs a baseline</h2>
+  <p class="lead mt">Shelf pick-and-place with a deployment-time obstacle. Left is
+    <span class="cs">CS-Pi</span>; right is the strongest baseline that fails this scenario.
+    Currently showing: <b id="foScen">—</b>.</p>
+  <div class="faceoff-stage">
+    <div class="fopanel win">
+      <div class="fohead"><span class="name" id="foLeftName">CS-Pi (ours)</span><span class="pill ok">safe ✓</span></div>
+      <div id="foLeftMedia"></div>
+    </div>
+    <div class="fopanel lose">
+      <div class="fohead"><span class="name" id="foRightName">Baseline</span><span class="pill bad">fail ✗</span></div>
+      <div id="foRightMedia"></div>
+    </div>
+  </div>
+  <div class="foscenrow" id="foDots"></div>
+</div></section>
+
+<!-- explorer -->
+<section id="explorer" class="explorer"><div class="wrap">
+  <p class="section-kicker">Interactive explorer</p>
+  <h2>Pick a task, a scenario, and a method</h2>
+  <p class="lead mt">Choose any cell to watch the rollout. Some cells have no GIF on purpose:
+    a method that is always safe in a scenario has no failure to show, and a method that
+    never succeeds there has no success to show.</p>
+
+  <div class="exp-tasks" id="expTasks"></div>
+  <p class="lead" id="expTaskBlurb" style="font-size:15.5px"></p>
+
+  <div class="exp-grid mt">
+    <div class="panel">
+      <h3>Scenario</h3>
+      <div class="scen-list" id="scenList"></div>
+    </div>
+    <div class="panel">
+      <div class="method-row" id="expMethods"></div>
+      <div class="stage-wrap">
+        <div class="stage-head">
+          <span class="who" id="stageWho"></span>
+          <span class="outcome-toggle" id="outcomeToggle">
+            <button id="outSuccess" class="ok" aria-selected="true">safe ✓</button>
+            <button id="outFail" class="bad">fail ✗</button>
+          </span>
+        </div>
+        <div id="expViewer"></div>
+        <div class="stage-note" id="stageNote"></div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- results -->
+<section id="results"><div class="wrap">
+  <p class="section-kicker">Results</p>
+  <h2><span class="cs">CS-Pi</span> wins safe-success while staying in-distribution</h2>
+  <p class="lead mt">Highest safe-success in every benchmark, with the highest log-likelihood among the
+    constraint-enforcing methods. The CS-Pi row is highlighted; best per column is bold.</p>
+  <div class="tabs-results" id="resTabs"></div>
+  <div id="resTable"></div>
+</div></section>
+
+<!-- cite -->
+<section id="cite"><div class="wrap">
+  <p class="section-kicker">Cite</p>
+  <h2>BibTeX</h2>
+  <pre class="bib" id="bibBlock"></pre>
+  <button class="btn copybtn" id="copyBib">Copy BibTeX</button>
+</div></section>
+
+<footer><div class="wrap">
+  <span>© <span id="year">2026</span> · <span class="cs">CS-Pi</span> · CoRL 2026 submission (anonymous)</span>
+  <span>Project page. Rollout GIFs render lazily.</span>
+</div></footer>
+
+<script src="js/gif_manifest.js"></script>
+<script src="js/data.js"></script>
+<script src="js/explorer.js"></script>
+<script src="js/hero.js"></script>
+</body>
+</html>
