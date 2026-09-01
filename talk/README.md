@@ -12,8 +12,10 @@ lengths.**
 | **45-minute lab talk** | `deck.src.html` | `talk/index.html` | A full lab meeting, and the backup material you answer questions from. 50 slides, three selectable lengths. |
 
 The short deck is not a subset of the long one. It follows the rule that a talk
-should build rather than display: the approach is **one abstract pipeline that
-grows across five slides** instead of a finished four-column figure, and every
+should build rather than display: the approach is **one sample-space picture
+that grows across six slides** — the policy's two routes, a constraint on one of
+them, and a dot for where each method's draw lands — instead of a finished
+four-column figure, and every
 result is one message with one comparison — the paper's eight-panel 2D figure is
 cropped into single panels revealed one at a time, and the large results tables
 and the wall-clock chart are dropped entirely in favour of video plus two or
@@ -42,7 +44,7 @@ ceiling. These are the ones to present from.
 
 19.5 min total, so a 20-minute slot has slack. **If you are past "THE TURN"
 (slide 7) at eight minutes, you are on time.** The rail shows the running
-budget. Slides 9 (the live animation) and 16's middle bullet are the two safe
+budget. Slides 10 (the live animation) and 16's middle bullet are the two safe
 things to cut live.
 
 ## Keys
@@ -122,12 +124,19 @@ pip install Pillow
   `<section class="slide">` with `data-act`, `data-title`, `data-min`,
   `data-tier`, and a `<div class="notes">` that is lifted into the notes panel
   at load (it never renders on the slide itself).
-- **The growing pipeline** (20-minute cut) — the `TAXO`-style renderer driven by
-  `<svg data-pipe="N">`, one state per slide: the untouched policy, guidance
-  bending the flow, projection repairing the answer, the turn that cuts the
-  arrow to `execute`, and the closed loop. Boxes keep their coordinates between
-  states so the audience tracks what was added. State 2 (the constraint
-  arriving) exists but no slide uses it.
+- **The sample-space method figure** (20-minute cut) — the renderer driven by
+  `<svg data-geo="N">`, one state per slide 4–9: the policy's draw lands in the
+  obstacle; guidance bends it off every route; projection snaps it to the rim,
+  off the route; rejection redraws from noise with no memory; the biased redraw
+  through a window at c; and the iteration, with windows shrinking as δ does.
+  Nothing moves between states, so the audience tracks the same â, c and
+  windows from slide to slide. The routes are thin bands on purpose — the data
+  manifold is low-dimensional, which is exactly why a projection leaves it. The
+  geometry is exact and was found by a small search (c is the true nearest rim
+  point, every redraw is on the route and inside its window, and the route
+  curves toward the rim so the redraws really do get closer); if you move the
+  disc or the route, re-check those claims before presenting. The equation on
+  slide 8 and the k tiles on slide 9 are plain HTML, not part of the SVG.
 - **The four-column taxonomy** (45-minute deck) — the `TAXO` array in the deck's script. Act II
   builds it one column at a time: each slide holds an
   `<svg data-taxo="N">`, which renders the first `N` columns filled in with

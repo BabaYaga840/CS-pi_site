@@ -201,6 +201,38 @@ table.res .flag{color:var(--bad);font-weight:700;}
 .vizfoot{display:flex;gap:13px;align-items:center;padding:6px 13px;flex-wrap:wrap;border-top:1px solid var(--line);font-size:11px;color:var(--ink-soft);flex:none;}
 .legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;}
 
+/* ---- sample-space method figure (slides 4-9) ----------------------------- */
+.geo-wrap{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center;}
+.geo{width:100%;max-width:1040px;height:auto;display:block;}
+.geo-wrap.tight .geo{max-width:880px;}
+.recipe{
+  display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;flex:none;
+  margin:6px 0 0;font-family:var(--mono);font-size:12px;color:var(--ink-faint);
+}
+.recipe .arr{color:var(--ink-faint);}
+.recipe .step{border:1px solid var(--line-firm);border-radius:6px;padding:3px 10px;color:var(--ink-soft);background:#fff;}
+.recipe .step.hot{font-weight:700;border-color:currentColor;}
+.recipe .step.red{color:#a8382a;background:#fdf1ef;}
+.recipe .step.purple{color:#5b34b8;background:#f4efff;}
+.recipe .step.blue{color:var(--blue-deep);background:var(--blue-soft);}
+.recipe .step.good{color:#12683a;background:#e9f7ee;}
+.recipe .step.grey{color:var(--slate);background:#eef2f7;}
+
+/* ---- annotated equation (slide 8) ---------------------------------------- */
+.eqrow{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:8px;}
+.eqrow .eqmain{
+  grid-column:1/-1;margin:0;font-family:var(--mono);font-size:23px;font-weight:700;
+  color:var(--ink);text-align:center;letter-spacing:-.01em;
+}
+.eqrow .eqmain .f1{color:var(--slate);}
+.eqrow .eqmain .f2{color:var(--blue);}
+.eqpart{border-top:3px solid;border-radius:0 0 8px 8px;background:var(--panel);padding:8px 14px 9px;font-size:14px;line-height:1.4;color:var(--ink-soft);}
+.eqpart b{display:block;color:var(--ink);font-size:15px;margin-bottom:1px;}
+.eqpart.f1{border-color:var(--slate);}
+.eqpart.f2{border-color:var(--blue);}
+.eqrow .eqfoot{grid-column:1/-1;margin:0;font-size:13.5px;line-height:1.4;color:var(--ink-soft);text-align:center;}
+.tile .n sub{font-size:.55em;}
+
 /* ---- chrome -------------------------------------------------------------- */
 #rail{
   position:fixed;left:0;right:0;bottom:0;height:32px;z-index:40;display:flex;align-items:center;
@@ -360,156 +392,215 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 4 · PIPELINE, UNTOUCHED ======================= -->
-<section class="slide" data-act="II · Two attempts" data-title="The pipeline, unmodified" data-min="0.5" data-tier="1">
+<!-- ===================== 4 · THE DRAW ================================== -->
+<section class="slide" data-act="II · Two attempts" data-title="The draw lands in the obstacle" data-min="0.5" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span>The object we get to modify</span></p>
-  <h2>Here is all we have to work with</h2>
-  <div class="grow" style="display:flex;flex-direction:column;min-height:0;justify-content:center">
-    <svg data-pipe="1" viewBox="0 0 950 274" role="img"
-         aria-label="An unmodified flow policy pipeline: noise, flow ODE, action, execute."
-         style="width:100%;height:auto"></svg>
+  <h2>The policy draws an action. Then we find out.</h2>
+  <div class="geo-wrap">
+    <svg data-geo="1" class="geo" viewBox="0 0 960 330" role="img"
+         aria-label="Action space: the policy's mass sits on two routes, a constraint disc sits on one of them, and the policy's draw lands inside the disc."></svg>
   </div>
-  <p class="tnote">A flow-matching policy turns noise into an action chunk by integrating a
-    learned velocity field for k steps. Nothing here knows a constraint exists.</p>
+  <p class="recipe"><span class="step hot blue">draw â from the policy</span><span class="arr">→</span><span class="step">execute</span></p>
+  <p class="tnote">Shaded: where a frozen flow policy's draws land — two routes the demonstrations
+    took. The red disc is a constraint the demonstrations never had, and it sits on one of them.
+    Nothing in the policy knows it exists.</p>
   <div class="notes">
-    <div class="timing">~30 s · establish the board, then start adding to it</div>
-    <p>This diagram is going to grow for the next six slides, so <strong>make sure everyone has
-      the four boxes before you add anything.</strong> Point at each one as you name it.</p>
+    <div class="timing">~30 s · establish the picture, then start adding to it</div>
+    <p>This one picture is going to grow for the next six slides, so <strong>make sure everyone
+      can read it before you add anything.</strong> Point at the three things: the grey mass is
+      what the policy would draw, the red disc is what the constraint forbids, and everything
+      outside the disc is the feasible set.</p>
     <p>The only line that matters: <strong>the policy is frozen and we are not allowed to
-      retrain it</strong>, so every method in this talk is a modification to this picture and
-      nothing else.</p>
-    <p class="say">"There are exactly three places you can intervene: inside the flow, on the
-      answer, or by trying again. That's the whole design space."</p>
+      retrain it</strong>, so every method in this talk is something you do to that blue dot,
+      and nothing else.</p>
+    <p class="say">"There are three places you can intervene: inside the flow while it is drawing,
+      on the answer after it has drawn, or by drawing again. That is the whole design space, and
+      we'll try them in that order."</p>
   </div>
 </section>
 
 <!-- ===================== 5 · ATTEMPT 1 · GUIDANCE ====================== -->
 <section class="slide" data-act="II · Two attempts" data-title="Attempt 1: bend the flow" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span style="color:var(--red)">Attempt 1 · gradient guidance</span></p>
-  <h2>Push every step toward feasibility</h2>
-  <div class="grow" style="display:flex;flex-direction:column;min-height:0;justify-content:center">
-    <svg data-pipe="3" viewBox="0 0 950 274" role="img"
-         aria-label="Gradient guidance adds a constraint-gradient nudge to every step of the flow ODE."
-         style="width:100%;height:auto"></svg>
+  <h2>Bend the velocity field toward feasibility</h2>
+  <div class="geo-wrap">
+    <svg data-geo="2" class="geo" viewBox="0 0 960 330" role="img"
+         aria-label="Gradient guidance pushes the draw out of the obstacle, but it lands in the gap between the two routes, where the policy has no mass."></svg>
   </div>
-  <div class="split" style="flex:none;margin-top:4px">
-    <div class="callout neg">The gradient is evaluated at a <b>one-step estimate of the final
-      action</b> — early on, that estimate is an average over modes. A blur, not a plan.</div>
-    <div class="callout warn">Nudging a blur toward feasibility <b>interpolates between routes</b>.
-      The interpolation of going left and going right around an obstacle goes straight through it.</div>
+  <p class="recipe"><span class="step">draw</span><span class="step hot red">−α ∇C at every step</span><span class="arr">→</span><span class="step">execute</span></p>
+  <div class="split" style="flex:none;margin-top:6px">
+    <div class="callout neg">The gradient is taken through a proxy: a one-step guess at the final
+      action. Early in the flow that guess is <b>a blur across both routes</b>, not a plan.</div>
+    <div class="callout warn">Pushing a blur toward feasibility lands <b>between the routes</b>:
+      feasible, and nothing the policy ever does. <b>So: leave the velocities alone and start from
+      a real draw.</b></div>
   </div>
   <div class="notes">
-    <div class="timing">~1.5 min · the mode-interpolation argument is the one to lead with</div>
-    <p>Expect sympathy for guidance in the room — classifier-free guidance is a well-loved tool.
-      Be precise rather than dismissive.</p>
-    <p><strong>Lead with mode interpolation because it is geometric and undeniable:</strong> if
-      the policy is still undecided between left and right around the obstacle, the posterior-mean
-      estimate sits <em>between</em> them — which is exactly where the obstacle is. The gradient
-      there pushes on a path no mode of the policy actually proposes.</p>
-    <p>Second, briefly: a hard constraint gives no usable gradient. Distance to a box is flat away
-      from the boundary and non-smooth at it, so guidance methods substitute a smoothed surrogate
-      and then enforce the surrogate.</p>
-    <p class="say">"And notice the shape of the failure: the flow never runs unmodified, so what
-      comes out the end is not a sample from the policy at all."</p>
-    <div class="qa">"Just tune α?" — the honest answer, and worth 15 seconds: at the weight where
-      it stops colliding it also stops doing the task. On the shelf, tuned guidance reaches 0.0%
-      collisions and 28% goal reach, against the prior's 72%. There is no good setting, only a
-      trade.</div>
+    <div class="timing">~1.5 min · the weakness here is what motivates everything after it</div>
+    <p>Expect sympathy for guidance in the room, so be precise rather than dismissive. The
+      picture does the work: the red dot is out of the obstacle, and it is in the one place the
+      policy never goes.</p>
+    <p><strong>Why it lands there:</strong> the gradient needs a clean action to evaluate the
+      constraint on, and mid-flow there isn't one. Guidance substitutes the posterior-mean guess,
+      which while the policy is still undecided between the two routes sits between them. Nudging
+      that guess toward feasibility nudges a path no route of the policy proposes.</p>
+    <p>Second, briefly: a hard constraint has no usable gradient. Distance to a box is flat away
+      from the boundary and non-smooth at it, so guidance enforces a smoothed surrogate instead.</p>
+    <p class="say">"Altering velocities with a gradient of a proxy is how you leave the data. So
+      whatever we do, we do it to a finished draw, not to the flow."</p>
+    <div class="qa">"Just tune α?" — at the weight where it stops colliding it also stops doing the
+      task: on the shelf, tuned guidance reaches 0.0% collisions and 28% goal reach against the
+      prior's 72%. There is no good setting, only a trade.</div>
   </div>
 </section>
 
 <!-- ===================== 6 · ATTEMPT 2 · PROJECTION ==================== -->
-<section class="slide" data-act="II · Two attempts" data-title="Attempt 2: repair the answer" data-min="1.5" data-tier="1">
+<section class="slide" data-act="II · Two attempts" data-title="Attempt 2: project the answer" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span style="color:var(--purple)">Attempt 2 · projection</span></p>
-  <h2>Leave the flow alone and fix the answer instead</h2>
-  <div class="grow" style="display:flex;flex-direction:column;min-height:0;justify-content:center">
-    <svg data-pipe="4" viewBox="0 0 950 274" role="img"
-         aria-label="Projection runs the unmodified flow and snaps the endpoint onto the feasible set before executing it."
-         style="width:100%;height:auto"></svg>
+  <h2>Draw first, then snap the answer onto the feasible set</h2>
+  <div class="geo-wrap">
+    <svg data-geo="3" class="geo" viewBox="0 0 960 330" role="img"
+         aria-label="Projection moves the draw to the nearest feasible point c, a distance delta away. c is on the edge of the obstacle and off the policy's mass."></svg>
   </div>
-  <div class="split" style="flex:none;margin-top:4px">
-    <div class="callout good">Everything about this is right: <b>feasible by construction</b>,
-      no extra flow calls, no gradient needed, closed form for boxes, spheres, half-spaces,
-      joint limits.</div>
-    <div class="callout neg">One thing is wrong: the snapped point is chosen for
-      <b>proximity, not likelihood</b> — and then we execute it.</div>
+  <p class="recipe"><span class="step">draw â</span><span class="arr">→</span><span class="step hot purple">project onto C → c, δ</span><span class="arr">→</span><span class="step">execute c</span></p>
+  <div class="split" style="flex:none;margin-top:6px">
+    <div class="callout good">Feasible by construction, no gradient, closed form for boxes,
+      spheres, half-spaces and joint limits. <b>So: we keep the projection.</b></div>
+    <div class="callout neg">But c is the <b>nearest</b> feasible point, not the most likely
+      one. It sits off the policy's mass, and executing it means executing an action the policy
+      never learned.</div>
   </div>
   <div class="notes">
     <div class="timing">~1.5 min · be generous — the turn has nowhere to come from otherwise</div>
     <p><strong>Do not trash projection.</strong> It is the strongest baseline in the paper, and
       the entire idea of the method is that it is <em>almost right</em>. If you dismiss it here,
       the next slide lands as a trick instead of an insight.</p>
-    <p>Say the defect in exactly these words, because the phrasing recurs at the turn:
-      <strong>the projection is chosen for proximity, not for likelihood.</strong> Nearest is not
-      most-likely, and in a bimodal policy the nearest feasible point is often on the wrong side
-      of the obstacle entirely.</p>
-    <p>One sentence for rejection sampling so nobody thinks you forgot it: <strong>"You could also
-      redraw until something is feasible — that's statistically correct and it costs 30× more
-      compute, and it degrades exactly when the constraint gets tight."</strong> Then move on.</p>
+    <p>Walk the arrow: the draw is inside the obstacle, so we move it the shortest distance that
+      makes it feasible. That distance is δ, and the point we reach is c. Both are free.</p>
+    <p>Then say the defect in exactly these words, because the phrasing recurs at the turn:
+      <strong>c is chosen for proximity, not for likelihood.</strong> Look where it sits: on the
+      rim of the obstacle, outside the grey. Nearest is not most-likely, and in a bimodal policy
+      the nearest feasible point is often on the wrong side of the obstacle entirely.</p>
     <p class="say">"Projection gets a feasible answer. It just gets it by leaving the model."</p>
   </div>
 </section>
 
 <!-- ===================== 7 · THE TURN ================================== -->
-<section class="slide" data-act="III · The idea" data-title="THE TURN" data-min="1" data-tier="1">
+<section class="slide" data-act="III · The idea" data-title="THE TURN" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span>The turn</span></p>
-  <h2>The projection was never the problem</h2>
-  <div class="grow" style="display:flex;flex-direction:column;min-height:0;justify-content:center">
-    <svg data-pipe="5" viewBox="0 0 950 274" role="img"
-         aria-label="The turn: the projection is kept as a target and an error, but the arrow to execute is cut."
-         style="width:100%;height:auto"></svg>
+  <h2>c is not an action. It is a target.</h2>
+  <div class="geo-wrap">
+    <svg data-geo="4" class="geo" viewBox="0 0 960 330" role="img"
+         aria-label="Rejection sampling redraws from noise again and again; most redraws land back in the obstacle, and none of them use c or delta."></svg>
   </div>
-  <p class="tnote">The projection gives us a <b>feasible target c</b> and a <b>violation
-    magnitude δ</b>, both for free, both without a gradient. Those are exactly the two things we
-  need. The only mistake was ever running it.</p>
+  <p class="recipe"><span class="step">draw</span><span class="arr">→</span><span class="step">project</span><span class="arr">→</span><span class="step hot grey">throw it away, draw from noise</span><span class="arr">→</span><span class="step">…</span></p>
+  <div class="tiles" style="margin-top:8px">
+    <div class="tile negt"><div class="n" style="font-size:22px">✗ execute c</div><div class="l">off-distribution</div><div class="s">the projection is where attempt 2 stopped</div></div>
+    <div class="tile negt"><div class="n" style="font-size:22px">✗ redraw from noise</div><div class="l">no memory, slow</div><div class="s">rejection ignores c and δ — on the shelf it costs 30× the compute</div></div>
+    <div class="tile ours"><div class="n" style="font-size:22px">✓ redraw, biased toward c</div><div class="l">in-distribution, and closer to C</div><div class="s">the projection tells the next draw where to look</div></div>
+  </div>
   <div class="notes">
-    <div class="timing">~1 min · the hinge of the talk — slow down and let the cross land</div>
-    <p>Pause before you advance to this slide. Then say it plainly:</p>
-    <p class="say">"The projection is a cheap, clean, gradient-free feasibility signal. The only
-      mistake anyone made was executing it."</p>
-    <p>Point at the cut arrow. <strong>We keep the whole left-hand side of the pipeline and delete
-      one arrow.</strong> That is the entire contribution, stated honestly, and stating it that
-      modestly is what makes it convincing.</p>
-    <p>Then set up the obvious question so the next slide answers it rather than introducing
-      itself: <strong>"So if we're not executing it — what is it for?"</strong></p>
+    <div class="timing">~1.5 min · the hinge of the talk — slow down and let the fork land</div>
+    <p>Pause before you advance to this slide. Then lay out the fork plainly: we are holding a
+      feasible point c that we know is off-distribution. <strong>There are exactly three things
+      you can do with it.</strong></p>
+    <p><strong>One: execute it.</strong> That is projection, and we just saw why not.</p>
+    <p><strong>Two: throw it away and draw again from scratch.</strong> That is rejection
+      sampling, and the picture shows the cost: every redraw is independent, so most of them land
+      right back in the obstacle, and nothing we learned from the failure — not c, not δ — is
+      used. It is statistically correct and it costs 30× the compute on the shelf, degrading
+      exactly when the constraint gets tight.</p>
+    <p class="say">"The projection is a cheap, clean, gradient-free feasibility signal. It tells
+      us where a feasible answer is and how far away we were. The mistake was executing it — the
+      fix is to draw again, and let it tell the draw where to look."</p>
+    <p><strong>Three is the method.</strong> Do not explain how yet; the next slide is the how.</p>
   </div>
 </section>
 
-<!-- ===================== 8 · THE LOOP ================================== -->
-<section class="slide" data-act="III · The idea" data-title="Close the loop" data-min="2" data-tier="1">
-  <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span style="color:var(--blue)">CS-Pi</span></p>
-  <h2>Use it to decide where to start sampling again</h2>
-  <div class="grow" style="display:flex;flex-direction:column;min-height:0;justify-content:center">
-    <svg data-pipe="6" viewBox="0 0 950 274" role="img"
-         aria-label="CS-Pi closes the loop: project to get a target and an error, renoise to a depth set by that error, and re-run the flow."
-         style="width:100%;height:auto"></svg>
+<!-- ===================== 8 · THE BIASED REDRAW ========================= -->
+<section class="slide" data-act="III · The idea" data-title="Redraw the policy, biased toward c" data-min="2" data-tier="1">
+  <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span style="color:var(--blue)">CS-Pi · one pass</span></p>
+  <h2>Redraw the policy through a window centred at c</h2>
+  <div class="geo-wrap tight">
+    <svg data-geo="5" class="geo" viewBox="0 0 960 330" role="img"
+         aria-label="A Gaussian window centred at c overlaps the policy's mass; the redraw lands in that overlap, on the data and closer to the feasible set."></svg>
   </div>
-  <div class="tiles" style="margin-top:6px">
-    <div class="tile"><div class="n" style="color:var(--purple)">c</div><div class="l">where to aim</div><div class="s">the projected, feasible target</div></div>
-    <div class="tile"><div class="n" style="color:var(--red)">δ</div><div class="l">how wrong we were</div><div class="s">the distance the projection had to move</div></div>
-    <div class="tile ours"><div class="n">n = k/(k+δ)</div><div class="l">how far back to go</div><div class="s">big δ → deep renoise · small δ → shallow</div></div>
+  <p class="recipe"><span class="step">draw â</span><span class="arr">→</span><span class="step">project → c, δ</span><span class="arr">→</span><span class="step hot blue">renoise c to n = k/(k+δ), re-run the flow</span><span class="arr">→</span><span class="step">a′</span></p>
+  <div class="eqrow">
+    <p class="eqmain">a′ &nbsp;∼&nbsp; (1/Z) · <span class="f1">p<sub>data</sub>(a′)</span> · <span class="f2">exp(−k²‖a′ − c‖² / 2δ²)</span></p>
+    <div class="eqpart f1"><b>the policy's own density</b>Every redraw is still a draw from the
+      prior. It cannot land off the grey, whatever the window does.</div>
+    <div class="eqpart f2"><b>a Gaussian centred on the projected point</b>Width δ/k. It pulls the
+      redraw toward c, and so toward the feasible set, without ever leaving the prior.</div>
+    <p class="eqfoot">In practice: partially renoise c to depth n = k/(k+δ), re-run the flow from
+      there. One extra forward pass, no constraint gradient. That renoise-and-re-run <em>is</em>
+      the product above.</p>
   </div>
   <div class="notes">
-    <div class="timing">~2 min · the method, in one diagram — do not rush the return arrow</div>
-    <p>Trace the loop with your finger, once, slowly: draw → project → renoise to n → re-run.
-      Then say what makes it different from rejection sampling, because that is the question in
-      the room:</p>
-    <p class="say">"Rejection throws the sample away and restarts from pure noise. We restart
-      from partway down the flow — and the projection tells us exactly how far."</p>
-    <p><strong>The feedback law is the idea.</strong> δ is a free by-product of a computation we
-      were doing anyway, and it is precisely the right signal: a sample that barely violated the
-      constraint needs a small correction, so we renoise shallowly and refine it. A sample that
-      was badly wrong needs a different plan, so we renoise deeply and the policy can commit to a
-      different mode entirely.</p>
-    <p>Then the honest headline: <strong>k = 20, fixed across all four benchmarks.</strong> There
-      is no per-task tuning here — using per-benchmark values buys at most 4.3 points.</p>
-    <div class="qa">"Does it terminate?" — δ shrinks across iterations in practice, and we cap the
-      iterations. If the cap is hit we can project the final chunk to guarantee feasibility; that
-      fires on 15.7% of shelf chunks and 4.8% on hardware.</div>
+    <div class="timing">~2 min · the method, in one picture and one line — do not rush the equation</div>
+    <p>Walk the picture first, then the equation. <strong>Picture:</strong> we put a window around
+      c, sized by how badly we missed, and we draw the policy again through that window. The draw
+      can only land where the window and the grey overlap, so it is on the data by construction,
+      and it is pulled toward c, so it is closer to the feasible set than the draw we started
+      from. Not there yet — closer.</p>
+    <p><strong>Equation, two factors, and say them in this order.</strong> The first factor is the
+      policy's own density: this is a real policy sample, not a bent one and not a snapped one.
+      The second is a Gaussian at c with width δ/k: this is the bias. Multiply, normalise, draw.</p>
+    <p><strong>How you get it for free:</strong> partially renoise c along the flow's interpolant
+      to depth n = k/(k+δ) and re-run the flow. One Bayes step on the interpolant law says that
+      re-running from there samples exactly this product; the identity is (1−n)/n = δ/k. Strictly
+      the window sits at ĉ = c plus the injected noise scaled by δ/k, which is why it is a window
+      and not a point.</p>
+    <p class="say">"We're not steering the policy and we're not overwriting it. We're multiplying
+      it by a Gaussian centred where the projection said feasible is — and the violation sets how
+      wide that Gaussian is."</p>
+    <div class="qa">"Isn't that just guidance again?" — no gradient anywhere, and the prior is a
+      factor rather than a starting point that gets pushed off. The 2D slide shows the
+      difference: no ring.</div>
   </div>
 </section>
 
-<!-- ===================== 9 · LIVE LOOP ================================= -->
+<!-- ===================== 9 · ITERATE ================================== -->
+<section class="slide" data-act="III · The idea" data-title="Repeat until δ is zero" data-min="1" data-tier="1">
+  <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span style="color:var(--blue)">CS-Pi · the loop, and k</span></p>
+  <h2>Repeat. Every pass lands closer, and every pass is the policy's.</h2>
+  <div class="geo-wrap tight">
+    <svg data-geo="6" class="geo" viewBox="0 0 960 330" role="img"
+         aria-label="Three passes: draw, project, redraw through a window at c; the window shrinks with delta each pass, and the third draw is feasible and on the policy's mass."></svg>
+  </div>
+  <p class="recipe"><span class="step">draw</span><span class="arr">→</span><span class="step purple">project</span><span class="arr">→</span><span class="step blue">renoise, re-run</span><span class="arr">→</span><span class="step purple">project</span><span class="arr">→</span><span class="step blue">renoise, re-run</span><span class="arr">→</span><span class="step hot good">δ = 0 · execute</span></p>
+  <div class="tiles" style="margin-top:8px">
+    <div class="tile"><div class="n">σ<sub>w</sub> = δ / k</div><div class="l">the window width</div><div class="s">the violation you just measured is the search radius; k scales it</div></div>
+    <div class="tile"><div class="n" style="color:var(--amber)">small k</div><div class="l">wide window · reconsider</div><div class="s">can reach the other route when δ is large, but the pull toward c is weak, so δ falls slowly</div></div>
+    <div class="tile"><div class="n" style="color:var(--teal)">large k</div><div class="l">narrow window · refine</div><div class="s">hugs c, so δ collapses in a pass or two — but it can only polish the route it is on</div></div>
+    <div class="tile ours"><div class="n">k = 20</div><div class="l">one value, four benchmarks</div><div class="s">per-task tuning buys at most 4.3 points</div></div>
+  </div>
+  <p class="tnote">Because the window is centred on the feasible set and every redraw is
+    in-distribution, δ shrinks pass over pass (δ₁ → δ₂ → 0 in the picture). Stop when δ is below
+    tolerance, or cap the passes and project the last chunk.</p>
+  <div class="notes">
+    <div class="timing">~1 min · trace the chain once, then explain k</div>
+    <p>Trace the chain with your finger: draw, project, redraw through the window; project,
+      redraw through a smaller window; feasible. <strong>Two things to point at:</strong> every
+      blue dot is inside the grey, and the windows shrink, because each one is sized by the δ
+      that came before it.</p>
+    <p><strong>k is the only knob, and it sets the window width.</strong> The width is δ/k, so k
+      decides how tightly the redraw hugs c. Small k, wide window: the redraw can wander far
+      enough to switch routes, which is what a large δ needs, but the pull toward c is weak, so
+      it takes more passes to converge. Large k, narrow window: the redraw stays close to c, δ
+      collapses fast, but it can only refine the route it is already on. Equivalently, in the
+      implementation: n = k/(k+δ), so a larger k renoises shallower for the same δ.</p>
+    <p>Then the honest headline: <strong>k = 20, fixed across all four benchmarks.</strong> Using
+      per-benchmark values buys at most 4.3 points.</p>
+    <p class="say">"Refine when you're close, reconsider when you're not — the same operation at
+      two widths, and the width is set by the violation itself."</p>
+    <div class="qa">"Does it terminate?" — δ shrinks across passes in practice, and we cap the
+      passes. If the cap is hit we project the final chunk to guarantee feasibility; that fires on
+      15.7% of shelf chunks and 4.8% on hardware.</div>
+  </div>
+</section>
+
+<!-- ===================== 10 · LIVE LOOP ================================ -->
 <section class="slide" data-act="III · The idea" data-title="Live: watch δ go to zero" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span>Live · click the canvas to restart</span></p>
   <h2>Watch δ go to zero</h2>
@@ -532,61 +623,20 @@ body.notes-on #deck{right:396px;}
   </div>
   <div class="notes">
     <div class="timing">~1 min · let it run two full iterations, narrate against the HUD</div>
-    <p>Narrate one cycle, reading the numbers off the bar as they change:</p>
+    <p>The same loop, now in the workspace: the action chunk is a trajectory, the obstacle is a
+      disc on the demonstrated route. Narrate one cycle, reading the numbers off the bar as they
+      change:</p>
     <ul>
       <li>The flow draws a sample — it goes straight through the obstacle.</li>
       <li><strong>δ</strong> is the violation. It's large.</li>
       <li>Project to the nearest feasible point c. <strong>We do not execute it.</strong></li>
-      <li><strong>n</strong> is small, so we renoise <em>deeply</em>.</li>
+      <li><strong>n</strong> is small, so we renoise <em>deeply</em> — a wide window.</li>
       <li>Re-run. New sample, smaller δ, larger n — now we only refine.</li>
     </ul>
     <p class="say">"Three iterations. And the thing we execute at the end is an ordinary draw from
       the policy — it just started from a better place."</p>
-    <div class="qa">If the projector struggles, skip it — the previous diagram carries the idea.
-      Click the canvas to replay, or press R.</div>
-  </div>
-</section>
-
-<!-- ===================== 10 · WHAT RENOISING COMPUTES ================== -->
-<section class="slide" data-act="III · The idea" data-title="What the renoise step actually computes" data-min="1.5" data-tier="1">
-  <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span>Why it stays in-distribution</span></p>
-  <h2>Each iteration samples the prior through a window at the target</h2>
-  <div class="split wide-l">
-    <div class="col center">
-      <svg id="windowFig" viewBox="0 0 520 396" role="img"
-           aria-label="The policy prior seen through a Gaussian window centred near the feasible set, at two widths."
-           style="width:100%;height:auto"></svg>
-    </div>
-    <div class="col center">
-      <p class="eq">a′ ~ (1/Z) · p<sub>data</sub>(a′) · e<sup>−k²‖a′−ĉ‖²/2δ²</sup></p>
-      <ul class="pts tight">
-        <li>Renoising the anchor to depth n and re-denoising draws from <strong>the policy prior
-          multiplied by a Gaussian centred at the feasible target</strong>, with width
-          σ<sub>w</sub> = δ/k.</li>
-        <li>So we never leave the prior — <strong>p<sub>data</sub> is a factor in every
-          draw</strong>. We only reweight it toward feasibility.</li>
-        <li>And the width is the feedback law again: large δ opens the window wide enough to
-          reach a different mode; small δ narrows it to a local refinement.</li>
-      </ul>
-      <div class="callout">This is why constraint satisfaction doesn't cost likelihood here. On
-        the shelf our samples score <b>logL 18.0</b> against the unmodified prior's own 15.0.</div>
-    </div>
-  </div>
-  <div class="notes">
-    <div class="timing">~1.5 min · one slide of theory, and it earns its place</div>
-    <p>This is the only formal claim in the talk, so state what it buys and move: <strong>the
-      method is not a heuristic that happens to stay near the data — the prior is literally a
-      factor in the density it samples from.</strong></p>
-    <p>Walk the two panels: same prior, same feasible set, two window widths. Wide window (large
-      δ) — the blocked mode is suppressed and mass moves to the surviving mode, so the sample
-      switches modes. Narrow window (small δ) — it just refines where it already was.</p>
-    <p class="say">"One line of algebra, and it says the two behaviours we wanted — refine when
-      you're close, reconsider when you're not — are the same operation at two widths."</p>
-    <p>Then the number that makes it concrete: <strong>logL 18.0 against the prior's 15.0.</strong>
-      Our samples are <em>more</em> likely under the policy than the policy's own draws, because
-      constraint satisfaction correlates with the clean demonstrated behaviour.</p>
-    <div class="qa">Proof is one Bayes step from the interpolant law — offer it for the Q&amp;A
-      rather than doing it live.</div>
+    <div class="qa">If the projector struggles, skip it — the previous two diagrams carry the
+      idea. Click the canvas to replay, or press R.</div>
   </div>
 </section>
 
@@ -1067,232 +1117,63 @@ body.notes-on #deck{right:396px;}
 
 
   // =========================================================================
-  // Figure 0: the four-column taxonomy, built one column at a time.
-  // Every <svg data-taxo="N"> renders the same grid with the first N columns
-  // filled in and column N highlighted; the rest stay as empty dashed frames,
-  // so the diagram accumulates across slides instead of arriving all at once.
-  // Rows are the five stages of one sampling pass, and a column's colour marks
-  // the row where that method intervenes. The two return arrows are the point
-  // of the whole figure: rejection restarts from pure noise, CS-Pi restarts
-  // from partway down the flow.
+  // The method, built up in sample space. One picture that grows across
+  // slides 4-9: the policy's mass (two thin routes -- the data manifold is
+  // low-dimensional, which is exactly why a projection leaves it), a
+  // constraint disc that sits on one route, and a dot for where each method's
+  // draw lands. Every state adds one thing to the previous one, and nothing
+  // ever moves, so the audience tracks the same â, c and windows from one
+  // slide to the next. The 2D diagnostic later in the deck is the real-data
+  // version of this picture.
+  //
+  //   1  draw        the policy's draw lands in the obstacle
+  //   2  guidance    bend the flow: feasible, but off every route
+  //   3  project     snap to the nearest feasible point: feasible, off the route
+  //   4  rejection   throw it away and redraw from noise: no memory, slow
+  //   5  biased      redraw the policy through a window centred at c
+  //   6  iterate     repeat; the window shrinks with δ and the draw converges
+  //
+  // Every <svg data-geo="N"> draws state N. The geometry is exact, found by a
+  // search (talk/README.md): c is the true nearest rim point of â, δ is the
+  // true distance, each redraw is on the route and inside its window, and
+  // the route curves toward the rim so the redraws really do get closer.
   // =========================================================================
-  var TAXO = [
-    {
-      key:'guidance', name:'Gradient guidance', tone:'#e0533d', soft:'#fdf1ef',
-      flow:['k flow steps —','every one nudged','by ∇C(x̂₀)'], flowHot:true,
-      end:['â₁, already bent','toward C'], endHot:true,
-      fix:['none'], fixHot:false, fixDim:true,
-      run:['a nudged','sample'], mark:'✗', foot:['biased by design'],
-      ret:null
-    },
-    {
-      key:'projection', name:'Projection', tone:'#8b5cf6', soft:'#f4efff',
-      flow:['k flow steps,','untouched'], flowHot:false,
-      end:['â₁ ~ policy'], endHot:false,
-      fix:['snap â₁ onto','the feasible set C'], fixHot:true,
-      run:['the projection','itself'], mark:'✗', foot:['feasible, but','off-support'],
-      ret:null
-    },
-    {
-      key:'rejection', name:'Rejection', tone:'#6b7c93', soft:'#eef2f7',
-      flow:['k flow steps,','untouched'], flowHot:false,
-      end:['â₁ ~ policy'], endHot:false,
-      fix:['feasible? if not,','discard it and','start over'], fixHot:true,
-      run:['a real policy','sample'], mark:'✓', foot:['correct, but','cost unbounded'],
-      ret:'noise'
-    },
-    {
-      key:'cspi', name:'CS-Pi (ours)', tone:'#1d6fd4', soft:'#eaf2fd',
-      flow:['k flow steps,','untouched'], flowHot:false,
-      end:['â₁ ~ policy'], endHot:false,
-      fix:['project, then renoise','only to n = k/(k+δ)'], fixHot:true,
-      run:['a feasible','policy sample'], mark:'✓',
-      foot:['and the retry','depth is set by δ'],
-      ret:'flow'
-    }
-  ];
-
   (function(){
-    var svgs = document.querySelectorAll('svg[data-taxo]');
+    var svgs = document.querySelectorAll('svg[data-geo]');
     if (!svgs.length) return;
 
     var SVGNS = 'http://www.w3.org/2000/svg';
-    var LABW = 78, X0 = 88, COLW = 132, GAP = 14, LANE = 15;
-    var ROWS = [
-      {key:'noise', label:'noise',    y:34,  h:28},
-      {key:'flow',  label:'flow ode', y:76,  h:56},
-      {key:'end',   label:'endpoint', y:146, h:36},
-      {key:'fix',   label:'fix-up',   y:196, h:56},
-      {key:'run',   label:'execute',  y:266, h:34}
-    ];
-    var CHIPY = 316, CHIPH = 26;
-
-    function rowOf(k){ for (var i = 0; i < ROWS.length; i++) if (ROWS[i].key === k) return ROWS[i]; }
-
-    function render(svg){
-      var upto = parseInt(svg.dataset.taxo, 10) || 4;
-      while (svg.firstChild) svg.removeChild(svg.firstChild);
-
-      function el(name, attrs, text, parent){
-        var n = document.createElementNS(SVGNS, name);
-        for (var k in attrs) n.setAttribute(k, attrs[k]);
-        if (text != null) n.textContent = text;
-        (parent || svg).appendChild(n);
-        return n;
-      }
-      function lines(arr, cx, row, fill, weight){
-        var lh = 13.5, top = row.y + row.h / 2 - (arr.length - 1) * lh / 2 + 4;
-        arr.forEach(function(t, i){
-          el('text', {x:cx, y:top + i * lh, 'text-anchor':'middle', fill:fill,
-                      'font-family':'Inter, sans-serif', 'font-size':11,
-                      'font-weight':weight || 500}, t);
-        });
-      }
-
-      // Marker ids must be unique per SVG: a url(#id) reference resolves to the
-      // FIRST match in the document, and every other taxonomy SVG lives on a
-      // display:none slide, where its markers do not render at all.
-      var defs = el('defs', {});
-      var MK = [];
-      ['#c2ccda', '#1d6fd4', '#6b7c93'].forEach(function(c, i){
-        var id = 'taxoArrow' + upto + '_' + i;
-        var m = el('marker', {id:id, viewBox:'0 0 8 8', refX:7, refY:4,
-                              markerWidth:5, markerHeight:5, orient:'auto'}, null, defs);
-        el('path', {d:'M0,0 L8,4 L0,8 Z', fill:c}, null, m);
-        MK[i] = 'url(#' + id + ')';
-      });
-
-      // row labels down the left edge — they turn the columns into a grid
-      ROWS.forEach(function(r){
-        el('text', {x:LABW, y:r.y + r.h / 2 + 4, 'text-anchor':'end', fill:'#8595ab',
-                    'font-family':'"JetBrains Mono", monospace', 'font-size':10.5,
-                    'font-weight':700, 'letter-spacing':'.06em'}, r.label.toUpperCase());
-      });
-      el('text', {x:LABW, y:CHIPY + CHIPH / 2 + 4, 'text-anchor':'end', fill:'#8595ab',
-                  'font-family':'"JetBrains Mono", monospace', 'font-size':10.5,
-                  'font-weight':700, 'letter-spacing':'.06em'}, 'SAMPLE?');
-
-      TAXO.forEach(function(m, i){
-        var cx0 = X0 + i * (COLW + GAP), on = i < upto, focus = (i === upto - 1);
-        var bx = cx0 + LANE, bw = COLW - LANE, cx = bx + bw / 2;
-
-        // the column being introduced sits on a tinted card
-        if (focus){
-          el('rect', {x:cx0 - 5, y:4, width:COLW + 10, height:CHIPY + CHIPH + 38,
-                      rx:10, fill:m.soft, stroke:m.tone, 'stroke-width':1.5});
-        }
-
-        el('text', {x:cx, y:22, 'text-anchor':'middle',
-                    fill:on ? m.tone : '#c2ccda',
-                    'font-family':'Inter, sans-serif', 'font-size':12.5,
-                    'font-weight':700}, m.name);
-
-        ROWS.forEach(function(r, ri){
-          var hot = on && ((r.key === 'flow' && m.flowHot) || (r.key === 'end' && m.endHot) ||
-                           (r.key === 'fix' && m.fixHot) || r.key === 'run');
-          var dim = on && r.key === 'fix' && m.fixDim;
-          el('rect', {x:bx, y:r.y, width:bw, height:r.h, rx:7,
-                      fill:!on ? '#fbfcfe' : (hot ? m.soft : '#fff'),
-                      stroke:!on ? '#e6ebf3' : (hot ? m.tone : '#d8e0ec'),
-                      'stroke-width':hot ? 1.5 : 1,
-                      'stroke-dasharray':!on ? '3 3' : 'none'});
-          if (on){
-            lines(r.key === 'noise' ? ['a₀ ~ N(0, I)'] : m[r.key], cx, r,
-                  dim ? '#aab6c6' : (hot ? m.tone : '#43536b'), hot ? 600 : 500);
-          }
-          if (ri < ROWS.length - 1){
-            el('line', {x1:cx, y1:r.y + r.h, x2:cx, y2:ROWS[ri + 1].y - 5,
-                        stroke:on ? '#c2ccda' : '#eef2f7', 'stroke-width':1.4,
-                        'marker-end':on ? MK[0] : 'none'});
-          }
-        });
-
-        if (!on) return;
-
-        // the chip answers the question in the row label; the caveat sits below
-        el('rect', {x:bx, y:CHIPY, width:bw, height:CHIPH, rx:13,
-                    fill:m.mark === '✓' ? '#e9f7ee' : '#fbe4e1'});
-        el('text', {x:cx, y:CHIPY + 17, 'text-anchor':'middle',
-                    fill:m.mark === '✓' ? '#12683a' : '#a8382a',
-                    'font-family':'Inter, sans-serif', 'font-size':12,
-                    'font-weight':700}, m.mark + '  ' + (m.mark === '✓' ? 'yes' : 'no'));
-        m.foot.forEach(function(t, fi){
-          el('text', {x:cx, y:CHIPY + CHIPH + 15 + fi * 12, 'text-anchor':'middle',
-                      fill:'#8595ab', 'font-family':'Inter, sans-serif',
-                      'font-size':10, 'font-weight':500}, t);
-        });
-
-        // The return arrow, and how far up it reaches, is the whole argument:
-        // rejection re-enters at pure noise, CS-Pi re-enters inside the flow.
-        if (m.ret){
-          var from = rowOf('fix'), to = rowOf(m.ret);
-          var ty = m.ret === 'noise' ? to.y + to.h / 2 : to.y + to.h * 0.74;
-          var lx = cx0 + 5, my = (from.y + from.h / 2 + ty) / 2;
-          el('path', {d:'M' + bx + ',' + (from.y + from.h / 2) +
-                         ' H' + lx + ' V' + ty + ' H' + (bx - 4),
-                      fill:'none', stroke:m.tone, 'stroke-width':1.6,
-                      'stroke-dasharray':'4 3',
-                      'marker-end':MK[m.ret === 'noise' ? 2 : 1]});
-          // paint-order puts a white halo behind the glyphs so the label reads
-          // over the dashed line it sits on
-          el('text', {x:lx + 4, y:my, fill:m.tone, 'text-anchor':'middle',
-                      'font-family':'"JetBrains Mono", monospace', 'font-size':9,
-                      'font-weight':700, stroke:'#fff', 'stroke-width':3.5,
-                      'paint-order':'stroke', 'stroke-linejoin':'round',
-                      transform:'rotate(-90 ' + (lx + 4) + ' ' + my + ')'},
-                     m.ret === 'noise' ? 'FULL RESTART' : 'PARTIAL');
-        }
-      });
-    }
-
-    [].forEach.call(svgs, render);
-  })();
-
-
-  // =========================================================================
-  // The approach, built up. One abstract pipeline that grows across slides
-  // instead of a finished figure that arrives all at once.
-  //
-  //   1  the policy, unmodified            noise -> flow -> action -> execute
-  //   2  the constraint arrives            the action violates C
-  //   3  attempt 1: bend the flow          guidance
-  //   4  attempt 2: repair the answer      projection
-  //   5  the turn                          the projection is a signal, not the action
-  //   6  the loop                          project -> renoise to n -> re-run
-  //
-  // State 2 is available but unused in the 20-minute cut, which makes the
-  // constraint-arrives point in prose instead of spending a slide on it.
-  //
-  // Every <svg data-pipe="N"> draws state N. Boxes hold their position from
-  // one state to the next so the audience tracks what was added, never a
-  // relayout.
-  // =========================================================================
-  (function(){
-    var svgs = document.querySelectorAll('svg[data-pipe]');
-    if (!svgs.length) return;
-
-    var SVGNS = 'http://www.w3.org/2000/svg';
-    var INK = '#14233a', SOFT = '#4a5a72', FAINT = '#8595ab', LINE = '#d8e0ec';
+    var SOFT = '#4a5a72', FAINT = '#8595ab';
     var RED = '#e0533d', PURPLE = '#8b5cf6', BLUE = '#1d6fd4', GOOD = '#1f9d57';
+    var SLATE = '#6b7c93', WASTE = '#b7c3d3';
 
-    // One shared grid. Until state 4 there is no fix-up stage, so execute sits
-    // where the projection will later go and the chain stays tight; adding the
-    // projection visibly pushes execute to the right rather than appearing in
-    // a gap that was never explained.
-    var ROW = 104, BH = 72;
-    var BOX = {
-      noise:  {x:24,  w:126},
-      flow:   {x:194, w:190},
-      action: {x:428, w:146},
-      fix:    {x:618, w:172},
-      exec:   {x:834, w:118}
-    };
-    var EXEC_EARLY = 618, EXEC_LATE = 834;
+    var OB = {cx:265, cy:153, r:110};
+    // cubic Bezier control points for the two routes
+    var ROUTE_A = [[120,278],[300,218],[340,78],[600,68]];
+    var ROUTE_B = [[650,60],[760,120],[800,230],[930,290]];
+    function bez(P, t){
+      var u = 1 - t;
+      return {x: u*u*u*P[0][0] + 3*u*u*t*P[1][0] + 3*u*t*t*P[2][0] + t*t*t*P[3][0],
+              y: u*u*u*P[0][1] + 3*u*u*t*P[1][1] + 3*u*t*t*P[2][1] + t*t*t*P[3][1]};
+    }
+    function pathOf(P){
+      return 'M' + P[0][0] + ',' + P[0][1] + ' C' + P[1][0] + ',' + P[1][1] + ' ' +
+             P[2][0] + ',' + P[2][1] + ' ' + P[3][0] + ',' + P[3][1];
+    }
+    // pass 1: â on route A inside the disc; c1 its nearest rim point; δ1 = 71
+    var A1 = bez(ROUTE_A, 0.400), C1 = {x:341.1, y:232.5}, R1 = 92;
+    // pass 2: the redraw, on the route, inside window 1, δ2 = 38
+    var A2 = bez(ROUTE_A, 0.517), C2 = {x:374.9, y:148.2}, R2 = 50;
+    // pass 3: on the route, inside window 2, 31 outside the rim
+    var A3 = bez(ROUTE_A, 0.667);
+    // the guided draw: out of the obstacle, off both routes
+    var G = {x:520, y:190};
+    // rejection redraws as route parameters: [route, t, feasible?]
+    var REJ = [[ROUTE_A,0.24,0],[ROUTE_A,0.32,0],[ROUTE_A,0.46,0],[ROUTE_A,0.55,0],
+               [ROUTE_A,0.74,1],[ROUTE_A,0.88,1],[ROUTE_B,0.35,1],[ROUTE_B,0.68,1]];
 
     function render(svg){
-      var st = parseInt(svg.dataset.pipe, 10) || 1;
-      BOX.exec.x = st <= 3 ? EXEC_EARLY : EXEC_LATE;
-      BOX.exec.w = st <= 3 ? 150 : 118;
+      var st = parseInt(svg.dataset.geo, 10) || 1;
       while (svg.firstChild) svg.removeChild(svg.firstChild);
 
       function el(name, attrs, text, parent){
@@ -1302,376 +1183,196 @@ body.notes-on #deck{right:396px;}
         (parent || svg).appendChild(n);
         return n;
       }
-      function lines(arr, cx, cy, fill, size, weight){
-        var lh = size + 3.5, top = cy - (arr.length - 1) * lh / 2 + size / 3;
-        arr.forEach(function(t, i){
-          el('text', {x:cx, y:top + i * lh, 'text-anchor':'middle', fill:fill,
-                      'font-family':'Inter, sans-serif', 'font-size':size,
-                      'font-weight':weight || 500}, t);
-        });
-      }
-      function box(slot, txt, tone, soft, dashed){
-        var b = BOX[slot];
-        el('rect', {x:b.x, y:ROW, width:b.w, height:BH, rx:9,
-                    fill:soft || '#fff', stroke:tone || LINE,
-                    'stroke-width':tone ? 1.8 : 1.2,
-                    'stroke-dasharray':dashed ? '5 4' : 'none'});
-        lines(txt, b.x + b.w / 2, ROW + BH / 2, tone || SOFT, 14.5, tone ? 600 : 500);
-        return b;
-      }
-      function arrow(x0, x1, tone){
-        el('line', {x1:x0 + 4, y1:ROW + BH / 2, x2:x1 - 9, y2:ROW + BH / 2,
-                    stroke:tone || '#c2ccda', 'stroke-width':1.6,
-                    'marker-end':mk(tone)});
-      }
+      // a white halo keeps a label readable over whatever it sits on
       function halo(attrs, text){
-        // a white halo keeps a label readable over the line it annotates
-        el('text', Object.assign({stroke:'#fff', 'stroke-width':3.5,
-                                  'paint-order':'stroke',
-                                  'stroke-linejoin':'round'}, attrs), text);
+        return el('text', Object.assign({stroke:'#fff', 'stroke-width':4,
+                                         'paint-order':'stroke',
+                                         'stroke-linejoin':'round',
+                                         'font-family':'Inter, sans-serif'}, attrs), text);
+      }
+      function mono(attrs, text){
+        return halo(Object.assign({'font-family':'"JetBrains Mono", monospace',
+                                   'font-weight':700}, attrs), text);
+      }
+      // a two-line label: a bold headline in the tone, a plain line under it
+      function label(x, y, head, sub, tone, anchor){
+        halo({x:x, y:y, 'text-anchor':anchor || 'start', fill:tone,
+              'font-size':14.5, 'font-weight':700}, head);
+        if (sub) halo({x:x, y:y + 18, 'text-anchor':anchor || 'start', fill:SOFT,
+                       'font-size':13}, sub);
+      }
+      function dot(p, tone, faint, r){
+        r = r || 7.5;
+        if (faint){
+          el('circle', {cx:p.x, cy:p.y, r:r, fill:'#fff', stroke:tone,
+                        'stroke-width':1.8, opacity:.6});
+        } else {
+          el('circle', {cx:p.x, cy:p.y, r:r + 2.5, fill:'#fff'});
+          el('circle', {cx:p.x, cy:p.y, r:r, fill:tone});
+        }
+      }
+      function arrow(p, q, tone, dashed, opacity){
+        var dx = q.x - p.x, dy = q.y - p.y, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+        el('line', {x1:p.x + ux * 11, y1:p.y + uy * 11, x2:q.x - ux * 13, y2:q.y - uy * 13,
+                    stroke:tone, 'stroke-width':2.4,
+                    'stroke-dasharray':dashed ? '5 4' : 'none',
+                    'marker-end':mk(tone), opacity:opacity == null ? 1 : opacity});
+      }
+      // the Gaussian window: a dashed ring with a soft radial fill, and the
+      // product with the prior painted as the stretch of route inside it
+      function windowAt(c, R, opacity, product, key){
+        el('circle', {cx:c.x, cy:c.y, r:R, fill:'url(#geoGlow' + st + ')', opacity:opacity});
+        el('circle', {cx:c.x, cy:c.y, r:R, fill:'none', stroke:BLUE, 'stroke-width':1.6,
+                      'stroke-dasharray':'5 4', opacity:opacity});
+        if (product){
+          var id = 'geoClip' + st + '_' + key;
+          var cp = el('clipPath', {id:id}, null, defs);
+          el('circle', {cx:c.x, cy:c.y, r:R}, null, cp);
+          el('path', {d:pathOf(ROUTE_A), fill:'none', stroke:BLUE, 'stroke-width':16,
+                      'stroke-linecap':'round', opacity:.32 * opacity,
+                      'clip-path':'url(#' + id + ')'});
+        }
       }
 
-      // Marker ids must be unique per SVG: a url(#id) reference resolves to the
-      // FIRST match in the document, and every other pipeline SVG lives on a
-      // display:none slide, where its markers do not render at all.
+      // Marker, gradient and clip ids must be unique per SVG: a url(#id)
+      // reference resolves to the FIRST match in the document, and every other
+      // figure lives on a display:none slide, where markers do not render.
       var defs = el('defs', {});
       var MK = {};
-      [[' ', '#c2ccda'], ['B', BLUE], ['R', RED], ['P', PURPLE]].forEach(function(p, i){
-        var id = 'pipeArrow' + st + '_' + i;
-        var m = el('marker', {id:id, viewBox:'0 0 8 8', refX:7, refY:4,
-                              markerWidth:5.5, markerHeight:5.5, orient:'auto'}, null, defs);
-        el('path', {d:'M0,0 L8,4 L0,8 Z', fill:p[1]}, null, m);
-        MK[p[0]] = 'url(#' + id + ')';
+      [BLUE, RED, PURPLE, SLATE].forEach(function(c, i){
+        var id = 'geoArrow' + st + '_' + i;
+        var m = el('marker', {id:id, viewBox:'0 0 8 8', refX:6, refY:4,
+                              markerWidth:5, markerHeight:5, orient:'auto'}, null, defs);
+        el('path', {d:'M0,0 L8,4 L0,8 Z', fill:c}, null, m);
+        MK[c] = 'url(#' + id + ')';
       });
-      function mk(tone){
-        return tone === BLUE ? MK.B : tone === RED ? MK.R
-             : tone === PURPLE ? MK.P : MK[' '];
-      }
+      function mk(tone){ return MK[tone] || MK[SLATE]; }
+      var grad = el('radialGradient', {id:'geoGlow' + st}, null, defs);
+      el('stop', {offset:'0%', 'stop-color':BLUE, 'stop-opacity':.22}, null, grad);
+      el('stop', {offset:'100%', 'stop-color':BLUE, 'stop-opacity':0}, null, grad);
 
-      // ---- the spine, present in every state ------------------------------
-      box('noise', ['a₀ ~ N(0, I)']);
-      arrow(BOX.noise.x + BOX.noise.w, BOX.flow.x);
-      box('flow', ['flow ODE', 'k steps'], st === 3 ? RED : null,
-          st === 3 ? '#fdf1ef' : null);
-      arrow(BOX.flow.x + BOX.flow.w, BOX.action.x);
+      // ---- the ground, present in every state -----------------------------
+      [ROUTE_A, ROUTE_B].forEach(function(P){
+        el('path', {d:pathOf(P), fill:'none', stroke:'#e9eef5', 'stroke-width':36,
+                    'stroke-linecap':'round'});
+        el('path', {d:pathOf(P), fill:'none', stroke:'#cfd9e7', 'stroke-width':14,
+                    'stroke-linecap':'round'});
+      });
+      el('circle', {cx:OB.cx, cy:OB.cy, r:OB.r, fill:RED, opacity:.09});
+      el('circle', {cx:OB.cx, cy:OB.cy, r:OB.r, fill:'none', stroke:RED, 'stroke-width':1.8});
+      halo({x:OB.cx - 30, y:OB.cy - 52, 'text-anchor':'middle', fill:'#a8382a',
+            'font-size':12.5, 'font-weight':700, 'letter-spacing':'.05em'}, 'VIOLATES C');
 
-      var actTxt = st === 3 ? ['â₁', 'bent toward C'] : ['â₁', 'a policy sample'];
-      var actTone = st === 3 ? RED : (st === 2 ? RED : null);
-      box('action', actTxt, actTone, actTone ? '#fdf1ef' : null);
+      // legend along the top edge, so the picture explains itself once
+      var ly = 17;
+      el('line', {x1:18, y1:ly - 4, x2:42, y2:ly - 4, stroke:'#cfd9e7', 'stroke-width':8,
+                  'stroke-linecap':'round'});
+      halo({x:50, y:ly, fill:SOFT, 'font-size':12.5}, 'the policy’s mass — two routes the demonstrations took');
+      el('circle', {cx:395, cy:ly - 4, r:5.5, fill:RED, opacity:.16});
+      el('circle', {cx:395, cy:ly - 4, r:5.5, fill:'none', stroke:RED, 'stroke-width':1.4});
+      halo({x:407, y:ly, fill:SOFT, 'font-size':12.5}, 'the constraint, added at deployment');
+      halo({x:942, y:ly, 'text-anchor':'end', fill:FAINT, 'font-size':12.5},
+           'everything outside the red disc is the feasible set C');
 
-      // ---- state 1: nothing else --------------------------------------------
+      // ---- state 1: the draw ------------------------------------------------
       if (st === 1){
-        arrow(BOX.action.x + BOX.action.w, BOX.exec.x);
-        box('exec', ['execute']);
-        halo({x:BOX.flow.x + BOX.flow.w / 2, y:ROW - 20, 'text-anchor':'middle',
-              fill:FAINT, 'font-family':'"JetBrains Mono", monospace',
-              'font-size':11, 'font-weight':700, 'letter-spacing':'.06em'},
-             'THE POLICY, UNTOUCHED');
+        dot(A1, BLUE);
+        label(A1.x + 18, A1.y + 28, 'â — the policy’s draw',
+              'a perfectly good action, and it lands inside the obstacle', BLUE);
       }
 
-      // ---- state 2: the constraint arrives ----------------------------------
+      // ---- state 2: guidance ------------------------------------------------
       if (st === 2){
-        arrow(BOX.action.x + BOX.action.w, BOX.exec.x, RED);
-        box('exec', ['execute'], RED, '#fdf1ef');
-        halo({x:BOX.action.x + BOX.action.w / 2, y:ROW + BH + 30, 'text-anchor':'middle',
-              fill:RED, 'font-family':'Inter, sans-serif', 'font-size':15,
-              'font-weight':700}, 'â₁ ∉ C  — and we only find out here');
-        halo({x:BOX.action.x + BOX.action.w / 2, y:ROW + BH + 50, 'text-anchor':'middle',
-              fill:SOFT, 'font-family':'Inter, sans-serif', 'font-size':13},
-             'the constraint was never in the training data');
+        dot(A1, BLUE, true);
+        mono({x:A1.x - 13, y:A1.y + 5, 'text-anchor':'end', fill:BLUE, 'font-size':13,
+              opacity:.7}, 'â');
+        el('path', {d:'M' + (A1.x + 10) + ',' + (A1.y + 6) + ' Q420,260 ' + (G.x - 12) + ',' + (G.y + 3),
+                    fill:'none', stroke:RED, 'stroke-width':2.4, 'stroke-dasharray':'6 5',
+                    'marker-end':MK[RED]});
+        halo({x:420, y:270, 'text-anchor':'middle', fill:RED, 'font-size':13,
+              'font-weight':700}, '−α ∇C at every step of the flow');
+        dot(G, RED);
+        label(G.x, G.y - 36, 'the guided draw',
+              'out of the obstacle — and off every route the policy has', RED, 'middle');
       }
 
-      // ---- state 3: bend the flow -------------------------------------------
+      // ---- state 3: projection ----------------------------------------------
       if (st === 3){
-        arrow(BOX.action.x + BOX.action.w, BOX.exec.x, RED);
-        box('exec', ['execute', 'a bent sample'], RED, '#fdf1ef');
-        for (var i = 0; i < 5; i++){
-          var gx = BOX.flow.x + 26 + i * 34;
-          el('line', {x1:gx, y1:ROW - 26, x2:gx, y2:ROW - 6, stroke:RED,
-                      'stroke-width':1.6, 'marker-end':MK.R});
-        }
-        halo({x:BOX.flow.x + BOX.flow.w / 2, y:ROW - 36, 'text-anchor':'middle',
-              fill:RED, 'font-family':'Inter, sans-serif', 'font-size':13,
-              'font-weight':700}, '−α ∇C(x̂₀) at every step');
-        halo({x:BOX.flow.x + BOX.flow.w / 2, y:ROW + BH + 32, 'text-anchor':'middle',
-              fill:SOFT, 'font-family':'Inter, sans-serif', 'font-size':13},
-             'the flow never runs unmodified — so the endpoint is not a policy sample');
+        dot(A1, BLUE);
+        mono({x:A1.x - 13, y:A1.y + 5, 'text-anchor':'end', fill:BLUE, 'font-size':13.5}, 'â');
+        arrow(A1, C1, PURPLE);
+        mono({x:(A1.x + C1.x) / 2 + 16, y:(A1.y + C1.y) / 2 - 10, fill:RED,
+              'font-size':14.5}, 'δ');
+        dot(C1, PURPLE);
+        label(C1.x + 18, C1.y - 4, 'c — the nearest feasible point',
+              'on the rim, and off the route', PURPLE);
       }
 
-      // ---- states 4+: the fix-up slot exists --------------------------------
-      if (st >= 4){
-        arrow(BOX.action.x + BOX.action.w, BOX.fix.x, PURPLE);
-        var fixTone = st === 4 ? PURPLE : (st === 5 ? PURPLE : BLUE);
-        box('fix', st >= 5 ? ['project onto C', 'to get c and δ']
-                           : ['project onto C'],
-            fixTone, st >= 6 ? '#eaf2fd' : '#f4efff');
+      // ---- state 4: rejection -----------------------------------------------
+      if (st === 4){
+        dot(A1, BLUE, true);
+        dot(C1, PURPLE, true);
+        mono({x:C1.x + 13, y:C1.y + 5, fill:PURPLE, 'font-size':13, opacity:.7}, 'c');
+        REJ.forEach(function(r){
+          var p = bez(r[0], r[1]);
+          if (r[2]){
+            el('circle', {cx:p.x, cy:p.y, r:6.5, fill:'#fff', stroke:GOOD, 'stroke-width':2.2});
+          } else {
+            el('circle', {cx:p.x, cy:p.y, r:6.5, fill:WASTE});
+            el('text', {x:p.x + 9, y:p.y - 6, fill:RED, 'font-size':12, 'font-weight':700,
+                        'font-family':'Inter, sans-serif'}, '✗');
+          }
+        });
+        label(560, 275, 'redraw from noise until one lands in C',
+              'no memory of c or δ — most redraws land right back in the obstacle',
+              SLATE, 'middle');
+      }
 
-        if (st === 4){
-          arrow(BOX.fix.x + BOX.fix.w, BOX.exec.x, PURPLE);
-          box('exec', ['execute', 'the projection'], PURPLE, '#f4efff');
-          halo({x:BOX.fix.x + BOX.fix.w / 2, y:ROW + BH + 32, 'text-anchor':'middle',
-                fill:SOFT, 'font-family':'Inter, sans-serif', 'font-size':13},
-               'feasible, free, gradient-free — and not something the policy would draw');
-        }
+      // ---- state 5: the biased redraw --------------------------------------
+      if (st === 5){
+        dot(A1, BLUE, true);
+        mono({x:A1.x - 13, y:A1.y + 5, 'text-anchor':'end', fill:BLUE, 'font-size':13,
+              opacity:.7}, 'â');
+        windowAt(C1, R1, 1, true, 'w1');
+        dot(C1, PURPLE);
+        mono({x:C1.x + 13, y:C1.y + 5, fill:PURPLE, 'font-size':13.5}, 'c');
+        mono({x:C1.x + R1 + 10, y:C1.y + 4, fill:BLUE, 'font-size':13}, 'window ∝ δ / k');
+        arrow(C1, A2, BLUE, true);
+        dot(A2, BLUE);
+        label(A2.x + 20, A2.y + 26, 'a′ — the policy, redrawn through the window',
+              'on the route, and closer to C than â was', BLUE);
+      }
 
-        if (st === 5){
-          // the arrow to execute is cut: this is the turn
-          el('line', {x1:BOX.fix.x + BOX.fix.w + 4, y1:ROW + BH / 2,
-                      x2:BOX.exec.x - 9, y2:ROW + BH / 2, stroke:'#c2ccda',
-                      'stroke-width':1.6, 'stroke-dasharray':'4 4'});
-          box('exec', ['execute'], null, null, true);
-          var mx = (BOX.fix.x + BOX.fix.w + BOX.exec.x) / 2;
-          el('line', {x1:mx - 13, y1:ROW + BH / 2 - 15, x2:mx + 13,
-                      y2:ROW + BH / 2 + 15, stroke:RED, 'stroke-width':3.4,
-                      'stroke-linecap':'round'});
-          el('line', {x1:mx + 13, y1:ROW + BH / 2 - 15, x2:mx - 13,
-                      y2:ROW + BH / 2 + 15, stroke:RED, 'stroke-width':3.4,
-                      'stroke-linecap':'round'});
-          halo({x:BOX.fix.x + BOX.fix.w / 2, y:ROW + BH + 32, 'text-anchor':'middle',
-                fill:BLUE, 'font-family':'Inter, sans-serif', 'font-size':15,
-                'font-weight':700}, 'keep the projection — just never run it');
-          halo({x:BOX.fix.x + BOX.fix.w / 2, y:ROW + BH + 52, 'text-anchor':'middle',
-                fill:SOFT, 'font-family':'Inter, sans-serif', 'font-size':13},
-               'it is a target c and an error δ, not an action');
-        }
-
-        // ---- state 6: close the loop ---------------------------------------
-        if (st === 6){
-          arrow(BOX.fix.x + BOX.fix.w, BOX.exec.x, BLUE);
-          box('exec', ['execute', 'a policy sample'], GOOD, '#e9f7ee');
-
-          // back into the flow, at depth n rather than at the start
-          var reX = BOX.flow.x + BOX.flow.w * 0.72;
-          var dy = ROW + BH + 54;
-          el('path', {d:'M' + (BOX.fix.x + BOX.fix.w / 2) + ',' + (ROW + BH) +
-                         ' V' + dy + ' H' + reX + ' V' + (ROW + BH + 9),
-                      fill:'none', stroke:BLUE, 'stroke-width':2,
-                      'stroke-dasharray':'5 4', 'marker-end':MK.B});
-          halo({x:(reX + BOX.fix.x + BOX.fix.w / 2) / 2, y:dy - 9,
-                'text-anchor':'middle', fill:BLUE,
-                'font-family':'Inter, sans-serif', 'font-size':13.5,
-                'font-weight':700}, 'renoise to n = k/(k+δ) and re-run');
-          halo({x:reX, y:ROW + BH + 74, 'text-anchor':'middle', fill:SOFT,
-                'font-family':'Inter, sans-serif', 'font-size':12.5},
-               'back into the flow — not back to noise');
-        }
+      // ---- state 6: iterate -------------------------------------------------
+      if (st === 6){
+        windowAt(C1, R1, .35, false);
+        windowAt(C2, R2, .9, true, 'w2');
+        arrow(A1, C1, PURPLE);
+        arrow(C1, A2, BLUE, true);
+        arrow(A2, C2, PURPLE);
+        arrow(C2, A3, BLUE, true);
+        dot(A1, BLUE, true);
+        dot(C1, PURPLE, true);
+        dot(A2, BLUE, true);
+        dot(C2, PURPLE);
+        dot(A3, GOOD);
+        el('circle', {cx:A3.x, cy:A3.y, r:13, fill:'none', stroke:GOOD, 'stroke-width':1.8});
+        mono({x:A1.x - 13, y:A1.y + 5, 'text-anchor':'end', fill:BLUE, 'font-size':13,
+              opacity:.7}, 'â');
+        mono({x:C1.x + 13, y:C1.y + 5, fill:PURPLE, 'font-size':13, opacity:.7}, 'c₁');
+        mono({x:C2.x + 14, y:C2.y + 5, fill:PURPLE, 'font-size':13}, 'c₂');
+        mono({x:(A1.x + C1.x) / 2 + 16, y:(A1.y + C1.y) / 2 - 10, fill:RED,
+              'font-size':13.5}, 'δ₁');
+        mono({x:(A2.x + C2.x) / 2 + 2, y:(A2.y + C2.y) / 2 + 22, 'text-anchor':'middle',
+              fill:RED, 'font-size':13.5}, 'δ₂');
+        mono({x:C1.x + R1 + 10, y:C1.y + 4, fill:BLUE, 'font-size':13, opacity:.8},
+             'windows ∝ δ — they shrink');
+        label(A3.x + 20, A3.y + 22, 'a″ — feasible, and still the policy’s',
+              'δ = 0 · this is the one we execute', GOOD);
       }
     }
 
     [].forEach.call(svgs, render);
-  })();
-
-  // =========================================================================
-  // Figure 1: the guidance trade-off frontier (shelf benchmark).
-  // Every point below is measured. To add intermediate points from a full
-  // alpha sweep, push {label, c: collision%, g: goalReach%, s: safeSR%, ...}
-  // onto FRONTIER and set sweep:true so they join the dashed path.
-  // =========================================================================
-  var FRONTIER = [
-    {label:'Unguided prior',   c:82.0, g:72.0, s:3.3,  color:'#6b7c93', dx:0,   dy:-18, anchor:'middle', sweep:true},
-    {label:'Rejection',        c:40.7, g:67.3, s:33.3, color:'#6b7c93', dx:0,   dy:-18, anchor:'middle'},
-    {label:'CS-Pi (ours)',     c:6.7,  g:78.7, s:73.3, color:'#1d6fd4', dx:0,   dy:-20, anchor:'middle', ours:true},
-    {label:'Projection',       c:4.0,  g:66.0, s:62.0, color:'#8b5cf6', dx:16,  dy:1,   anchor:'start'},
-    {label:'Trust sampling',   c:0.7,  g:28.0, s:27.3, color:'#2a9d8f', dx:0,   dy:28,  anchor:'middle'},
-    {label:'Guidance, α tuned',c:0.0,  g:28.0, s:28.0, color:'#e0533d', dx:-14, dy:-26, anchor:'end', sweep:true}
-  ];
-
-  (function(){
-    var svg = document.getElementById('frontierChart');
-    if (!svg) return;
-    var X0 = 74, X1 = 852, Y0 = 26, Y1 = 336;
-    var LOGMAX = Math.log(91);
-    function px(c){ return X1 - (Math.log(1 + c) / LOGMAX) * (X1 - X0); }
-    function py(g){ return Y1 - (g / 100) * (Y1 - Y0); }
-    function el(name, attrs, text){
-      var n = document.createElementNS('http://www.w3.org/2000/svg', name);
-      for (var k in attrs) n.setAttribute(k, attrs[k]);
-      if (text != null) n.textContent = text;
-      svg.appendChild(n);
-      return n;
-    }
-
-    // grid + y axis
-    [0,25,50,75,100].forEach(function(v){
-      el('line', {x1:X0, y1:py(v), x2:X1, y2:py(v), stroke:'#e2e8f2', 'stroke-width':1});
-      el('text', {x:X0-12, y:py(v)+4, 'text-anchor':'end', fill:'#8595ab',
-                  'font-family':'"JetBrains Mono", monospace', 'font-size':12}, v);
-    });
-    // x ticks on the log(1+c) scale
-    [0,1,5,10,25,50,82].forEach(function(v){
-      el('line', {x1:px(v), y1:Y1, x2:px(v), y2:Y1+6, stroke:'#c9d5e6', 'stroke-width':1});
-      el('text', {x:px(v), y:Y1+21, 'text-anchor':'middle', fill:'#8595ab',
-                  'font-family':'"JetBrains Mono", monospace', 'font-size':12}, v);
-    });
-    el('line', {x1:X0, y1:Y1, x2:X1, y2:Y1, stroke:'#c9d5e6', 'stroke-width':1.5});
-
-    // axis titles — three anchored pieces so the arrows never run into the label
-    el('text', {x:X0, y:Y1+42, 'text-anchor':'start', fill:'#8595ab',
-                'font-family':'Inter, sans-serif', 'font-size':12.5}, '← more collisions');
-    el('text', {x:(X0+X1)/2, y:Y1+42, 'text-anchor':'middle', fill:'#4a5a72',
-                'font-family':'Inter, sans-serif', 'font-size':13, 'font-weight':600},
-       'collision rate %  (log scale)');
-    el('text', {x:X1, y:Y1+42, 'text-anchor':'end', fill:'#8595ab',
-                'font-family':'Inter, sans-serif', 'font-size':12.5}, 'collision-free →');
-    el('text', {x:18, y:(Y0+Y1)/2, 'text-anchor':'middle', fill:'#4a5a72',
-                'font-family':'Inter, sans-serif', 'font-size':13, 'font-weight':600,
-                transform:'rotate(-90 18 ' + ((Y0+Y1)/2) + ')'}, 'goal reach %  →');
-
-    // "better" corner
-    el('text', {x:X1-4, y:Y0+14, 'text-anchor':'end', fill:'#1f9d57',
-                'font-family':'Inter, sans-serif', 'font-size':12.5, 'font-weight':700},
-       'safe AND successful');
-
-    // the measured guidance sweep path
-    var sweep = FRONTIER.filter(function(d){ return d.sweep; });
-    if (sweep.length > 1) {
-      el('polyline', {
-        points: sweep.map(function(d){ return px(d.c) + ',' + py(d.g); }).join(' '),
-        fill:'none', stroke:'#e0533d', 'stroke-width':2,
-        'stroke-dasharray':'7 6', 'stroke-linecap':'round', opacity:.75
-      });
-      // label the sweep at 42% along it — clear of every plotted point
-      var a = sweep[0], b = sweep[sweep.length-1], f = 0.42;
-      var mx = px(a.c) + (px(b.c) - px(a.c)) * f;
-      var my = py(a.g) + (py(b.g) - py(a.g)) * f;
-      el('text', {x:mx, y:my - 34, 'text-anchor':'middle', fill:'#c0392b',
-                  'font-family':'Inter, sans-serif', 'font-size':13, 'font-weight':700},
-         'the guidance trade-off');
-      el('text', {x:mx, y:my - 19, 'text-anchor':'middle', fill:'#c0392b',
-                  'font-family':'Inter, sans-serif', 'font-size':12, opacity:.9},
-         'α = 0  →  α tuned');
-    }
-
-    // points, each direct-labelled so identity never depends on colour alone
-    FRONTIER.forEach(function(d){
-      var x = px(d.c), y = py(d.g), r = d.ours ? 9 : 6.5;
-      el('circle', {cx:x, cy:y, r:r + 2.5, fill:'#ffffff'});
-      var c = el('circle', {cx:x, cy:y, r:r, fill:d.color,
-                            stroke:'#ffffff', 'stroke-width':2});
-      var t = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-      t.textContent = d.label + ' — collision ' + d.c + '%, goal reach ' + d.g +
-                      '%, safe-success ' + d.s + '%';
-      c.appendChild(t);
-      var lx = x + (d.dx || 0), ly = y + d.dy;
-      var sy = d.dy < 0 ? ly - 15 : ly + 16;   // the safe-SR line stacks outward
-      el('text', {x:lx, y:ly, 'text-anchor':d.anchor, fill:d.ours ? '#0f3f86' : '#14233a',
-                  'font-family':'Inter, sans-serif', 'font-size':13.5,
-                  'font-weight':d.ours ? 700 : 600}, d.label);
-      el('text', {x:lx, y:sy, 'text-anchor':d.anchor,
-                  fill:'#4a5a72', 'font-family':'"JetBrains Mono", monospace',
-                  'font-size':11.5}, 'safe-SR ' + d.s + '%');
-    });
-  })();
-
-  // =========================================================================
-  // Figure 2: Proposition 1. The policy prior seen through a Gaussian window
-  // of width sigma_w = delta/k, at two widths.
-  // =========================================================================
-  (function(){
-    var svg = document.getElementById('windowFig');
-    if (!svg) return;
-    var A0 = -3.2, A1 = 3.2, X0 = 46, X1 = 506;
-    var FEAS = 0.35, ANCHOR = 0.65;
-    function gx(a){ return X0 + (a - A0) / (A1 - A0) * (X1 - X0); }
-    function N(a, mu, sd){ return Math.exp(-(a-mu)*(a-mu) / (2*sd*sd)); }
-    function prior(a){ return 0.62 * N(a, -1.25, 0.40) + 0.52 * N(a, 1.15, 0.36); }
-
-    function el(name, attrs, text, parent){
-      var n = document.createElementNS('http://www.w3.org/2000/svg', name);
-      for (var k in attrs) n.setAttribute(k, attrs[k]);
-      if (text != null) n.textContent = text;
-      (parent || svg).appendChild(n);
-      return n;
-    }
-    function curve(fn, base, h, scale){
-      var pts = [];
-      for (var i = 0; i <= 180; i++){
-        var a = A0 + (A1 - A0) * i / 180;
-        pts.push(gx(a) + ',' + (base - Math.min(1, fn(a) / scale) * h));
-      }
-      return pts;
-    }
-
-    function panel(titleY, top, h, sigma, title, sub, tone){
-      var base = top + h;
-      // title sits above the plot box so it can never collide with the marks
-      el('text', {x:X0, y:titleY, fill:'#14233a', 'font-family':'Inter, sans-serif',
-                  'font-size':13, 'font-weight':700}, title);
-
-      // feasible region
-      el('rect', {x:gx(FEAS), y:top, width:(X1 - gx(FEAS)), height:h,
-                  fill:'#1f9d57', opacity:.055});
-      el('line', {x1:gx(FEAS), y1:top, x2:gx(FEAS), y2:base,
-                  stroke:'#1f9d57', 'stroke-width':1.5, 'stroke-dasharray':'4 4', opacity:.85});
-      el('text', {x:X1 - 2, y:top + 11, 'text-anchor':'end', fill:'#137a3d',
-                  'font-family':'"JetBrains Mono", monospace', 'font-size':10,
-                  'font-weight':700}, 'feasible set C');
-
-      // prior (curves scaled to 0.88h so the top stays clear)
-      el('polyline', {points: curve(prior, base, h * 0.88, 1.14).join(' '), fill:'none',
-                      stroke:'#8595ab', 'stroke-width':1.8, opacity:.85});
-      // window
-      function win(a){ return N(a, ANCHOR, sigma); }
-      el('polyline', {points: curve(win, base, h * 0.88, 1).join(' '), fill:'none',
-                      stroke:tone, 'stroke-width':1.6, 'stroke-dasharray':'5 4', opacity:.7});
-      // product, renormalised to the panel
-      var peak = 0;
-      for (var i = 0; i <= 180; i++){
-        var a = A0 + (A1 - A0) * i / 180;
-        peak = Math.max(peak, prior(a) * win(a));
-      }
-      var prod = curve(function(a){ return prior(a) * win(a); }, base, h * 0.88, peak * 1.02);
-      el('polygon', {points: gx(A0) + ',' + base + ' ' + prod.join(' ') + ' ' + gx(A1) + ',' + base,
-                     fill:tone, opacity:.22});
-      el('polyline', {points: prod.join(' '), fill:'none', stroke:tone, 'stroke-width':2.4});
-
-      // anchor
-      el('line', {x1:gx(ANCHOR), y1:top, x2:gx(ANCHOR), y2:base,
-                  stroke:tone, 'stroke-width':1.2, opacity:.45});
-      el('circle', {cx:gx(ANCHOR), cy:base, r:3.5, fill:tone});
-      el('text', {x:gx(ANCHOR) + 6, y:base - 6, fill:tone,
-                  'font-family':'"JetBrains Mono", monospace', 'font-size':11,
-                  'font-weight':700}, 'ĉ');
-
-      el('line', {x1:X0, y1:base, x2:X1, y2:base, stroke:'#c9d5e6', 'stroke-width':1.2});
-
-      // which mode is which — below the baseline, so nothing overlaps the curves
-      el('text', {x:gx(-1.25), y:base + 14, 'text-anchor':'middle', fill:'#8595ab',
-                  'font-family':'Inter, sans-serif', 'font-size':10.5,
-                  'font-weight':600}, 'blocked mode');
-      el('text', {x:gx(1.15), y:base + 14, 'text-anchor':'middle', fill:'#137a3d',
-                  'font-family':'Inter, sans-serif', 'font-size':10.5,
-                  'font-weight':600}, 'surviving mode');
-      el('text', {x:X0, y:base + 31, fill:'#4a5a72', 'font-family':'Inter, sans-serif',
-                  'font-size':11.5}, sub);
-    }
-
-    // legend: swatch + label, so the key never becomes one long run of text
-    var LEG = [
-      {kind:'line',  color:'#8595ab', dash:'',    label:'policy prior'},
-      {kind:'line',  color:'#1d6fd4', dash:'5 4', label:'Gaussian window'},
-      {kind:'swatch',color:'#1d6fd4', label:'the product we draw from'}
-    ];
-    var lx = X0;
-    LEG.forEach(function(item){
-      if (item.kind === 'line') {
-        el('line', {x1:lx, y1:11, x2:lx + 18, y2:11, stroke:item.color,
-                    'stroke-width':2, 'stroke-dasharray':item.dash});
-      } else {
-        el('rect', {x:lx, y:6, width:18, height:10, fill:item.color, opacity:.28});
-        el('line', {x1:lx, y1:6, x2:lx + 18, y2:6, stroke:item.color, 'stroke-width':2});
-      }
-      var t = el('text', {x:lx + 24, y:15, fill:'#4a5a72',
-                          'font-family':'Inter, sans-serif', 'font-size':11}, item.label);
-      lx += 24 + item.label.length * 5.6 + 20;
-    });
-
-    panel(42, 54, 118, 1.45,
-          'δ large  →  wide window  →  mode switch',
-          'The window spans both modes, so the redraw can leave the blocked one.', '#1d6fd4');
-    panel(232, 244, 118, 0.36,
-          'δ small  →  narrow window  →  refine',
-          'The window sits on the feasible set; the redraw polishes the mode it has.', '#1f9d57');
   })();
 
   // =========================================================================
