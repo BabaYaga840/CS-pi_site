@@ -20,3 +20,7 @@ __pycache__/
 # ...but keep the converted, web-sized hardware clips
 !assets/hardware/*.mp4
 
+
+# Talk deck build artifacts (regenerate with talk/build.py)
+talk/dist/
+talk/.cache/

@@ -1,0 +1,2514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="CS-Pi lab talk: constraint-satisfying flow policy sampling.">
+<title>The Projection Is Not the Action</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================================
+   CS-Pi lab talk (~35-45 min).
+   Single committed light theme: every figure, rollout GIF and hardware clip in
+   this deck sits on a light ground, so a dark inversion would frame all of them
+   badly. Background and every color are painted explicitly so the page holds on
+   either host ground. Palette and type inherit from the CS-Pi project page.
+   ========================================================================== */
+:root{
+  --ground:#e7ecf3;
+  --ground-2:#dbe3ee;
+  --slide:#ffffff;
+  --panel:#f5f8fc;
+  --ink:#14233a;
+  --ink-soft:#4a5a72;
+  --ink-faint:#8595ab;
+  --line:#e2e8f2;
+  --line-firm:#c9d5e6;
+  --blue:#1d6fd4;
+  --blue-deep:#0f3f86;
+  --blue-soft:#eaf1fb;
+  --purple:#8b5cf6;
+  --red:#e0533d;
+  --teal:#2a9d8f;
+  --slate:#6b7c93;
+  --amber:#b7791f;
+  --amber-soft:#fdf6e7;
+  --good:#1f9d57;
+  --bad:#d23b32;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --serif:"Newsreader","Iowan Old Style",Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  background:var(--ground);color:var(--ink);font-family:var(--sans);
+  overflow:hidden;-webkit-font-smoothing:antialiased;
+}
+
+/* ---- deck shell ---------------------------------------------------------- */
+#deck{position:fixed;inset:0;display:grid;place-items:center;}
+#stage{width:1280px;height:720px;transform:scale(var(--s,1));transform-origin:center center;position:relative;}
+.slide{
+  position:absolute;inset:0;background:var(--slide);border-radius:6px;
+  box-shadow:0 2px 6px rgba(20,35,58,.10),0 24px 60px rgba(20,35,58,.14);
+  padding:52px 62px 56px;display:none;flex-direction:column;overflow:hidden;
+}
+.slide.on{display:flex;}
+.slide .notes{display:none;}
+@media (prefers-reduced-motion:no-preference){
+  .slide.on{animation:fadein .18s ease-out;}
+  @keyframes fadein{from{opacity:0}to{opacity:1}}
+}
+
+/* ---- slide furniture ----------------------------------------------------- */
+.kicker{
+  font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--blue);margin:0 0 13px;
+  display:flex;align-items:center;gap:11px;flex:none;
+}
+.kicker .act{color:var(--ink-faint);}
+.kicker .rule{flex:1;height:1px;background:var(--line);}
+h2{
+  font-family:var(--serif);font-weight:500;font-size:39px;line-height:1.12;
+  letter-spacing:-.012em;margin:0 0 8px;text-wrap:balance;color:var(--ink);flex:none;
+}
+h2 em{font-style:italic;color:var(--blue-deep);}
+h3.sub{
+  font-family:var(--sans);font-weight:700;font-size:14px;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--ink-faint);margin:0 0 8px;flex:none;
+}
+.dek{font-size:19px;line-height:1.5;color:var(--ink-soft);max-width:76ch;margin:0 0 18px;flex:none;}
+.dek:last-child{margin-bottom:0;}
+.dek strong{color:var(--ink);font-weight:600;}
+.body{flex:1;min-height:0;display:flex;flex-direction:column;gap:16px;}
+.cs{font-family:var(--mono);font-weight:700;letter-spacing:-.02em;}
+.eq{font-family:var(--mono);font-weight:700;color:var(--blue-deep);}
+
+/* ---- lists --------------------------------------------------------------- */
+ul.pts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;}
+ul.pts li{position:relative;padding-left:25px;font-size:19px;line-height:1.42;color:var(--ink);}
+ul.pts li::before{content:"";position:absolute;left:4px;top:.6em;width:7px;height:7px;border-radius:2px;background:var(--blue);}
+ul.pts li .sub{display:block;font-size:16px;color:var(--ink-soft);margin-top:3px;line-height:1.4;}
+ul.pts.tight li{font-size:17.5px;}
+ul.pts.neg li::before{background:var(--red);}
+ul.pts.q li::before{background:var(--amber);}
+ul.pts.good li::before{background:var(--good);}
+
+/* ---- layout helpers ------------------------------------------------------ */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:32px;flex:1;min-height:0;}
+.split.wide-l{grid-template-columns:1.3fr 1fr;}
+.split.wide-r{grid-template-columns:1fr 1.3fr;}
+.col{display:flex;flex-direction:column;gap:14px;min-height:0;}
+.col.center{justify-content:center;}
+.grow{flex:1;min-height:0;}
+
+/* ---- media --------------------------------------------------------------- */
+figure.fig{margin:0;display:flex;flex-direction:column;gap:8px;min-height:0;flex:1;}
+figure.fig img,figure.fig video{
+  width:100%;height:100%;min-height:0;object-fit:contain;border-radius:8px;
+  background:var(--panel);display:block;
+}
+figure.fig figcaption{font-size:13.5px;line-height:1.42;color:var(--ink-soft);flex:none;}
+.media-frame{
+  border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--panel);
+  display:flex;flex-direction:column;min-height:0;flex:1;gap:6px;
+}
+.media-frame .mf-head{
+  display:flex;align-items:center;gap:8px;flex:none;font-family:var(--mono);
+  font-size:12px;font-weight:700;letter-spacing:.03em;color:var(--ink-soft);
+}
+.media-frame .mf-head .spacer{flex:1;}
+.media-frame img,.media-frame video{
+  width:100%;flex:1;min-height:0;object-fit:contain;border-radius:6px;background:#fff;display:block;
+}
+.mf-ours{border-color:#b9d3f3;background:var(--blue-soft);}
+.mf-ours .mf-head{color:var(--blue-deep);}
+.mf-bad{border-color:#f2cfc8;background:#fdf1ef;}
+.mf-bad .mf-head{color:#a8382a;}
+.pill{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.05em;padding:2px 8px;border-radius:999px;text-transform:uppercase;}
+.pill.ok{background:#e4f6ea;color:#12683a;}
+.pill.no{background:#fbe4e1;color:#a8382a;}
+
+/* ---- tables -------------------------------------------------------------- */
+.tablewrap{overflow-x:auto;flex:1;min-height:0;}
+table.res{width:100%;border-collapse:collapse;font-size:16.5px;font-variant-numeric:tabular-nums;}
+table.res th{
+  text-align:right;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.03em;
+  text-transform:uppercase;color:var(--ink-faint);padding:0 11px 9px;
+  border-bottom:1.5px solid var(--line-firm);white-space:nowrap;
+}
+table.res th:first-child{text-align:left;}
+table.res td{text-align:right;padding:8px 11px;border-bottom:1px solid var(--line);color:var(--ink);white-space:nowrap;}
+table.res td:first-child{text-align:left;font-weight:500;}
+table.res tr.ours td{background:var(--blue-soft);font-weight:600;color:var(--blue-deep);}
+table.res tr.ours td:first-child{font-weight:700;}
+table.res td.best{font-weight:700;}
+table.res .dim{color:var(--ink-faint);}
+table.res .flag{color:var(--bad);font-weight:700;}
+.swatch{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:8px;}
+.tnote{font-size:13.5px;color:var(--ink-soft);margin:10px 0 0;flex:none;line-height:1.45;}
+
+/* ---- callouts ------------------------------------------------------------ */
+.callout{
+  border-left:3px solid var(--blue);background:var(--blue-soft);padding:13px 17px;
+  border-radius:0 8px 8px 0;font-size:17.5px;line-height:1.45;color:var(--blue-deep);flex:none;
+}
+.callout.warn{border-color:var(--amber);background:var(--amber-soft);color:#7a5310;}
+.callout.neg{border-color:var(--red);background:#fdf1ef;color:#a8382a;}
+.callout.good{border-color:var(--good);background:#e9f7ee;color:#12683a;}
+
+/* ---- stat tiles ---------------------------------------------------------- */
+.tiles{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:13px;flex:none;}
+.tiles.wrap2{grid-auto-flow:row;grid-template-columns:1fr 1fr;}
+.tile{border:1px solid var(--line);border-radius:10px;padding:15px 17px;background:var(--panel);display:flex;flex-direction:column;gap:2px;}
+.tile .n{font-family:var(--mono);font-weight:700;font-size:32px;letter-spacing:-.025em;color:var(--blue-deep);font-variant-numeric:tabular-nums;line-height:1.1;}
+.tile .l{font-size:14px;font-weight:600;color:var(--ink);}
+.tile .s{font-size:12.5px;color:var(--ink-soft);line-height:1.35;}
+.tile.ours{border-color:#b9d3f3;background:var(--blue-soft);}
+.tile.warnt .n{color:var(--amber);}
+.tile.negt .n{color:var(--bad);}
+.tile.dimt .n{color:var(--slate);}
+
+/* ---- statement slide ----------------------------------------------------- */
+.slide.statement{justify-content:center;align-items:flex-start;padding:52px 88px;}
+.statement blockquote{
+  margin:0;font-family:var(--serif);font-weight:400;font-style:italic;font-size:54px;
+  line-height:1.16;letter-spacing:-.015em;color:var(--ink);text-wrap:balance;max-width:23ch;
+}
+.statement blockquote b{font-style:normal;font-weight:600;color:var(--blue-deep);}
+.statement .attrib{margin-top:24px;font-family:var(--mono);font-size:13.5px;color:var(--ink-faint);letter-spacing:.04em;}
+
+/* ---- title slide --------------------------------------------------------- */
+.slide.title{justify-content:center;padding:52px 74px;background:radial-gradient(1100px 420px at 28% 0%,var(--blue-soft),var(--slide) 72%);}
+.title .badge{
+  align-self:flex-start;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--blue-deep);background:var(--blue-soft);
+  border:1px solid #cfe0f7;padding:5px 13px;border-radius:999px;
+}
+.title h1{font-family:var(--mono);font-weight:700;font-size:78px;letter-spacing:-.045em;margin:20px 0 0;color:var(--ink);}
+.title .subt{font-family:var(--serif);font-weight:400;font-size:33px;color:var(--blue-deep);margin:6px 0 0;letter-spacing:-.01em;}
+.title .thesis{font-size:20px;color:var(--ink-soft);margin:20px 0 0;max-width:64ch;line-height:1.5;}
+.title .meta{margin-top:28px;font-family:var(--mono);font-size:13px;color:var(--ink-faint);display:flex;gap:20px;flex-wrap:wrap;}
+
+/* ---- live CS-Pi loop (ported from js/hero.js) ---------------------------- */
+.vizbox{border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden;display:flex;flex-direction:column;flex:1;min-height:0;}
+.vizbar{display:flex;align-items:center;gap:12px;padding:7px 13px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11.5px;flex:none;}
+.vizbar .vstage{color:var(--blue-deep);font-weight:700;}
+.vizbar .spacer{flex:1;}
+.vizbar .stat{color:var(--ink-soft);font-variant-numeric:tabular-nums;}
+#heroCanvas{width:100%;display:block;flex:1;min-height:0;}
+.vizfoot{display:flex;gap:13px;align-items:center;padding:6px 13px;flex-wrap:wrap;border-top:1px solid var(--line);font-size:11px;color:var(--ink-soft);flex:none;}
+.legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;}
+
+/* ---- chrome -------------------------------------------------------------- */
+#rail{
+  position:fixed;left:0;right:0;bottom:0;height:32px;z-index:40;display:flex;align-items:center;
+  gap:13px;padding:0 15px;background:linear-gradient(to top,var(--ground-2),rgba(219,227,238,0));
+  font-family:var(--mono);font-size:11px;color:var(--ink-faint);
+}
+#rail .segs{display:flex;gap:3px;flex:1;align-items:center;}
+#rail .seg{height:3px;border-radius:2px;background:#c3cddc;flex:1;}
+#rail .seg.done{background:var(--blue);}
+#rail .seg.cur{background:var(--blue-deep);height:7px;}
+#rail .actname{min-width:190px;color:var(--ink-soft);font-weight:700;letter-spacing:.05em;text-transform:uppercase;}
+#rail button.tierchip{
+  background:var(--blue-soft);border-color:#b9d3f3;color:var(--blue-deep);
+  font-weight:700;letter-spacing:.04em;white-space:nowrap;
+}
+#rail button.tierchip:hover{background:#fff;}
+.ovcard .a .tier{color:var(--blue);font-weight:700;}
+.ovcard.tier-3 .n,.ovcard.tier-4 .n{color:var(--ink-faint);}
+.ovcard .mins{font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);}
+#rail .cnt{min-width:58px;text-align:right;font-variant-numeric:tabular-nums;}
+#rail button{font:inherit;font-family:var(--mono);background:transparent;border:1px solid var(--line-firm);color:var(--ink-soft);border-radius:6px;padding:2px 9px;cursor:pointer;}
+#rail button:hover{background:#fff;color:var(--blue-deep);}
+#rail button:focus-visible,.ovcard:focus-visible{outline:2px solid var(--blue);outline-offset:2px;}
+
+#notes{
+  position:fixed;right:0;top:0;bottom:32px;width:396px;z-index:45;background:#fff;
+  border-left:1px solid var(--line-firm);box-shadow:-8px 0 32px rgba(20,35,58,.10);
+  padding:20px 22px;overflow-y:auto;display:none;
+}
+#notes.on{display:block;}
+body.notes-on #deck{right:396px;}
+#notes h4{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin:0 0 4px;}
+#notes .ntitle{font-family:var(--serif);font-size:21px;font-weight:500;margin:0 0 6px;line-height:1.22;color:var(--ink);}
+#notes .timing{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line);}
+#notes .ncontent{font-size:14.5px;line-height:1.6;color:var(--ink);}
+#notes .ncontent p{margin:0 0 11px;}
+#notes .ncontent strong{color:var(--blue-deep);font-weight:600;}
+#notes .ncontent .say{border-left:3px solid var(--blue);background:var(--blue-soft);padding:9px 12px;border-radius:0 6px 6px 0;font-family:var(--serif);font-size:16px;font-style:italic;color:var(--blue-deep);margin:0 0 11px;}
+#notes .ncontent .flag{border-left:3px solid var(--amber);background:var(--amber-soft);padding:9px 12px;border-radius:0 6px 6px 0;font-size:13.5px;color:#7a5310;margin:0 0 11px;}
+#notes .ncontent .qa{border-left:3px solid var(--slate);background:var(--panel);padding:9px 12px;border-radius:0 6px 6px 0;font-size:13.5px;color:var(--ink-soft);margin:0 0 11px;}
+#notes .ncontent .cue{font-size:12.5px;color:var(--ink-faint);font-style:italic;margin:0 0 12px;line-height:1.45;}
+#notes .ncontent ul{margin:0 0 11px;padding-left:19px;}
+#notes .ncontent li{margin-bottom:5px;}
+
+#overview{position:fixed;inset:0;z-index:60;background:var(--ground);overflow-y:auto;padding:24px;display:none;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:14px;align-content:start;}
+#overview.on{display:grid;}
+.ovcard{background:#fff;border:1px solid var(--line);border-radius:8px;padding:11px 12px;cursor:pointer;display:flex;flex-direction:column;gap:5px;min-height:100px;text-align:left;font:inherit;}
+.ovcard:hover{border-color:var(--blue);box-shadow:0 4px 14px rgba(29,111,212,.13);}
+.ovcard.cur{border-color:var(--blue-deep);box-shadow:0 0 0 2px var(--blue-soft);}
+.ovcard .n{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--blue);letter-spacing:.08em;}
+.ovcard .t{font-family:var(--serif);font-size:14.5px;line-height:1.25;color:var(--ink);}
+.ovcard .a{font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.07em;margin-top:auto;}
+
+#help{position:fixed;inset:0;z-index:70;background:rgba(20,35,58,.55);display:none;place-items:center;}
+#help.on{display:grid;}
+#help .card{background:#fff;border-radius:12px;padding:26px 30px;max-width:430px;box-shadow:0 20px 60px rgba(20,35,58,.3);}
+#help h3{font-family:var(--serif);font-weight:500;font-size:23px;margin:0 0 13px;color:var(--ink);}
+#help dl{display:grid;grid-template-columns:auto 1fr;gap:8px 15px;margin:0;font-size:14.5px;}
+#help dt{font-family:var(--mono);font-weight:700;color:var(--blue-deep);}
+#help dd{margin:0;color:var(--ink-soft);}
+</style>
+</head>
+<body>
+<div id="deck"><div id="stage">
+
+<!-- ===================== 1 · TITLE ===================================== -->
+<section class="slide title" data-act="" data-title="Title" data-min="1" data-tier="1">
+  <span class="badge">CoRL 2026 submission · lab meeting</span>
+  <h1>CS-Pi</h1>
+  <div class="subt">Constraint-Satisfying Flow Policy Sampling</div>
+  <p class="thesis">Enforce a hard constraint on a <strong>pretrained</strong> flow-matching robot
+    policy at deployment time — with no constraint gradient, no auxiliary network,
+    no retraining, and no per-deployment tuning.</p>
+  <div class="meta">
+    <span>2D diagnostic → 7-DoF sim → zero-shot Franka</span>
+    <span>·</span>
+    <span>press <b>?</b> for keys · <b>N</b> for notes</span>
+  </div>
+  <div class="notes">
+    <p class="say">"I want to show you a robot video first, then spend the rest of the
+      time explaining why one line of it works."</p>
+    <p>Set expectations up front: this is a <strong>sampling</strong> paper, not a training
+      paper. Nothing here touches policy weights. Tell them to interrupt — this is a lab
+      meeting, and Act II (why the baselines fail) is where the real argument is.</p>
+    <p><strong>Structure:</strong> the bind → why every existing sampler fails → the one-line
+      insight → the method → four experiments → limits and open questions.</p>
+    <p><strong>Pick your path with <kbd>C</kbd> before you start.</strong> The deck carries three,
+      and the rail shows which is live and how long it runs:</p>
+    <ul>
+      <li><strong>essential · 43 min · 18 slides</strong> — the spine. Fits a 45-minute slot with
+        time for questions. This is the default.</li>
+      <li><strong>full talk · 72 min · 32 slides</strong> — adds Proposition 1, the projection
+        implementation, the speed table, the live loop, and the per-benchmark rollouts.</li>
+      <li><strong>deep dive · 85 min · 37 slides</strong> — adds the Jensen-swap bound, the CBF
+        comparison, the α side-by-side, and config 2.</li>
+    </ul>
+    <p>Slides outside the current path are skipped by the arrow keys but stay reachable from the
+      overview (<kbd>O</kbd>), so you can jump to one if a question calls for it. That is the
+      intended way to handle "can you say more about X" — the deep-dive slides are built as
+      answers to specific questions.</p>
+    <div class="flag"><b>Before you present:</b> see the final appendix slide. Most of what was
+      unverified is now settled by the rebuttal, but a few items remain — including a documented
+      versioning error (25.7% → 43.7%) worth ruling out.</div>
+  </div>
+</section>
+
+<!-- ===================== 2 · HOOK ====================================== -->
+<section class="slide" data-act="I · The bind" data-title="Hook: same policy, same scene" data-min="2" data-tier="1">
+  <p class="kicker"><span class="act">I · The bind</span><span class="rule"></span><span>Franka · π₀.₅ · zero-shot</span></p>
+  <h2>Same policy. Same scene. One thing changed.</h2>
+  <p class="dek">Pick the apple, place it on the blue plate — with an obstacle that
+    was never in the demonstrations. Both clips run the <strong>same frozen π₀.₅</strong>.
+    Clips play at 4× speed.</p>
+  <div class="split">
+    <div class="media-frame mf-bad">
+      <div class="mf-head"><span>Projection baseline</span><span class="spacer"></span><span class="pill no">fail</span></div>
+      <video src="../assets/hardware/project_fail.mp4" autoplay loop muted playsinline></video>
+    </div>
+    <div class="media-frame mf-ours">
+      <div class="mf-head"><span>CS-Pi (ours)</span><span class="spacer"></span><span class="pill ok">success</span></div>
+      <video src="../assets/hardware/cspi_success_0.mp4" autoplay loop muted playsinline></video>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~2 min · let both clips loop at least twice before you talk</div>
+    <p class="say">"Same policy weights. Same scene. Same constraint. The only difference
+      is how the actions were <em>sampled</em>."</p>
+    <p><strong>Do not explain the method yet.</strong> The whole point of opening here is that
+      they should be curious about what changed. Say only: π₀.₅ running zero-shot on a Franka,
+      no finetuning; the constraint is a set of obstacle bounding boxes coming out of a ZED 2
+      RGB-D pipeline — real perception, not ground truth.</p>
+    <p>Then promise the payoff: <strong>"By the end you'll know exactly what changed, and it's
+      a loop you could write this afternoon."</strong></p>
+    <div class="qa">If someone asks "is that cherry-picked?" — yes, it's one trial; the
+      aggregate is 55% vs 40% for this baseline over 20 trials, and we'll get there in Act V.
+      Say that immediately rather than deflecting.</div>
+  </div>
+</section>
+
+<!-- ===================== 3 · WHERE WE ARE ============================== -->
+<section class="slide" data-act="I · The bind" data-title="Flow policies: the strength is the distribution" data-min="1.5" data-tier="2">
+  <p class="kicker"><span class="act">I · The bind</span><span class="rule"></span><span>Setting</span></p>
+  <h2>A flow-matching policy's strength <em>is</em> its distribution</h2>
+  <div class="split wide-l">
+    <div class="col">
+      <ul class="pts">
+        <li>Flow-matching and diffusion policies are the default for manipulation.
+          <span class="sub">π₀ / π₀.₅, Diffusion Policy, and the VLA family. Trained by imitation on demonstrations.</span></li>
+        <li>They work because they model the <strong>whole distribution</strong> of competent behavior.
+          <span class="sub">Multimodality is the feature: there are many good ways to reach into a shelf, and the policy keeps all of them.</span></li>
+        <li>Sampling = integrate an ODE from noise to a clean action chunk.
+          <span class="sub">A fixed number of function evaluations (NFE) per trajectory. Nothing about that ODE knows what an obstacle is.</span></li>
+      </ul>
+    </div>
+    <div class="col center">
+      <div class="callout">The demonstration distribution is not a nuisance we tolerate —
+        it is the <b>entire content</b> of what the policy learned. Any deployment-time fix
+        that leaves it is throwing away the model.</div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~1.5 min · fast level-set, most of the room knows this</div>
+    <p>Keep this short — this is orientation, not content. The only sentence that has to land
+      is the callout: <strong>the distribution is the model</strong>. Everything in Act II is a
+      way of damaging it.</p>
+    <p>Define <strong>NFE</strong> here in passing (number of flow-model forward passes per
+      trajectory) so the compute column in every later table is already understood.</p>
+    <div class="qa">If the room is more ML than robotics, note that "in-distribution" here is
+      not an aesthetic preference — it's the difference between an action the low-level
+      controller can track and one it can't. That's the next-but-one slide.</div>
+  </div>
+</section>
+
+<!-- ===================== 4 · THE BIND ================================== -->
+<section class="slide" data-act="I · The bind" data-title="The bind: a constraint the demos never had" data-min="2" data-tier="1">
+  <p class="kicker"><span class="act">I · The bind</span><span class="rule"></span><span>Problem statement</span></p>
+  <h2>Deployment adds a constraint the demonstrations never contained</h2>
+  <div class="split">
+    <div class="col">
+      <h3 class="sub">What shows up at deployment</h3>
+      <ul class="pts tight">
+        <li>An obstacle that wasn't there during data collection</li>
+        <li>A grasp or end-effector orientation someone now requires</li>
+        <li>A keep-out zone, a workspace bound, a joint limit</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3 class="sub">Why you can't just retrain</h3>
+      <ul class="pts tight neg">
+        <li>No demonstrations exist for <em>this</em> obstacle</li>
+        <li>The constraint changes per deployment — you'd retrain again tomorrow</li>
+        <li>The policy may be a large VLA you do not own and cannot finetune</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout">The weights are frozen and the constraint is new.
+    The <b>only</b> thing left to change is how you draw actions from the policy.</div>
+  <div class="notes">
+    <div class="timing">~2 min</div>
+    <p>This slide is the framing that makes the whole paper necessary — spend a beat on it.</p>
+    <p>The strongest of the three "can't retrain" arguments is the middle one:
+      <strong>even if you had the data and the compute, the constraint is per-deployment.</strong>
+      A method that requires retraining per obstacle is not a method, it's a research project
+      each time. Say that out loud.</p>
+    <p class="say">"So we've boxed ourselves in on purpose: frozen weights, new constraint,
+      inference time only. What's left? Only the sampler."</p>
+    <div class="qa"><b>Expect:</b> "why not just use a motion planner / MPC on top?" Good
+      question and worth engaging — because then you've thrown away the policy and you're
+      back to a planner that doesn't know the task semantics (which object, which plate).
+      The point is to keep the policy's competence and add the constraint.</div>
+  </div>
+</section>
+
+<!-- ===================== 5 · TWO REQUIREMENTS ========================== -->
+<section class="slide" data-act="I · The bind" data-title="Two requirements" data-min="1" data-tier="2">
+  <p class="kicker"><span class="act">I · The bind</span><span class="rule"></span><span>What a good sampler must do</span></p>
+  <h2>Two requirements, and they pull against each other</h2>
+  <div class="split">
+    <div class="col center">
+      <div class="tile ours">
+        <div class="n">1</div>
+        <div class="l">Feasible</div>
+        <div class="s">The executed action satisfies the constraint. Collision-free,
+          orientation held, inside the workspace.</div>
+      </div>
+    </div>
+    <div class="col center">
+      <div class="tile ours">
+        <div class="n">2</div>
+        <div class="l">In-distribution</div>
+        <div class="s">The executed action is one the policy would actually have drawn —
+          not merely one that happens to be legal.</div>
+      </div>
+    </div>
+  </div>
+  <p class="dek">Requirement 1 is obvious. Requirement 2 is the one that gets argued
+    about in this room — so let's settle it with a number.</p>
+  <div class="notes">
+    <div class="timing">~1 min · this is a setup slide, don't linger</div>
+    <p>Deliberately teed up so the next slide can land. Ask the room directly:
+      <strong>"who thinks requirement 2 is just a likelihood fetish?"</strong> Then turn the page.</p>
+    <p>If you want the crisp version: requirement 1 is about the <em>world</em> (don't hit
+      things), requirement 2 is about the <em>robot</em> (produce actions this embodiment and
+      this controller can actually execute competently).</p>
+  </div>
+</section>
+
+<!-- ===================== 6 · IN-DIST IS SAFETY ========================= -->
+<section class="slide" data-act="I · The bind" data-title="In-distribution is a safety property" data-min="3" data-tier="1">
+  <p class="kicker"><span class="act">I · The bind</span><span class="rule"></span><span>The argument that earns the rest of the talk</span></p>
+  <h2>In-distribution is a <em>safety</em> property, not a statistic</h2>
+  <p class="dek">Gradient guidance on the 7-DoF shelf task achieves the
+    <strong>best collision number in the entire benchmark</strong>. Look at what it costs.</p>
+  <div class="tiles">
+    <div class="tile"><div class="n" style="color:var(--good)">0.0%</div><div class="l">Collision rate</div><div class="s">Gradient guidance — best in the table, beats every other method</div></div>
+    <div class="tile negt"><div class="n">28.0%</div><div class="l">Goal reach</div><div class="s">Down from 72.0% for the unmodified policy</div></div>
+    <div class="tile negt"><div class="n">10.2</div><div class="l">Log-likelihood</div><div class="s">The prior's own samples score 15.0</div></div>
+  </div>
+  <div class="callout neg">Guidance is "perfectly safe" because it has largely stopped
+    doing the task. The trivially safe policy is <b>don't move.</b></div>
+  <p class="dek">This is why every table in this talk reports <strong>safe-success</strong> —
+    collision-free <em>and</em> picked <em>and</em> placed — alongside log-likelihood.
+    Either number alone is gameable.</p>
+  <div class="notes">
+    <div class="timing">~3 min · one of the three or four slides that matter most</div>
+    <p>This slide converts requirement 2 from a preference into an argument, and it does it
+      with the baseline's <em>own best number</em>. That's why it's persuasive — you're not
+      asserting that off-manifold is bad, you're showing the failure mode in the metric the
+      baseline wins.</p>
+    <p class="say">"Guidance has the best collision rate in the benchmark. It also stopped
+      doing the task. Those are the same fact."</p>
+    <p><strong>The mechanism</strong> behind it, if pressed: an off-manifold action chunk is
+      jerky and dynamically inconsistent — the low-level controller can't track it, the arm
+      stalls or flails, and the task fails. On the 3D-Orient task we can show this directly:
+      guidance produces single-step end-effector jumps of 0.93 m; CS-Pi produces 0.108 m,
+      essentially identical to the unmodified policy's 0.107 m. Flag that you'll return to it.</p>
+    <div class="flag">Have the "trivially safe policy is don't move" line ready — it is the
+      compression of this whole slide and it's what people will repeat afterwards.</div>
+  </div>
+</section>
+
+<!-- ===================== 7 · FOUR WAYS ================================= -->
+<section class="slide" data-act="II · Why samplers fail" data-title="Four ways to enforce a constraint" data-min="2" data-tier="1">
+  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span>Taxonomy</span></p>
+  <h2>Four ways to enforce a constraint at inference</h2>
+  <figure class="fig">
+    <img src="../assets/concept.png" alt="Four inference-time constraint enforcement strategies: gradient guidance, projection, rejection, and CS-Pi">
+    <figcaption><b>Inference-time constraint enforcement on a flow-matching policy.</b>
+      Gradient guidance steers each ODE step by the constraint gradient at an estimate of the
+      final sample. Projection runs the unmodified flow and snaps the endpoint onto the feasible
+      set. Rejection redraws complete samples until one is feasible. CS-Pi runs the flow,
+      projects, and renoises to a depth set by the residual δ, then re-runs.</figcaption>
+  </figure>
+  <div class="notes">
+    <div class="timing">~2 min · orient them on the figure, don't argue yet</div>
+    <p>Walk the four panels left to right and name them only. The next four slides take each
+      one apart in turn, so resist the urge to give the punchline here.</p>
+    <p>Do plant the axis you'll judge them on, though: <strong>for each one, ask "is the thing
+      we execute a sample from the policy?"</strong> That single question is what separates
+      CS-Pi from all three baselines, and if you install it now the rest of Act II is fast.</p>
+  </div>
+</section>
+
+<!-- ===================== 8 · GUIDANCE ================================== -->
+<section class="slide" data-act="II · Why samplers fail" data-title="Gradient guidance" data-min="2.5" data-tier="1">
+  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span style="color:var(--red)">Baseline 1 · Gradient guidance</span></p>
+  <h2>Guidance steers on a gradient taken at a point that isn't a plan yet</h2>
+  <div class="split wide-l">
+    <div class="col">
+      <h3 class="sub">The mechanism</h3>
+      <ul class="pts tight neg">
+        <li>At each ODE step, form a one-step (Tweedie) estimate x̂₀ of the clean action.</li>
+        <li>Evaluate the constraint gradient ∇C(x̂₀) there and nudge the step by it.</li>
+      </ul>
+      <h3 class="sub" style="margin-top:6px">Why it breaks</h3>
+      <ul class="pts tight neg">
+        <li>Early in the trajectory x̂₀ is an <strong>average over modes</strong> — a blur, not a plan.
+          <span class="sub">Nudging a blur toward feasibility does not select a feasible route; it interpolates between routes, and the interpolation of two good paths around an obstacle goes straight through it.</span></li>
+        <li>A <strong>hard</strong> constraint gives no usable gradient.
+          <span class="sub">Distance to a box is flat away from the boundary and non-smooth at it. Exactly where you need signal, there is none.</span></li>
+      </ul>
+    </div>
+    <div class="col center">
+      <div class="tiles wrap2">
+        <div class="tile negt"><div class="n">28.0%</div><div class="l">Safe-success</div><div class="s">shelf</div></div>
+        <div class="tile negt"><div class="n">28.0%</div><div class="l">Goal reach</div><div class="s">from 72.0%</div></div>
+        <div class="tile negt"><div class="n">10.2</div><div class="l">logL</div><div class="s">prior: 15.0</div></div>
+        <div class="tile dimt"><div class="n">240</div><div class="l">NFE</div><div class="s">cheap, at least</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~3 min · the deepest technical objection in the talk</div>
+    <p>Expect pushback here from anyone who likes classifier / classifier-free guidance — it's a
+      well-loved tool. Be precise rather than dismissive.</p>
+    <p class="say">"The gradient is evaluated at a point that isn't a plan yet."</p>
+    <p><strong>The mode-interpolation argument is the one to lead with</strong>, because it's
+      geometric and undeniable: if the policy is still undecided between going left around the
+      obstacle and going right, the posterior-mean estimate x̂₀ sits <em>between</em> them —
+      which is exactly where the obstacle is. The gradient there pushes on a path that no mode
+      of the policy actually proposes.</p>
+    <p>Second argument, for hard constraints specifically: a signed-distance or indicator
+      constraint is piecewise-flat. Guidance methods paper over this with a smoothed surrogate,
+      and then you're enforcing the surrogate, not the constraint.</p>
+    <div class="qa"><b>Expect:</b> "you could tune the guidance weight." That objection gets
+      its own two slides next — the answer is that there is no good setting, and we can say
+      <em>why</em> from the bias term.</div>
+  </div>
+</section>
+
+<!-- ===================== 8b · GUIDANCE FRONTIER ======================== -->
+<section class="slide" data-act="II · Why samplers fail" data-title="Guidance has no good hyperparameter" data-min="3" data-tier="1">
+  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span style="color:var(--red)">Baseline 1 · hyperparameter sweep</span></p>
+  <h2>Guidance doesn't have a bad setting — it has no <em>good</em> one</h2>
+  <p class="dek">Turn the guidance weight α down and it reaches the goal while still colliding.
+    Turn it up and it stops colliding by no longer doing the task. Both ends are measured on the
+    shelf; every setting in between trades one for the other.</p>
+  <div class="grow" style="display:flex;flex-direction:column;min-height:0">
+    <svg id="frontierChart" viewBox="0 0 900 400" role="img"
+         aria-label="Goal reach versus collision rate on the shelf benchmark. CS-Pi sits above the guidance trade-off line."
+         style="width:100%;height:100%;min-height:0"></svg>
+  </div>
+  <p class="tnote">Shelf benchmark, 150 tasks. Collision axis is log(1+x) so the cluster near
+    zero is readable. <b>Up and to the right is better.</b> The dashed line joins the two measured
+    ends of the guidance sweep — α = 0 is the unmodified policy, α = tuned is the best swept
+    setting. CS-Pi sits <b>47 points of goal reach</b> above that line.</p>
+  <div class="notes">
+    <div class="timing">~3 min · this is the slide that kills the "just tune it" objection</div>
+    <p>The framing: a guidance weight is a <strong>dial between two failure modes</strong>, not a
+      knob you can tune to a good answer.</p>
+    <ul>
+      <li><strong>α = 0</strong> is literally the unmodified policy: 72.0% goal reach, 82.0%
+        collision. It does the task and hits everything.</li>
+      <li><strong>α = tuned</strong> (the number we report as the guidance baseline): 0.0%
+        collision, 28.0% goal reach. It hits nothing and does nothing.</li>
+    </ul>
+    <p>Both of those are measured points on the shelf. The dashed line between them is the
+      trade-off guidance is choosing along.</p>
+    <p class="say">"Every point on that dashed line is a choice between colliding and not doing
+      the task. CS-Pi isn't further along the line — it's forty-seven points above it."</p>
+    <div class="flag"><b>Be precise about what's measured.</b> The two endpoints are real; the
+      straight line between them is drawn to show the trade-off, not to claim intermediate
+      values. If you have the full α sweep from the supplementary, drop the points into the
+      <code>FRONTIER</code> array in the deck's script and they'll render — it's a one-line
+      edit per point, and a measured curve is stronger than an interpolated line.</div>
+    <div class="qa">The same shape shows up qualitatively on 3D-Orient — the next slide has
+      two guidance strengths side by side on the same task.</div>
+  </div>
+</section>
+
+<!-- ===================== 8c · GUIDANCE α SIDE BY SIDE ================== -->
+<section class="slide" data-act="II · Why samplers fail" data-title="Two guidance strengths, same task" data-min="2" data-tier="3">
+  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span style="color:var(--red)">3D-Orient · same goal, two guidance weights</span></p>
+  <h2>The same failure, visible at both ends of the dial</h2>
+  <div class="split">
+    <div class="media-frame mf-bad">
+      <div class="mf-head"><span>Guidance · α = 0.003 (weak)</span><span class="spacer"></span><span class="pill no">drifts off the constraint</span></div>
+      <img src="../viz/orientation_task_gifs/tweedie_alpha0.003/config1.gif" alt="Gradient guidance at alpha 0.003 on 3D-Orient config 1">
+    </div>
+    <div class="media-frame mf-bad">
+      <div class="mf-head"><span>Guidance · α = 0.03 (strong)</span><span class="spacer"></span><span class="pill no">breaks the motion</span></div>
+      <img src="../viz/orientation_task_gifs/tweedie_alpha0.03/config1.gif" alt="Gradient guidance at alpha 0.03 on 3D-Orient config 1">
+    </div>
+  </div>
+  <p class="tnote">Same goal, same policy, one order of magnitude in α. Weak guidance never
+    holds the orientation; strong guidance holds it by wrenching the arm — recall the
+    <b>0.93 m single-step end-effector jumps</b> in the 3D-Orient table.</p>
+  <div class="notes">
+    <div class="timing">~2 min · let both loop; the contrast is the point</div>
+    <p>The frames are annotated with live end-effector distance and orientation error, so you
+      can narrate against the numbers rather than gesturing at the arm.</p>
+    <p><strong>Weak α:</strong> the trajectory looks like the prior. It's smooth, it's plausible,
+      it ignores the constraint.</p>
+    <p><strong>Strong α:</strong> the constraint starts to bite, and the motion falls apart —
+      this is where the 0.928 m max end-effector step in the results table comes from. It isn't
+      satisfying the constraint gracefully, it's being dragged.</p>
+    <p class="say">"There's no α in between that gives you the first one's motion and the second
+      one's constraint. That's not a tuning failure — the next slide says why."</p>
+  </div>
+</section>
+
+<!-- ===================== 8d · JENSEN SWAP ============================== -->
+<section class="slide" data-act="II · Why samplers fail" data-title="Why: the Jensen swap" data-min="3" data-tier="3">
+  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span>The bias, precisely</span></p>
+  <h2>Guidance swaps an average of gradients for a gradient at an average</h2>
+  <div class="split wide-l">
+    <div class="col">
+      <p class="dek" style="margin-bottom:6px">What guidance <em>wants</em> is the posterior-averaged
+        gradient. What it <em>computes</em> is the gradient at the posterior mean â. Those are not
+        the same thing, and the gap is bounded by the posterior's spread:</p>
+      <div class="callout" style="font-family:var(--mono);font-size:17px;line-height:1.7">
+        ‖ 𝔼<sub>p(a₁|a<sub>t</sub>)</sub>[∇L(a₁)] − ∇L(â) ‖ &nbsp;≤&nbsp;
+        <b>(L<sub>H</sub>/2) · tr Cov(a₁ | a<sub>t</sub>)</b>
+      </div>
+      <ul class="pts tight neg" style="margin-top:4px">
+        <li>The bias is the expected Taylor remainder of ∇L about â;
+          L<sub>H</sub> is the Lipschitz constant of ∇²L.</li>
+        <li>It blows up exactly when the <strong>posterior is wide</strong> — i.e. early in the
+          trajectory, and whenever the policy is still undecided.</li>
+        <li>It also blows up when the cost's <strong>curvature varies</strong> across the posterior —
+          i.e. for hard constraints with sharp boundaries.</li>
+      </ul>
+    </div>
+    <div class="col center">
+      <div class="callout warn" style="font-size:17px">
+        <b>The canonical failure:</b> a gripper reaching between two shelf rungs, with a
+        <b>unimodal</b> posterior that is wider than the gap.<br><br>
+        The mean of that posterior is the rung. Guidance pushes on the rung — no value of α
+        fixes a direction that points at an obstacle.
+      </div>
+      <p class="tnote" style="margin-top:2px">This is why turning α up doesn't help: α scales a
+        biased direction. More of a wrong direction is still wrong.</p>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~3 min · deep-dive; cut this slide first if you're short on time</div>
+    <p>This is the rigorous version of the hand-wave from two slides ago, and it's worth having
+      because it converts "guidance is blurry early on" into a statement with a bound on it.</p>
+    <p><strong>Say it in words before the formula:</strong> guidance would like to know, on
+      average across everything the policy might still do, which way reduces the cost. It can't
+      afford that expectation, so it takes one representative point — the posterior mean — and
+      differentiates there. Swapping those two is a Jensen-type move, and the error you incur is
+      the curvature of ∇L integrated against the posterior's covariance.</p>
+    <p><strong>The shelf-rung example is the one that lands.</strong> Note it does not even
+      require multimodality — a single wide unimodal posterior straddling a gap is enough. Its
+      mean sits on the obstacle, so the gradient at the mean points into the obstacle. That is a
+      bias, not noise, which is exactly why trust sampling's variance reduction didn't rescue it,
+      and why no α does either.</p>
+    <p class="say">"α scales the direction. It doesn't fix the direction."</p>
+    <div class="qa"><b>Expect:</b> "so use more samples to estimate the expectation?" That's
+      closer to rejection sampling's cost profile, and you're then paying to estimate a gradient
+      you only needed because you were unwilling to redraw. Which is the argument for CS-Pi.</div>
+  </div>
+</section>
+
+<!-- ===================== 9 · TRUST ===================================== -->
+<section class="slide" data-act="II · Why samplers fail" data-title="Trust sampling" data-min="1.5" data-tier="2">
+  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span style="color:var(--teal)">Baseline 2 · Trust sampling</span></p>
+  <h2>Trust sampling spends 5× the compute on the same broken signal</h2>
+  <div class="split wide-l">
+    <div class="col">
+      <ul class="pts tight">
+        <li>Schedule-aware guidance: limit how much early steps are allowed to move, add inner
+          iterations per step to reduce the variance of the proxy gradient.</li>
+        <li>It is a <strong>good fix for gradient variance</strong> — which is a real problem.</li>
+        <li>But the problem here isn't variance, it's that the proxy is <strong>uninformative</strong>
+          while the policy is still between modes. Averaging an uninformative signal harder
+          does not make it informative.</li>
+      </ul>
+      <div class="callout warn">A better answer to a different question.</div>
+    </div>
+    <div class="col center">
+      <div class="tiles wrap2">
+        <div class="tile negt"><div class="n">27.3%</div><div class="l">Safe-success</div><div class="s">below plain guidance</div></div>
+        <div class="tile negt"><div class="n">1242</div><div class="l">NFE</div><div class="s">5.2× guidance's 240</div></div>
+        <div class="tile negt"><div class="n">10.5</div><div class="l">logL</div><div class="s">prior: 15.0</div></div>
+        <div class="tile negt"><div class="n">28.0%</div><div class="l">Goal reach</div><div class="s">same collapse</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~2 min</div>
+    <p>Be genuinely fair to trust sampling — it's a thoughtful method and treating it as a
+      straw man will cost you credibility with anyone who's read it. The framing that works is
+      <strong>diagnostic mismatch</strong>: it correctly identifies that the guidance signal is
+      noisy, and correctly reduces the noise. It just turns out that the signal is biased, not
+      noisy, and averaging doesn't help with bias.</p>
+    <p class="say">"You pay five times the compute and land in the same place. That tells you
+      the bottleneck was never compute."</p>
+    <p>The 5.2× is the important number — it's the empirical evidence <em>for</em> the
+      diagnosis. If more compute on the same signal fixed it, it would have.</p>
+  </div>
+</section>
+
+<!-- ===================== 9b · CBF SAMPLERS ============================= -->
+<section class="slide" data-act="II · Why samplers fail" data-title="CBF samplers: a velocity can't switch modes" data-min="3" data-tier="3">
+  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span>Baseline family · barrier / CBF samplers</span></p>
+  <h2>A corrected velocity deforms a trajectory. It cannot <em>re-draw</em> one.</h2>
+  <p class="dek">SafeDiffuser, SafeFlowMatcher and SAD-Flower all guarantee constraint
+    satisfaction — and all guarantee it the same way: by perturbing a velocity applied to the
+    sample you already have. The sample is deformed continuously; nothing ever redraws it.</p>
+  <div class="split wide-r">
+    <div class="col center">
+      <div class="callout neg">When a constraint <b>fully blocks the mode the sample has
+        committed to</b>, a velocity correction can only push that trajectory around inside a
+        blocked region. It ends up safe and unlikely. Only <b>resampling</b> can reach the
+        mode that survived.</div>
+      <p class="tnote">Safety alone is cheap — projection already provides it for free. The
+        hard part was never satisfying the constraint.</p>
+    </div>
+    <div class="col">
+      <div class="tablewrap">
+        <table class="res">
+          <thead><tr><th>Method</th><th>2D</th><th>Sph. ID</th><th>Sph. OOD</th><th>Shelf</th><th>Shelf logL</th></tr></thead>
+          <tbody>
+            <tr><td>SafeDiffuser</td><td class="best">1.00</td><td>0.36</td><td class="flag">0.06</td><td class="flag">0.12</td><td>8.07</td></tr>
+            <tr><td>SafeFlowMatcher</td><td class="best">1.00</td><td>0.62</td><td>0.24</td><td>0.56</td><td>8.63</td></tr>
+            <tr><td>SAD-Flower</td><td class="best">1.00</td><td>0.43</td><td>0.12</td><td>0.59</td><td>15.60</td></tr>
+            <tr class="ours"><td>CS-Pi (ours)</td><td>0.99</td><td class="best">1.00</td><td class="best">0.91</td><td class="best">0.73</td><td class="best">18.0</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="tnote">Each method at its swept best, all implemented over the same base model.
+        CS-Pi leads everywhere except 2D — and on Spheres and Shelf, none of the three barrier
+        methods is violation-free even at its best configuration.</p>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~3 min · include if the room knows the CBF literature, else compress</div>
+    <p>This is the comparison reviewers asked for, and it's the sharpest statement of the
+      paper's mechanism, so it's worth the time even though it's a "related work" slide.</p>
+    <p><strong>The structural claim, which covers all three at once:</strong> they differ in
+      where the correction is applied — SafeDiffuser at every denoising step, SAD-Flower by
+      augmenting the flow with a virtual control input, SafeFlowMatcher by refining a clean
+      sample under a policy velocity with barrier corrections — but they are the same move.
+      A velocity field acting on the sample you have. Continuous deformation. No redraw.</p>
+    <p class="say">"You can push a trajectory around. You cannot push it into a different mode.
+      Modes are separated by regions the policy assigns no mass to — and a continuous
+      deformation has to cross them."</p>
+    <p><strong>Read the table left to right and the pattern is the story:</strong> on 2D they all
+      hit 1.00 — easy, one obstacle, nothing to switch away from. As soon as the environment has
+      structure that blocks a committed mode (Spheres OOD, Shelf) they fall to 0.06–0.24 and
+      0.12–0.59 while we hold 0.91 and 0.73. The gap grows exactly with how often mode-switching
+      is required.</p>
+    <p>SAD-Flower's 15.60 logL is worth acknowledging — it's the only barrier method that stays
+      reasonably in-distribution, and it still can't satisfy the constraint on the hard tasks.</p>
+  </div>
+</section>
+
+<!-- ===================== 10 · PROJECTION =============================== -->
+<section class="slide" data-act="II · Why samplers fail" data-title="Projection" data-min="2.5" data-tier="1">
+  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span style="color:var(--purple)">Baseline 3 · Projection</span></p>
+  <h2>Projection is feasible, cheap — and executes an action the policy would never draw</h2>
+  <div class="split wide-l">
+    <div class="col">
+      <ul class="pts tight">
+        <li>Run the unmodified flow to a clean action, snap it onto the feasible set, execute.</li>
+        <li><strong>Feasible by construction</strong>, and it costs nothing: no extra flow calls at all.</li>
+        <li>It is the <strong>strongest baseline in this paper</strong> — 62.0% on the shelf,
+          100% safe on the 2D benchmark, 40% on hardware.</li>
+      </ul>
+      <div class="callout neg">The snapped action clears the obstacle. But <em>how</em> it gets
+        there is not something the policy knows how to execute — and the controller has to
+        execute it anyway.</div>
+    </div>
+    <div class="col center">
+      <div class="tiles wrap2">
+        <div class="tile"><div class="n" style="color:var(--good)">100%</div><div class="l">Safe-SR (2D)</div><div class="s">best possible</div></div>
+        <div class="tile negt"><div class="n">−3.34</div><div class="l">Log-lik. (2D)</div><div class="s">prior: +1.65</div></div>
+        <div class="tile negt"><div class="n">0.650</div><div class="l">Fully-in-support</div><div class="s">prior: 0.795</div></div>
+        <div class="tile"><div class="n" style="color:var(--good)">112</div><div class="l">NFE (2D)</div><div class="s">cheapest of all</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~3 min · be generous here, it sets up the insight</div>
+    <p><strong>Do not undersell projection.</strong> The entire insight of the paper is that
+      projection is <em>almost right</em> — if you trash it here, the turn in two slides has
+      nowhere to come from. Say clearly: it's the best baseline we have, it's free, and on the
+      2D task it is literally unbeatable on feasibility.</p>
+    <p>The number that tells the story is <strong>−3.34 against the prior's +1.65</strong>. That
+      is not a small drift off the manifold; that is somewhere the policy assigns essentially no
+      mass. And it's a <em>five-point</em> drop on a log scale.</p>
+    <p class="say">"Projection gets a feasible answer. It just gets it by leaving the model."</p>
+    <div class="qa"><b>Expect:</b> "isn't a small projection harmless?" Yes — and that's exactly
+      the behavior we want to recover. CS-Pi departs from the policy only as far as the
+      constraint forces; projection departs by however much it takes, every time, with no
+      mechanism for coming back.</div>
+  </div>
+</section>
+
+<!-- ===================== 11 · REJECTION ================================ -->
+<section class="slide" data-act="II · Why samplers fail" data-title="Rejection" data-min="1.5" data-tier="2">
+  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span style="color:var(--slate)">Baseline 4 · Rejection</span></p>
+  <h2>Rejection has exactly the property we want, at a price nobody will pay</h2>
+  <div class="split wide-l">
+    <div class="col">
+      <ul class="pts tight">
+        <li>Redraw complete samples until one satisfies the constraint. Execute that one.</li>
+        <li><strong>In-distribution by construction</strong> — it is a genuine draw from the
+          policy, conditioned on feasibility. Best log-likelihood of any method on 2D (+1.71).</li>
+        <li>And it still fails, for a simple reason: when a new obstacle appears, the feasible
+          region has <strong>tiny probability under the prior</strong>. You can burn 8676 flow
+          calls and still not find a feasible draw.</li>
+      </ul>
+      <div class="callout">Rejection is the honest upper bound on "stay in the distribution."
+        It tells us the target is right and the mechanism is hopeless.</div>
+    </div>
+    <div class="col center">
+      <div class="tiles wrap2">
+        <div class="tile"><div class="n" style="color:var(--good)">+1.71</div><div class="l">Log-lik. (2D)</div><div class="s">best of all methods</div></div>
+        <div class="tile negt"><div class="n">8676</div><div class="l">NFE (shelf)</div><div class="s">36× the unmodified policy</div></div>
+        <div class="tile negt"><div class="n">33.3%</div><div class="l">Safe-success</div><div class="s">shelf, B = 100</div></div>
+        <div class="tile negt"><div class="n">40.7%</div><div class="l">Collision</div><div class="s">it runs out of budget</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~2 min</div>
+    <p>Rejection is the conceptual bridge into the insight, so make its role explicit:
+      <strong>it proves the goal is achievable in principle</strong> — there exist feasible
+      actions that are genuine policy draws — <strong>and that brute search won't find them.</strong></p>
+    <p>The 33.3% with 40.7% collisions is worth explaining: with budget B = 100 it frequently
+      exhausts the budget without finding a feasible sample, and then has to execute something.
+      So it's not even safe, despite being the "safe by construction" method.</p>
+    <p class="say">"So: we want rejection's distributional guarantee at projection's price.
+      That sentence is the paper."</p>
+  </div>
+</section>
+
+<!-- ===================== 12 · SCOREBOARD =============================== -->
+<section class="slide" data-act="II · Why samplers fail" data-title="Scoreboard: nobody has both" data-min="1.5" data-tier="2">
+  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span>Where that leaves us</span></p>
+  <h2>Nobody has both</h2>
+  <div class="tablewrap">
+    <table class="res">
+      <thead><tr>
+        <th>Sampler</th><th>Feasible?</th><th>In-distribution?</th><th>Affordable?</th><th>Shelf safe-SR</th>
+      </tr></thead>
+      <tbody>
+        <tr><td><span class="swatch" style="background:var(--slate)"></span>Unguided prior</td>
+          <td class="flag">no</td><td class="best" style="color:var(--good)">yes</td><td class="best" style="color:var(--good)">yes</td><td>3.3%</td></tr>
+        <tr><td><span class="swatch" style="background:var(--red)"></span>Gradient guidance</td>
+          <td class="dim">partly</td><td class="flag">no</td><td class="best" style="color:var(--good)">yes</td><td>28.0%</td></tr>
+        <tr><td><span class="swatch" style="background:var(--teal)"></span>Trust sampling</td>
+          <td class="dim">partly</td><td class="flag">no</td><td class="flag">no</td><td>27.3%</td></tr>
+        <tr><td><span class="swatch" style="background:var(--slate)"></span>Rejection</td>
+          <td class="dim">partly</td><td class="best" style="color:var(--good)">yes</td><td class="flag">no</td><td>33.3%</td></tr>
+        <tr><td><span class="swatch" style="background:var(--purple)"></span>Projection</td>
+          <td class="best" style="color:var(--good)">yes</td><td class="flag">no</td><td class="best" style="color:var(--good)">yes</td><td>62.0%</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="tnote">Every existing training-free sampler gives up one of the three.
+    The two that keep the distribution can't find feasible actions; the one that's reliably
+    feasible executes something the policy never proposed.</p>
+  <div class="notes">
+    <div class="timing">~1.5 min · then PAUSE before turning the page</div>
+    <p>This is the close of Act II. Read the table down the "in-distribution" column and let
+      the pattern show: the only two "yes"es are the unmodified policy (which ignores the
+      constraint) and rejection (which can't afford to run).</p>
+    <p class="say">"So here's the question the paper is trying to answer: can you get a feasible
+      action that the policy would actually have drawn, without paying rejection's bill?"</p>
+    <p><strong>Then stop talking for two seconds.</strong> The next slide is the hinge of the
+      whole talk and it needs the silence in front of it.</p>
+  </div>
+</section>
+
+<!-- ===================== 13 · THE TURN ================================= -->
+<section class="slide statement" data-act="III · The turn" data-title="THE TURN: the projection is not the action" data-min="1.5" data-tier="1">
+  <p class="kicker" style="position:absolute;top:52px;left:88px;right:88px"><span class="act">III · The turn</span><span class="rule"></span><span>The whole paper, in one sentence</span></p>
+  <blockquote>The projection is a cheap, clean, feasible signal.<br>
+    The only mistake is <b>executing</b> it.</blockquote>
+  <div class="attrib">Use it as a target for resampling — never as an output.</div>
+  <div class="notes">
+    <div class="timing">~2 min · slow down; this is the hinge</div>
+    <p><strong>Do not rush this slide.</strong> Read the sentence out loud, then stop. If you
+      only get one idea across in 45 minutes, it is this one.</p>
+    <p>The reframing: everyone has been treating the projection as an <em>answer</em> and
+      judging it as an answer — and as an answer it's off-manifold, so the field went looking
+      for something else. But look at what the projection actually is:</p>
+    <ul>
+      <li>It is <strong>clean</strong> — computed on a finished sample, not a noisy intermediate.
+        None of the blur problem from Act II.</li>
+      <li>It is <strong>feasible</strong> — exactly, not approximately.</li>
+      <li>It is <strong>cheap</strong> — no flow calls at all.</li>
+      <li>And it points <strong>in the right direction</strong>: it tells you where in action
+        space a feasible version of this behavior lives.</li>
+    </ul>
+    <p>That is a fantastic thing to <em>aim at</em>. It's just a terrible thing to <em>execute</em>.</p>
+    <p class="say">"Every baseline in Act II either had good information and executed it wrongly,
+      or had bad information. Projection has good information. We just have to stop executing it."</p>
+  </div>
+</section>
+
+<!-- ===================== 14 · THE LOOP ================================= -->
+<section class="slide" data-act="IV · The method" data-title="CS-Pi in one loop" data-min="3" data-tier="1">
+  <p class="kicker"><span class="act">IV · The method</span><span class="rule"></span><span>Draw → project → renoise → re-run</span></p>
+  <h2>Draw, project, renoise to <span class="eq">n = k/(k+δ)</span>, re-run</h2>
+  <div class="split wide-r">
+    <div class="col center">
+      <ul class="pts tight">
+        <li><b>Draw.</b> Run the <em>unmodified</em> flow ODE to a clean action â.</li>
+        <li><b>Project.</b> Snap â to the nearest feasible point c. Keep the residual δ = ‖â − c‖.
+          <span class="sub">We never execute c.</span></li>
+        <li><b>Renoise.</b> Partially re-noise c to depth n = k/(k+δ).</li>
+        <li><b>Re-run.</b> Run the same flow forward from there. Repeat until δ ≈ 0.</li>
+      </ul>
+      <div class="callout">The vector field is never modified. The endpoint is never
+        overwritten. The <b>only</b> thing CS-Pi changes is where sampling starts.</div>
+    </div>
+    <div class="col">
+      <figure class="fig">
+        <img src="../assets/method.png" alt="One CS-Pi trajectory: flow ODE, project with residual delta, renoise to depth n, iterate">
+        <figcaption><b>One CS-Pi trajectory.</b> Run the flow to a clean sample, project with
+          residual δ₁, renoise to n₁ = k/(k+δ₁) = 0.6 and re-run; the next sample has a smaller
+          residual δ₂, so it renoises shallower (n₂ = 0.8) and converges.</figcaption>
+      </figure>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~3 min</div>
+    <p>Walk the four steps against the figure. The single most important sentence is the
+      callout: <strong>we change where sampling starts, not what sampling does.</strong>
+      That is the entire reason the output stays in-distribution — the thing you execute is
+      always a genuine forward pass of the unmodified flow.</p>
+    <p>Contrast it explicitly with the two baselines:</p>
+    <ul>
+      <li>Guidance modifies the <strong>vector field</strong> → output isn't a policy sample.</li>
+      <li>Projection modifies the <strong>endpoint</strong> → output isn't a policy sample.</li>
+      <li>CS-Pi modifies the <strong>initialization</strong> → output <em>is</em> a policy sample.</li>
+    </ul>
+    <p>That three-line comparison is worth saying slowly; it's the cleanest statement of the
+      contribution and it fits on a whiteboard.</p>
+    <div class="qa"><b>Expect:</b> "this is SDEdit / stochastic resampling." Yes, the renoise
+      primitive is the same one. The contribution isn't the primitive — it's making the depth a
+      <em>feedback law driven by the constraint residual</em>, which is the next slide.</div>
+  </div>
+</section>
+
+<!-- ===================== 15 · LIVE LOOP ================================ -->
+<section class="slide" data-act="IV · The method" data-title="Live: watch δ go to zero" data-min="2" data-tier="2">
+  <p class="kicker"><span class="act">IV · The method</span><span class="rule"></span><span>Live · click the canvas to restart</span></p>
+  <h2>Watch δ go to zero</h2>
+  <div class="vizbox">
+    <div class="vizbar">
+      <span class="vstage" id="vizStage">flow ODE · draw sample</span>
+      <span class="spacer"></span>
+      <span class="stat" id="statIter">iter 1</span>
+      <span class="stat" id="statDelta">δ = 0.000</span>
+      <span class="stat" id="statN">n = —</span>
+    </div>
+    <canvas id="heroCanvas"></canvas>
+    <div class="vizfoot">
+      <span><span class="legend-dot" style="background:#1d6fd4"></span>draw / project</span>
+      <span><span class="legend-dot" style="background:#1f9d57"></span>feasible · goal</span>
+      <span><span class="legend-dot" style="background:#e0533d"></span>obstacle (unseen at training)</span>
+      <span style="flex:1"></span>
+      <span>draw → project → renoise to n = k/(k+δ) → re-run</span>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~2 min · let it run at least two full iterations</div>
+    <p>A 2D toy: the policy wants to go start → goal, and a deployment-time obstacle sits on
+      the straight path. Narrate one full cycle against the HUD:</p>
+    <ul>
+      <li>The flow draws a sample — it goes straight through the obstacle.</li>
+      <li><strong>δ</strong> in the readout is the violation. It's large.</li>
+      <li>Project to the nearest feasible point c (the blue dot). We do <em>not</em> execute it.</li>
+      <li><strong>n</strong> is small, so we renoise <em>deeply</em> — watch the noise bar marker
+        slide left, back toward noise.</li>
+      <li>Re-run. New sample, smaller δ. Now n is larger, so we renoise shallowly and just refine.</li>
+    </ul>
+    <p class="say">"Three iterations. And the thing we execute at the end is an ordinary draw
+      from the policy — it just started from a better place."</p>
+    <div class="flag">Click the canvas to restart the animation if you want a second pass, or
+      if it has already converged before you got here. If the projector is slow, skip straight
+      to the next slide — the static figure carries the same idea.</div>
+  </div>
+</section>
+
+<!-- ===================== 16 · THE DEPTH ================================ -->
+<section class="slide" data-act="IV · The method" data-title="The renoise depth IS the algorithm" data-min="3" data-tier="1">
+  <p class="kicker"><span class="act">IV · The method</span><span class="rule"></span><span>The one idea to remember</span></p>
+  <h2>The renoise depth <em>is</em> the algorithm</h2>
+  <p class="dek">The violation tells you how far to search. That's the whole feedback law —
+    and it comes out of the constraint, not out of a tuning sweep.</p>
+  <div class="split">
+    <div class="col">
+      <div class="media-frame" style="background:#fdf1ef;border-color:#f2cfc8;flex:none;padding:16px 18px;">
+        <div class="mf-head" style="color:#a8382a">δ LARGE → n SMALL → DEEP RENOISE</div>
+        <p style="margin:6px 0 0;font-size:17px;line-height:1.45;color:var(--ink)">
+          You are badly infeasible. Go far back toward noise, so the next draw can land in a
+          <strong>different mode of the policy</strong> — a different route around the obstacle.</p>
+      </div>
+      <div class="media-frame" style="background:#e9f7ee;border-color:#bfe6cd;flex:none;padding:16px 18px;">
+        <div class="mf-head" style="color:#12683a">δ SMALL → n LARGE → SHALLOW RENOISE</div>
+        <p style="margin:6px 0 0;font-size:17px;line-height:1.45;color:var(--ink)">
+          You are nearly feasible. Stay close, and <strong>refine within the mode you already
+          have</strong> instead of throwing away a good route.</p>
+      </div>
+    </div>
+    <div class="col center">
+      <div class="callout" style="font-size:20px">
+        <b>n = k/(k+δ)</b><br><br>
+        A single constant k. No schedule, no annealing, no per-scenario sweep — the depth is a
+        function of the constraint violation you just measured.
+      </div>
+      <ul class="pts tight" style="margin-top:4px">
+        <li>Large violation = the current route is unsalvageable → resample the route.</li>
+        <li>Small violation = the route is right, the details are off → polish it.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~4 min · THE slide people should be able to redraw a week later</div>
+    <p>If they remember one mechanism from this talk, make it this one. Say it as a search
+      statement, not a formula: <strong>"the size of the violation tells you how far away you
+      need to look for a fix."</strong></p>
+    <p><strong>The mode-switching point is the payoff of Act II.</strong> Remember the guidance
+      failure — it couldn't move between modes, it could only interpolate between them, and the
+      interpolation runs through the obstacle. Deep renoising is exactly the operation that lets
+      you <em>jump</em> from one mode to another instead of sliding between them. That's the
+      capability guidance structurally lacks, and we get it for free from the noise schedule.</p>
+    <p><strong>The contrast with SDEdit-style resampling</strong> is worth naming: there, the
+      noise strength is a hyperparameter you pick. Here it's a closed-loop signal. That's why
+      there's no per-deployment tuning — the constraint is doing the tuning, every iteration.</p>
+    <p><strong>Have the tuning numbers ready, because this is what gets pushed on hardest:</strong>
+      k = 20, fixed across all four benchmarks. Against per-benchmark tuning it costs
+      <strong>≤ 4.3 percentage points</strong>. That is the evidence for "no per-deployment
+      tuning" — quote it as a number, not as an assurance.</p>
+    <div class="qa"><b>Expect:</b> "does it always converge?" Empirically δ contracts in a few
+      iterations (the shelf averages 285 NFE against 240 for a single draw — barely more than one
+      extra pass). It provably does not always converge, and we know the regime: if the feasible
+      set misses the policy's support entirely, no sampler can return an action that is both
+      feasible and likely. That case is on the limitations slide.</div>
+  </div>
+</section>
+
+<!-- ===================== 16b · PROP 1 ================================== -->
+<section class="slide" data-act="IV · The method" data-title="What renoising actually computes" data-min="4" data-tier="2">
+  <p class="kicker"><span class="act">IV · The method</span><span class="rule"></span><span>Proposition 1 · what the loop is really sampling</span></p>
+  <h2>Each iteration draws from the prior seen through a <em>Gaussian window</em></h2>
+  <div class="split wide-r">
+    <div class="col">
+      <p class="dek" style="margin-bottom:4px">Renoise the anchor to
+        a<sub>n</sub> = n·c + (1−n)·µ with n = k/(k+δ), re-denoise, and the draw you get is:</p>
+      <div class="callout" style="font-family:var(--mono);font-size:16px;line-height:1.75">
+        a′ &nbsp;∼&nbsp; (1/Z) · <b>p<sub>data</sub>(a′)</b> · <b>e<sup>−k²‖a′−ĉ‖²/2δ²</sup></b><br>
+        <span style="font-size:14px">ĉ = c + (δ/k)·µ</span>
+      </div>
+      <p class="dek" style="font-size:17px;margin:2px 0 0">
+        A <strong>product of two things</strong>: the policy's own density, and a Gaussian bump
+        centred on the feasible set. Not a modified policy — the policy, <em>windowed</em>.</p>
+      <div class="callout good" style="font-size:18px">
+        The window's width is <b>σ<sub>w</sub> = δ / k</b>.<br>
+        <span style="font-size:15.5px">The violation you just measured <em>is</em> the search
+        radius.</span>
+      </div>
+    </div>
+    <div class="col">
+      <svg id="windowFig" viewBox="0 0 520 396" role="img"
+           aria-label="A bimodal policy density multiplied by a Gaussian window. A wide window spans both modes; a narrow window selects one."
+           style="width:100%;flex:1;min-height:0"></svg>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~4 min · the theoretical heart; this is what makes the method principled</div>
+    <p>This slide turns CS-Pi from "a heuristic loop that works" into "a sampler with a
+      characterised target," and it's worth the four minutes.</p>
+    <p><strong>The derivation in three lines</strong>, if the room wants it:</p>
+    <ul>
+      <li>The interpolant law gives a<sub>n</sub> | a′ ~ N(n·a′, (1−n)²I).</li>
+      <li>Bayes: p(a′|a<sub>n</sub>) ∝ p<sub>data</sub>(a′)·exp(−‖a<sub>n</sub> − n·a′‖²/2(1−n)²).</li>
+      <li>Pull out n²: the exponent becomes −‖a′ − a<sub>n</sub>/n‖² / 2((1−n)/n)².</li>
+    </ul>
+    <p>Then read off the two identities that make everything click:
+      <strong>(1−n)/n = δ/k</strong> and <strong>a<sub>n</sub>/n = c + (δ/k)µ = ĉ</strong>.
+      So the renoise depth <em>is</em> a window width, and the anchor <em>is</em> the window centre.</p>
+    <p class="say">"We're not steering the policy and we're not overwriting it. We're multiplying
+      it by a Gaussian centred on the feasible set — and the violation sets how wide that Gaussian is."</p>
+    <p><strong>Now the payoff, and point at the figure while you say it:</strong></p>
+    <ul>
+      <li><strong>δ large → wide window.</strong> It spans more than one mode of the policy, so
+        the redraw can land in a <em>different</em> mode. This is the mode switch, and it is now
+        a statement about a density, not a metaphor.</li>
+      <li><strong>δ small → narrow window.</strong> It sits tightly on the feasible set, so the
+        redraw refines within the mode you already have and the projection error keeps falling.</li>
+    </ul>
+    <p>This is also the cleanest contrast with the barrier/CBF family from Act II: a velocity
+      correction moves a <em>point</em> continuously and can never cross a zero-density gap;
+      a wide window puts <em>mass</em> on the other side of that gap, and the redraw simply
+      lands there.</p>
+  </div>
+</section>
+
+<!-- ===================== 16c · THE PROJECTION ========================== -->
+<section class="slide" data-act="IV · The method" data-title="The projection, concretely" data-min="3" data-tier="2">
+  <p class="kicker"><span class="act">IV · The method</span><span class="rule"></span><span>The operator, and the terminal guarantee</span></p>
+  <h2>Geometric feasibility is a property of the <em>projection</em></h2>
+  <div class="split">
+    <div class="col">
+      <h3 class="sub">The operator</h3>
+      <ul class="pts tight">
+        <li><b>Collision:</b> given obstacle bounding boxes, map the chunk to the nearest point
+          outside them. Closed-form per box; δ is the residual norm.</li>
+        <li><b>Orientation:</b> an end-effector-orientation proximal step, fixed reference.
+          <span class="sub">Same loop, same k — only this operator changed.</span></li>
+      </ul>
+      <h3 class="sub" style="margin-top:6px">The terminal projection</h3>
+      <ul class="pts tight">
+        <li>If the loop hasn't converged by the budget, project once at the end. That restores
+          projection's hard guarantee: <strong>every executed action satisfies C</strong>.</li>
+        <li>It fires on <b>15.7%</b> of chunks on Shelf, <b>4.8%</b> on hardware.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3 class="sub">What the fallback costs</h3>
+      <div class="tiles wrap2" style="grid-template-columns:1fr 1fr">
+        <div class="tile ours"><div class="n">−0.21</div><div class="l">ΔlogL vs prior</div><div class="s">Shelf chunks that needed the terminal projection</div></div>
+        <div class="tile negt"><div class="n">−3.8</div><div class="l">ΔlogL vs prior</div><div class="s">the projection baseline, every chunk</div></div>
+        <div class="tile ours"><div class="n">1.5×</div><div class="l">CS-Pi jerk</div><div class="s">99th pct, vs the unguided prior</div></div>
+        <div class="tile negt"><div class="n">5.8×</div><div class="l">Projection jerk</div><div class="s">99th pct, vs the unguided prior</div></div>
+      </div>
+      <div class="callout">Even on its <b>worst</b> chunks — the ones where the constraint and
+        the prior conflict most — CS-Pi's fallback lands 18× closer to the prior than the
+        projection baseline does on average.</div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~3 min · answers "but is it actually guaranteed?" — which always comes up</div>
+    <p>Two separate points, and it's worth keeping them separate.</p>
+    <p><strong>1. Where the guarantee comes from.</strong> CS-Pi doesn't invent a new safety
+      mechanism — it inherits projection's. With the terminal projection in place, every executed
+      action satisfies the constraint, exactly as the projection baseline does. What CS-Pi changes
+      is <em>how often you have to fall back on it</em>: 15.7% of chunks on Shelf, 4.8% on
+      hardware. The other 84–95% converged on their own.</p>
+    <p><strong>2. The fallback is cheap because the iterations did work first.</strong> This is
+      the number to dwell on: on the chunks that <em>did</em> need terminal projection —
+      the hardest ones, where constraint and prior conflict most — ΔlogL vs the prior is
+      <strong>−0.21</strong>, against <strong>−3.8</strong> for the projection baseline. The
+      preceding CS-Pi iterations shrink the projection error, so when you finally do snap, you
+      barely move.</p>
+    <p class="say">"Our worst case is eighteen times closer to the policy than projection's
+      average case."</p>
+    <p><strong>Be honest about hardware:</strong> there, terminal-projection chunks do land at
+      lower logL — −518.0 against −469.1 for converged chunks. But the physical consequence still
+      favours us: at the 99th percentile, projection reaches 5.8× the unguided prior's jerk while
+      CS-Pi reaches 1.5×. Jerk and acceleration statistics are going into the final version.</p>
+    <p><strong>The terminal projection is a per-task choice</strong>, and say so plainly: on Shelf
+      constraint satisfaction is the priority, so we keep it. On 3D-Orient it isn't, so we drop
+      it. That's a design decision, not a hidden knob.</p>
+  </div>
+</section>
+
+<!-- ===================== 17 · WHY IN-DIST ============================== -->
+<section class="slide" data-act="IV · The method" data-title="Why it stays in-distribution" data-min="2.5" data-tier="1">
+  <p class="kicker"><span class="act">IV · The method</span><span class="rule"></span><span>The distributional claim</span></p>
+  <h2>Why the output stays in-distribution — and lands <em>above</em> the prior</h2>
+  <div class="split wide-l">
+    <div class="col">
+      <ul class="pts tight good">
+        <li>Every executed action is a full forward pass of the <strong>unmodified</strong> flow.
+          <span class="sub">Not a nudged one. Not a snapped one. There is no step in CS-Pi that can produce an action the flow could not have produced.</span></li>
+        <li>Iterating conditions on feasibility <em>without</em> distorting the field —
+          it concentrates draws on the policy's own modes that happen to be feasible.</li>
+      </ul>
+      <div class="callout good">On the shelf, CS-Pi's samples score <b>logL 18.0</b> —
+        higher than the prior's own draws at <b>15.0</b>. We don't merely stay in the
+        distribution; we select its high-likelihood, feasible modes.</div>
+    </div>
+    <div class="col center">
+      <div class="tiles wrap2">
+        <div class="tile ours"><div class="n">18.0</div><div class="l">CS-Pi logL</div><div class="s">shelf</div></div>
+        <div class="tile dimt"><div class="n">15.0</div><div class="l">Prior's own</div><div class="s">reference</div></div>
+        <div class="tile negt"><div class="n">11.2</div><div class="l">Projection</div><div class="s">off-manifold</div></div>
+        <div class="tile negt"><div class="n">10.2</div><div class="l">Guidance</div><div class="s">off-manifold</div></div>
+      </div>
+      <p class="tnote">Mean log-likelihood the prior assigns to each method's samples on the
+        shelf benchmark. Higher is more in-distribution.</p>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~3 min</div>
+    <p>Two claims here, and they are not equally safe.</p>
+    <p><strong>Claim 1 (solid):</strong> the executed action is always a genuine flow output.
+      This is structural, not empirical — it follows from the algorithm. Lead with it.</p>
+    <p><strong>Claim 2 (the surprise):</strong> 18.0 &gt; 15.0. We score higher than the prior's
+      own samples. The explanation to offer: we are effectively sampling from the policy
+      <em>conditioned on feasibility</em>, and that conditioning happens to concentrate mass on
+      confident, high-likelihood modes — the ones that are clean enough to be feasible.
+      Ambiguous, low-likelihood draws are exactly the ones that violate the constraint and get
+      resampled away.</p>
+    <p><strong>The one-line answer</strong> (and it's the one from the rebuttal): scoring above
+      the prior happens <strong>when the constraint set C aligns with a high-density region of
+      the prior.</strong> Feasibility and likelihood aren't fighting on the shelf — the safe
+      routes are also the confident ones — so conditioning on C concentrates mass rather than
+      dispersing it.</p>
+    <div class="qa"><b>Be ready for the sharper version:</b> <em>"isn't logL above the prior just
+      mode collapse?"</em> If CS-Pi always picked the single most likely feasible mode, logL would
+      rise and diversity would fall. The 2D fully-in-support number (0.857, above rejection's
+      0.831) argues against it, since rejection is an unbiased conditional sampler — but a direct
+      diversity measure would settle it, and we don't have one. It's on the open-questions slide.</div>
+  </div>
+</section>
+
+<!-- ===================== 18 · GENERALITY =============================== -->
+<section class="slide" data-act="IV · The method" data-title="Generality: swap the projection" data-min="2" data-tier="2">
+  <p class="kicker"><span class="act">IV · The method</span><span class="rule"></span><span>Reach of the method</span></p>
+  <h2>Change the projection, change the constraint. The loop never changes.</h2>
+  <div class="split">
+    <div class="col">
+      <h3 class="sub">What CS-Pi needs</h3>
+      <ul class="pts tight good">
+        <li>A pretrained flow or diffusion policy you can run forward.</li>
+        <li>An operator that maps an infeasible action to a nearby feasible one —
+          a projection, or a proximal step for a soft cost.</li>
+        <li>One constant k.</li>
+      </ul>
+      <h3 class="sub" style="margin-top:8px">Two instantiations in this paper</h3>
+      <ul class="pts tight">
+        <li><b>Collision:</b> project onto the complement of the obstacle boxes.</li>
+        <li><b>Orientation:</b> an end-effector-orientation proximal step.
+          <span class="sub">Same loop, same k, entirely different cost.</span></li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3 class="sub">What CS-Pi does <em>not</em> need</h3>
+      <ul class="pts tight neg">
+        <li>A constraint gradient at noisy intermediates</li>
+        <li>A differentiable surrogate for a hard constraint</li>
+        <li>An auxiliary or classifier network</li>
+        <li>Any retraining or finetuning of the policy</li>
+        <li>Per-deployment tuning
+          <span class="sub">One k across 5 shelf scenarios, 2 hardware layouts, 2 sim benchmarks, and a different cost function.</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~2 min · close of Act IV</div>
+    <p>This slide is where the contribution stops being "a trick for obstacle avoidance" and
+      becomes "a general recipe." The framing to use: <strong>anything you can project onto — or
+      take a proximal step on — is now enforceable on any pretrained flow policy.</strong></p>
+    <p>The 3D-Orient experiment exists precisely to demonstrate this, and it's the honest test:
+      an orientation preference is not a collision constraint, it isn't even a hard constraint in
+      the same sense, and the loop is untouched. Only the operator changed.</p>
+    <div class="qa"><b>Expect, and it's the good question:</b> "what if I can't project onto my
+      constraint?" Be honest — that's a real limitation and it's on the limitations slide.
+      For a large class (boxes, spheres, half-spaces, joint limits, workspace bounds, SO(3)
+      targets) the projection is closed-form or a tiny solve. For a general non-convex set it
+      isn't, and then you need an approximate projection and the guarantee degrades.</div>
+  </div>
+</section>
+
+<!-- ===================== 19 · SETUP ==================================== -->
+<section class="slide" data-act="V · Evidence" data-title="Setup: benchmarks and metrics" data-min="1.5" data-tier="2">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>How to read the next five slides</span></p>
+  <h2>Four benchmarks, escalating from diagnostic to real hardware</h2>
+  <div class="split">
+    <div class="col">
+      <h3 class="sub">Benchmarks</h3>
+      <ul class="pts tight">
+        <li><b>2D avoidance</b> — 6 scenarios, 200 rollouts per cell. Diagnostic: can you have
+          both properties at once?</li>
+        <li><b>Shelf pick-and-place</b> — 7-DoF Franka, 5 scenarios, 150 tasks. Deployment-time
+          obstacles absent at training.</li>
+        <li><b>3D-Orient</b> — 7-DoF reach with an orientation preference, 90 rollouts per cell.
+          A different cost entirely.</li>
+        <li><b>Hardware</b> — zero-shot Franka with π₀.₅, 2 layouts × 10 trials × 5 methods.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3 class="sub">Metrics</h3>
+      <ul class="pts tight">
+        <li><b>Safe-SR</b> — collision-free <em>and</em> picked <em>and</em> placed. The headline
+          metric, because it can't be gamed by refusing to move.</li>
+        <li><b>logL</b> — mean log-likelihood the prior assigns to a method's samples.
+          The prior's own draws are the reference point.</li>
+        <li><b>Fully-in-support</b> — fraction of rollouts whose <em>every</em> waypoint lies
+          inside the demonstration support. A strict in-distribution check.</li>
+        <li><b>NFE</b> — flow-model calls per trajectory. The compute axis.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~2 min · don't skip, the tables depend on these definitions</div>
+    <p>Resist the urge to rush this — every table in Act V is unreadable if safe-SR and logL
+      aren't already understood, and a lab audience will stop you to ask.</p>
+    <p>Re-state the safe-SR point from Act I in one line: <strong>it conjoins safety and task
+      success on purpose, so that "don't move" scores zero.</strong></p>
+    <p>Note that baselines get their <strong>best hyperparameter per method</strong> — we're not
+      beating an untuned baseline. Say it before someone asks.</p>
+  </div>
+</section>
+
+<!-- ===================== 20 · 2D RESULTS =============================== -->
+<section class="slide" data-act="V · Evidence" data-title="2D avoidance: you can have both" data-min="2.5" data-tier="1">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>Benchmark 1 · 2D avoidance</span></p>
+  <h2>You can have both</h2>
+  <div class="tablewrap">
+    <table class="res">
+      <thead><tr>
+        <th>Method</th><th>Safe-SR&nbsp;%&nbsp;↑</th><th>Fully-in-support&nbsp;↑</th><th>Log-lik.&nbsp;↑</th><th>NFE&nbsp;↓</th>
+      </tr></thead>
+      <tbody>
+        <tr><td><span class="swatch" style="background:var(--slate)"></span>Unguided</td><td>5.2</td><td>0.795</td><td>+1.65</td><td>456</td></tr>
+        <tr><td><span class="swatch" style="background:var(--red)"></span>Gradient guidance</td><td>75.7</td><td>0.595</td><td>1.51</td><td>485</td></tr>
+        <tr><td><span class="swatch" style="background:var(--teal)"></span>Trust sampling</td><td>45.5</td><td>0.444</td><td>1.53</td><td>3161</td></tr>
+        <tr><td><span class="swatch" style="background:var(--slate)"></span>Rejection</td><td>68.1</td><td>0.831</td><td class="best">+1.71</td><td>6732</td></tr>
+        <tr><td><span class="swatch" style="background:var(--purple)"></span>Projection</td><td class="best">100.0</td><td>0.650</td><td class="flag">−3.34</td><td class="best">112</td></tr>
+        <tr class="ours"><td><span class="swatch" style="background:var(--blue)"></span>CS-Pi (ours)</td><td>99.0</td><td class="best">0.857</td><td>1.53</td><td>283</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="tnote">Macro-averaged over 6 scenarios, 200 rollouts per cell, best hyperparameter
+    per method. <b>Bold</b> is best in column. Projection wins raw feasibility by one point —
+    and pays five log-units for it.</p>
+  <div class="notes">
+    <div class="timing">~3 min · money slide #1</div>
+    <p>This is the cleanest demonstration in the paper because the diagnostic is so direct:
+      <strong>CS-Pi is the only row that is near-perfectly feasible AND the most in-distribution
+      method in the table</strong> — 0.857 fully-in-support, above rejection's 0.831 and above
+      the unmodified prior's own 0.795.</p>
+    <p><strong>Own the 99.0 vs 100.0 immediately, before anyone raises it.</strong> Projection
+      cannot lose on feasibility — it's feasible by construction. The interesting question was
+      never "can you be feasible", it's "what does feasibility cost you." Projection's answer is
+      0.650 support and −3.34 log-likelihood, five log-units below the prior. Ours is one point
+      of safe-SR.</p>
+    <p class="say">"Projection buys the last one percent of feasibility with five log-units of
+      distribution. That's the trade this whole paper is about."</p>
+    <div class="qa"><b>Note the honest wrinkle:</b> guidance gets 75.7% here, far better than
+      its 28% on the shelf. Say why if asked — 2D is low-dimensional and the constraint geometry
+      is simple, so the proxy gradient is much less broken. The harder the task, the worse
+      guidance gets; that's the trend across the next two benchmarks.</div>
+  </div>
+</section>
+
+<!-- ===================== 21 · SHELF ROLLOUTS =========================== -->
+<section class="slide" data-act="V · Evidence" data-title="Shelf: same scenario, two samplers" data-min="2" data-tier="2">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>Benchmark 2 · Shelf pick-and-place · scenario: two flankers (top)</span></p>
+  <h2>Same scenario, same policy, two samplers</h2>
+  <div class="split">
+    <div class="media-frame mf-ours">
+      <div class="mf-head"><span>CS-Pi (ours)</span><span class="spacer"></span><span class="pill ok">safe · success</span></div>
+      <img src="../viz/shelf_scenario_method_gifs/two_flankers_top/amr__success.gif" alt="CS-Pi rollout succeeding on the two-flankers shelf scenario">
+    </div>
+    <div class="media-frame mf-bad">
+      <div class="mf-head"><span>Projection</span><span class="spacer"></span><span class="pill no">fail</span></div>
+      <img src="../viz/shelf_scenario_method_gifs/two_flankers_top/projection__fail.gif" alt="Projection baseline failing on the two-flankers shelf scenario">
+    </div>
+  </div>
+  <p class="tnote">A 7-DoF Franka picks a 4&nbsp;cm cube from a three-rung shelf and places it on
+    the table. Two obstacles flank the cube on the top rung — neither was present at training.</p>
+  <div class="notes">
+    <div class="timing">~2 min · let both loop once before narrating</div>
+    <p>Describe the scene first: three-rung shelf, 4 cm cube, obstacles added at deployment that
+      the demonstrations never contained. A rollout counts as safe-and-successful only if it is
+      collision-free AND picks the cube AND places it.</p>
+    <p>Point out what projection's failure actually looks like — it isn't a dramatic crash, it's
+      an arm taking a route it doesn't know how to execute. That's the off-manifold pathology
+      from Act II made visible, and it's the reason the aggregate is 62% and not 90%.</p>
+    <div class="flag">These are single rollouts chosen to illustrate the failure mode, not
+      evidence. Say so, and put the aggregate up next — 30 tasks per scenario, 150 total.</div>
+  </div>
+</section>
+
+<!-- ===================== 22 · SHELF TABLE ============================== -->
+<section class="slide" data-act="V · Evidence" data-title="Shelf results" data-min="3" data-tier="1">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>Benchmark 2 · Shelf · 150 tasks</span></p>
+  <h2>Best safe-success, and the most in-distribution samples in the table</h2>
+  <div class="tablewrap">
+    <table class="res">
+      <thead><tr>
+        <th>Method</th><th>Safe-SR&nbsp;%&nbsp;↑</th><th>Goal reach&nbsp;%&nbsp;↑</th><th>Collision&nbsp;%&nbsp;↓</th><th>logL&nbsp;↑</th><th>NFE&nbsp;↓</th>
+      </tr></thead>
+      <tbody>
+        <tr><td><span class="swatch" style="background:var(--slate)"></span>Unguided (prior)</td><td>3.3</td><td>72.0</td><td class="flag">82.0</td><td>15.0</td><td>240</td></tr>
+        <tr><td><span class="swatch" style="background:var(--red)"></span>Gradient guidance</td><td>28.0</td><td>28.0</td><td class="best">0.0</td><td>10.2</td><td>240</td></tr>
+        <tr><td><span class="swatch" style="background:var(--teal)"></span>Trust sampling</td><td>27.3</td><td>28.0</td><td>0.7</td><td>10.5</td><td>1242</td></tr>
+        <tr><td><span class="swatch" style="background:var(--slate)"></span>Rejection (B=100)</td><td>33.3</td><td>67.3</td><td>40.7</td><td>14.2</td><td>8676</td></tr>
+        <tr><td><span class="swatch" style="background:var(--purple)"></span>Projection</td><td>62.0</td><td>66.0</td><td>4.0</td><td>11.2</td><td>240</td></tr>
+        <tr class="ours"><td><span class="swatch" style="background:var(--blue)"></span>CS-Pi (ours)</td><td class="best">73.3</td><td class="best">78.7</td><td>6.7</td><td class="best">18.0</td><td>285</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="tnote">5 scenarios, 150 tasks (30 per scenario). logL is the mean log-likelihood the
+    prior assigns to a method's samples — the prior's own samples score 15.0. NFE is flow-model
+    calls per trajectory.</p>
+  <div class="notes">
+    <div class="timing">~4 min · money slide #2, walk it column by column</div>
+    <p><strong>Safe-SR:</strong> 73.3 vs 62.0 for the strongest baseline — and vs 33.3, 28.0,
+      27.3 for everything else. An 11-point margin over projection.</p>
+    <p><strong>Goal reach 78.7</strong> is the quiet result: it is <em>higher than the
+      unmodified policy's own 72.0%</em>. Constraint enforcement usually costs task success;
+      here it helps, because avoiding the obstacle keeps the arm out of states where it fails.</p>
+    <p><strong>logL 18.0</strong> — above the prior's 15.0, as covered in Act IV.</p>
+    <p><strong>NFE 285 vs 240</strong> — a 19% surcharge over doing nothing at all, and 4.4×
+      cheaper than trust sampling, 30× cheaper than rejection.</p>
+    <p><strong>Now the collision column, before anyone else raises it.</strong> Ours is 6.7%,
+      worse than projection's 4.0% and guidance's 0.0%. Say it out loud and give the reason:
+      guidance's 0.0% comes with 28% goal reach — it isn't safe, it's inert. We accept a
+      slightly higher collision rate in exchange for 12 points of goal reach over projection.
+      That trade is the whole reason safe-SR is the headline metric.</p>
+    <div class="qa"><b>Expect:</b> "could you tune CS-Pi to get collisions down?" Presumably yes,
+      by iterating longer or tightening the feasible set margin — and you'd trade NFE for it.
+      If you have that ablation, this is the moment for it.</div>
+  </div>
+</section>
+
+<!-- ===================== 23 · ORIENT TABLE ============================= -->
+<section class="slide" data-act="V · Evidence" data-title="3D-Orient: a different cost entirely" data-min="2.5" data-tier="2">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>Benchmark 3 · 3D-Orient · 90 rollouts per cell</span></p>
+  <h2>A different cost entirely — only the projection changed</h2>
+  <div class="tablewrap">
+    <table class="res">
+      <thead><tr>
+        <th>Method</th><th>Success&nbsp;↑</th><th>Goal reach&nbsp;↑</th><th>logL&nbsp;↑</th><th>max EE step&nbsp;↓</th><th>NFE&nbsp;↓</th>
+      </tr></thead>
+      <tbody>
+        <tr><td><span class="swatch" style="background:var(--slate)"></span>Unguided</td><td class="flag">1.1%</td><td class="best">100%</td><td>13.55</td><td class="best">0.107</td><td class="best">135</td></tr>
+        <tr><td><span class="swatch" style="background:var(--red)"></span>Gradient guidance</td><td>8.9%</td><td>10.0%</td><td>9.41</td><td class="flag">0.928</td><td>160</td></tr>
+        <tr><td><span class="swatch" style="background:var(--teal)"></span>Trust sampling</td><td>10.0%</td><td>11.1%</td><td class="best">13.56</td><td class="flag">1.310</td><td>1358</td></tr>
+        <tr class="ours"><td><span class="swatch" style="background:var(--blue)"></span>CS-Pi + EE-prox (ours)</td><td class="best">68.9%</td><td>98.9%</td><td>10.26</td><td>0.108</td><td>210</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="tnote">Success = a step simultaneously within 10&nbsp;cm of the target position and
+    0.36&nbsp;rad of the target orientation. <b>max EE step</b> is the largest single-step
+    end-effector jump in metres — a smoothness proxy.</p>
+  <div class="notes">
+    <div class="timing">~3 min</div>
+    <p>The setup: a 7-DoF Panda reach where every step must stay within 10 cm of the goal and
+      within 0.5 Frobenius of a target end-effector orientation. <strong>The orientation lock is
+      absent from the prior's training</strong>, so only the inference-time method enforces it.
+      The unmodified policy reaches the goal 100% of the time and satisfies the orientation 1.1%
+      of the time — it simply doesn't know the constraint exists.</p>
+    <p><strong>68.9% vs 10.0%.</strong> A 6.9× margin over the best baseline, on a cost function
+      the loop had never seen. This is the generality claim cashed out.</p>
+    <p><strong>Do not skip the max-EE-step column — it's the most underrated number in the
+      paper.</strong> Guidance produces single-step end-effector jumps of 0.93 m; trust sampling
+      1.31 m. Those are not trajectories a real arm executes; that is the off-manifold pathology
+      from Act I in physical units. CS-Pi is at 0.108 m — indistinguishable from the unmodified
+      policy's 0.107 m. We enforce the constraint and stay smooth.</p>
+    <p class="say">"The baselines don't just fail to satisfy the constraint — they produce metre-
+      scale jumps while failing. We satisfy it and move like the original policy."</p>
+    <p><strong>Be honest about logL here:</strong> ours is 10.26, below unguided's 13.55 and
+      trust's 13.56. That's real, and the next slide explains why it's the thesis rather than a
+      weakness — but don't hide it, name it now.</p>
+  </div>
+</section>
+
+<!-- ===================== 24 · CONFIG 2 ================================= -->
+<section class="slide" data-act="V · Evidence" data-title="Config 2: graceful under an infeasible constraint" data-min="3" data-tier="3">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>3D-Orient · config 2 · the constraint and the reach conflict</span></p>
+  <h2>When the constraint <em>cannot</em> be satisfied, it degrades gracefully</h2>
+  <div class="split">
+    <div class="media-frame mf-ours">
+      <div class="mf-head"><span>CS-Pi + EE-prox</span><span class="spacer"></span><span class="pill ok">holds orientation</span></div>
+      <img src="../viz/orientation_task_gifs/amr_eeprox_ref/config2.gif" alt="CS-Pi holding the target orientation on the infeasible config 2 goal">
+    </div>
+    <div class="media-frame">
+      <div class="mf-head"><span>Unguided prior</span><span class="spacer"></span><span class="pill no">ignores it</span></div>
+      <img src="../viz/orientation_task_gifs/unguided/config2.gif" alt="Unguided prior ignoring the orientation constraint on config 2">
+    </div>
+  </div>
+  <div class="callout warn">This goal is <b>not reachable</b> while holding the target orientation.
+    Rather than quietly abandoning the constraint to finish the reach, CS-Pi holds the orientation
+    until the task forces the trade-off.</div>
+  <div class="notes">
+    <div class="timing">~3 min · a behavioural result, and one of the best in the talk</div>
+    <p>This is not a number, it's a <em>behaviour</em>, and it's the slide that answers the
+      "what happens when it can't win" question before it's asked.</p>
+    <p>The frames are annotated with live end-effector distance and orientation error — point at
+      the orientation error staying low even where the reach cannot complete.</p>
+    <p><strong>Now cash in the logL point from the previous slide.</strong> The honest framing is
+      not a defence, it's the thesis stated precisely:</p>
+    <p class="say">"When the constraint itself is off-distribution, you <em>have</em> to leave the
+      manifold. There is no in-distribution action that satisfies it. The claim was never that
+      CS-Pi never leaves the policy — it's that it leaves the policy <em>only as far as the
+      constraint forces.</em>"</p>
+    <p>That's why the 3D-Orient logL is 10.26 while the shelf logL is 18.0: on the shelf,
+      feasible in-distribution actions exist, and we find them. On 3D-Orient config 2, they
+      don't, and we go exactly as far off-manifold as the orientation lock requires — no
+      further. The unmodified prior scores 13.55 by ignoring the constraint entirely, which is
+      not a comparison in its favour.</p>
+  </div>
+</section>
+
+<!-- ===================== 25 · HARDWARE SETUP =========================== -->
+<section class="slide" data-act="V · Evidence" data-title="Hardware setup + baseline failures" data-min="2" data-tier="2">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>Benchmark 4 · zero-shot Franka + π₀.₅</span></p>
+  <h2>Zero-shot on a real Franka, with constraints from real perception</h2>
+  <div class="split wide-l">
+    <div class="col">
+      <ul class="pts tight">
+        <li><b>Task:</b> pick the apple, place it on the blue plate — with an obstacle in the way.</li>
+        <li><b>Policy:</b> π₀.₅, run <strong>zero-shot</strong>. No finetuning, no adaptation.</li>
+        <li><b>Constraint:</b> obstacle bounding boxes from a ZED&nbsp;2 RGB-D pipeline —
+          <strong>real perception, not ground truth</strong>.</li>
+        <li><b>Protocol:</b> 2 layouts × 10 trials × 5 methods.</li>
+        <li><b>Budget:</b> 0.143 s per step. Fast enough to run on the arm.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <div class="media-frame mf-bad">
+        <div class="mf-head"><span>Gradient guidance</span><span class="spacer"></span><span class="pill no">fail</span></div>
+        <video src="../assets/hardware/gradient_guidance.mp4" autoplay loop muted playsinline></video>
+      </div>
+      <div class="media-frame mf-bad">
+        <div class="mf-head"><span>Trust sampling</span><span class="spacer"></span><span class="pill no">fail</span></div>
+        <video src="../assets/hardware/trust_fail.mp4" autoplay loop muted playsinline></video>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~2 min</div>
+    <p>Two things deserve emphasis and usually get skipped:</p>
+    <p><strong>Zero-shot.</strong> π₀.₅ was not finetuned for this scene, this obstacle, or this
+      constraint. Whatever CS-Pi adds, it adds on top of a frozen general policy.</p>
+    <p><strong>The constraint comes from a real vision pipeline.</strong> The bounding boxes are
+      ZED 2 output, with all the noise and mis-detection that implies — not a simulator's ground
+      truth geometry. That matters because the projection operator is only as good as the
+      feasible set it's given, and here the feasible set is estimated.</p>
+    <p>The two clips are the guidance and trust-sampling failures — the same methods that looked
+      merely mediocre in simulation. On hardware they look worse, which is the expected direction.</p>
+  </div>
+</section>
+
+<!-- ===================== 26 · HARDWARE RESULTS ========================= -->
+<section class="slide" data-act="V · Evidence" data-title="Hardware results" data-min="3" data-tier="1">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>Benchmark 4 · success rate %, 10 trials per cell</span></p>
+  <h2>It survives contact with reality</h2>
+  <div class="tablewrap">
+    <table class="res">
+      <thead><tr>
+        <th>Method</th><th>Layout 1&nbsp;↑</th><th>Layout 2&nbsp;↑</th><th>Aggregated&nbsp;↑</th><th>Time/step&nbsp;(s)&nbsp;↓</th><th>logL&nbsp;↑</th>
+      </tr></thead>
+      <tbody>
+        <tr><td><span class="swatch" style="background:var(--slate)"></span>Unguided (prior)</td><td>20</td><td class="flag">0</td><td>10</td><td class="best">0.069</td><td>−470.2</td></tr>
+        <tr><td><span class="swatch" style="background:var(--red)"></span>Gradient guidance</td><td>40</td><td>10</td><td>25</td><td>0.139</td><td class="best">−464.9</td></tr>
+        <tr><td><span class="swatch" style="background:var(--teal)"></span>Trust sampling</td><td>20</td><td>20</td><td>20</td><td>0.135</td><td>−474.8</td></tr>
+        <tr><td><span class="swatch" style="background:var(--purple)"></span>Projection</td><td>40</td><td>40</td><td>40</td><td>0.099</td><td>−473.2</td></tr>
+        <tr class="ours"><td><span class="swatch" style="background:var(--blue)"></span>CS-Pi (ours)</td><td class="best">60</td><td class="best">50</td><td class="best">55</td><td>0.143</td><td>−471.8</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tiles" style="margin-top:14px">
+    <div class="tile ours"><div class="n">5.5×</div><div class="l">over the unmodified policy</div><div class="s">55% vs 10% aggregated</div></div>
+    <div class="tile ours"><div class="n">1.4×</div><div class="l">over the best baseline</div><div class="s">55% vs 40% for projection</div></div>
+    <div class="tile"><div class="n" style="color:var(--good)">0/20</div><div class="l">layout-2 failures for the prior</div><div class="s">the hard layout separates methods</div></div>
+  </div>
+  <div class="notes">
+    <div class="timing">~4 min · money slide #3</div>
+    <p><strong>Say the honest thing first:</strong> 55% is not a high absolute number. Get in
+      front of it — "this is a hard zero-shot task and nobody is close to solving it." Then give
+      the comparison that matters: 5.5× the unmodified policy, 1.4× the strongest baseline, and
+      the only method above 40% on either layout.</p>
+    <p><strong>Layout 2 is the interesting column.</strong> The unmodified policy scores 0/10
+      there — that layout is genuinely unsolvable without constraint enforcement. Guidance gets
+      10%. We get 50%.</p>
+    <p><strong>Be straight about the logL column, because it does not favour us here.</strong>
+      Guidance scores −464.9, better than our −471.8 and better than the prior's own draws at
+      −470.2. Don't skip it. Two honest things to say: (1) on hardware the logL spread across all
+      methods is small — a few units on a scale where the prior itself sits at −470 — so it
+      separates methods far less than in simulation; (2) guidance scoring well on likelihood
+      while scoring 25% on the task is a reminder that likelihood alone was never the objective.
+      Safe-success is.</p>
+    <div class="flag"><b>Verify:</b> confirm what the hardware logL is computed over (executed
+      actions, per the project page) and whether the −464.9 for guidance is a real effect or
+      within noise across 20 trials. If you have error bars, this is where you need them.</div>
+  </div>
+</section>
+
+<!-- ===================== 27 · FILMSTRIPS =============================== -->
+<section class="slide" data-act="V · Evidence" data-title="Annotated rollout frames" data-min="1.5" data-tier="3">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>Hardware · annotated frames, left to right</span></p>
+  <h2>The same policy, guided and unguided</h2>
+  <div class="body" style="gap:14px">
+    <div class="media-frame mf-ours" style="flex:1">
+      <div class="mf-head"><span>CS-Pi</span><span class="spacer"></span><span class="pill ok">apple placed</span></div>
+      <img src="../assets/hw_v1_succ.png" alt="Filmstrip of a successful CS-Pi hardware rollout">
+    </div>
+    <div class="media-frame mf-bad" style="flex:1">
+      <div class="mf-head"><span>Unguided π₀.₅</span><span class="spacer"></span><span class="pill no">collision</span></div>
+      <img src="../assets/hw_v1_fail.png" alt="Filmstrip of an unguided hardware rollout failing">
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~1.5 min · quick, it's reinforcement not new evidence</div>
+    <p>Frames run left to right. Green strip is CS-Pi; red is the same policy run unguided.
+      Use this to make the point physical: the difference is not a different plan, it's the
+      <em>same</em> behaviour routed around the obstacle.</p>
+    <p>Keep it short — the audience has already seen the video and the table. This slide exists
+      so people who process stills better than video get their version.</p>
+  </div>
+</section>
+
+<!-- ===================== 28 · COST ===================================== -->
+<section class="slide" data-act="V · Evidence" data-title="What it costs" data-min="3" data-tier="2">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>The compute bill</span></p>
+  <h2>Speed: about one extra forward pass</h2>
+  <div class="tablewrap">
+    <table class="res">
+      <thead><tr>
+        <th>Method</th><th>2D NFE</th><th>Shelf NFE</th><th>3D-Orient NFE</th>
+        <th>vs. unguided</th><th>Hardware s/step</th>
+      </tr></thead>
+      <tbody>
+        <tr><td><span class="swatch" style="background:var(--slate)"></span>Unguided (prior)</td><td>456</td><td>240</td><td class="best">135</td><td class="dim">1.0×</td><td class="best">0.069</td></tr>
+        <tr><td><span class="swatch" style="background:var(--red)"></span>Gradient guidance</td><td>485</td><td>240</td><td>160</td><td>1.0×</td><td>0.139</td></tr>
+        <tr><td><span class="swatch" style="background:var(--teal)"></span>Trust sampling</td><td>3161</td><td>1242</td><td>1358</td><td class="flag">5.2×</td><td>0.135</td></tr>
+        <tr><td><span class="swatch" style="background:var(--slate)"></span>Rejection</td><td>6732</td><td>8676</td><td class="dim">—</td><td class="flag">36.2×</td><td class="dim">—</td></tr>
+        <tr><td><span class="swatch" style="background:var(--purple)"></span>Projection</td><td class="best">112</td><td>240</td><td class="dim">—</td><td>1.0×</td><td>0.099</td></tr>
+        <tr class="ours"><td><span class="swatch" style="background:var(--blue)"></span>CS-Pi (ours)</td><td>283</td><td>285</td><td>210</td><td>1.19×</td><td>0.143</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tiles" style="margin-top:14px">
+    <div class="tile ours"><div class="n">+19%</div><div class="l">NFE over doing nothing</div><div class="s">285 vs 240 — about one extra draw on average</div></div>
+    <div class="tile"><div class="n" style="color:var(--good)">4.4×</div><div class="l">cheaper than trust</div><div class="s">285 vs 1242</div></div>
+    <div class="tile"><div class="n" style="color:var(--good)">30×</div><div class="l">cheaper than rejection</div><div class="s">285 vs 8676</div></div>
+    <div class="tile warnt"><div class="n">2.1×</div><div class="l">hardware step latency</div><div class="s">0.143 s vs 0.069 s — still ~7 Hz on the arm</div></div>
+  </div>
+  <div class="notes">
+    <div class="timing">~3 min</div>
+    <p><strong>Read the "vs. unguided" column down and the methods sort themselves into three
+      tiers:</strong> free (guidance, projection — they add no flow calls), nearly free (us, at
+      1.19×), and unaffordable (trust at 5.2×, rejection at 36.2×).</p>
+    <p><strong>The 285-vs-240 number is the surprising one</strong> and deserves the emphasis:
+      on average the loop converges in about <em>one extra forward pass</em>. That's the
+      empirical evidence that the renoise-depth feedback law is doing real work — a naive
+      fixed-strength resampler would need many more, and rejection needs 36×.</p>
+    <p>The comparison that makes the point: <strong>rejection and CS-Pi are after the same
+      thing</strong> — a feasible draw that's genuinely from the policy. Rejection redraws from
+      scratch and pays 8676. We redraw from a good starting point and pay 285. Same target,
+      30× apart.</p>
+    <p><strong>Be straight about the latency column, because it's the one a roboticist feels:</strong>
+      we roughly double per-step wall-clock, 0.069 s → 0.143 s. Both "+19% NFE" and "2.1× latency"
+      are true; don't quote only the flattering one. It's still ~7 Hz and it ran on the arm.</p>
+    <div class="qa"><b>Expect:</b> "why is latency 2.1× when NFE is only 1.19×?" Because the
+      projection solve and the renoise arithmetic aren't free, and the hardware loop carries the
+      perception pipeline too. Note that guidance and trust also land near 0.135–0.139 s despite
+      very different NFE, which tells you the per-step overhead is dominated by things other than
+      flow calls on real hardware.</div>
+    <div class="flag"><b>From the rebuttal:</b> Fig. 2 has full average wall-clock per rollout on
+      a log scale across all methods. If you want the single cleanest compute slide, drop that
+      figure in here — it's stronger than this NFE table because it prices trust sampling's inner
+      iterations and rejection's redraws in seconds rather than flow calls.</div>
+  </div>
+</section>
+
+<!-- ===================== 29 · LIMITATIONS ============================== -->
+<section class="slide" data-act="VI · Limits & questions" data-title="Limitations (the three I'd attack)" data-min="3" data-tier="1">
+  <p class="kicker"><span class="act">VI · Limits &amp; open questions</span><span class="rule"></span><span>Say these before the audience does</span></p>
+  <h2>Where I'd attack this paper</h2>
+  <div class="split">
+    <div class="col">
+      <ul class="pts tight neg">
+        <li><b>We are not the safest method.</b>
+          <span class="sub">Shelf collision 6.7% vs projection's 4.0% and guidance's 0.0%. Our claim is safe-AND-successful, not minimal collision — but that's a choice of metric and it should be argued, not assumed.</span></li>
+        <li><b>Projection beats us on raw 2D feasibility.</b>
+          <span class="sub">100.0 vs 99.0. It's feasible by construction; it cannot lose that column.</span></li>
+        <li><b>On 3D-Orient our log-likelihood is below the prior's.</b>
+          <span class="sub">10.26 vs 13.55. Defensible — the constraint is itself off-distribution — but it does mean "stays in-distribution" is conditional, not absolute.</span></li>
+      </ul>
+    </div>
+    <div class="col">
+      <ul class="pts tight neg">
+        <li><b>You need a projection operator.</b>
+          <span class="sub">Closed-form for boxes, spheres, half-spaces, joint limits, SO(3) targets. For a general non-convex set it is its own optimization problem.</span></li>
+        <li><b>It provably doesn't always converge — and we know when.</b>
+          <span class="sub">If C misses the policy's support, no sampler can return an action that is both feasible and likely. On <code>narrower_passage</code> the projection error falls and then saturates at 2.9, and n stalls at ≈ 0.80. The terminal projection is what keeps that case safe.</span></li>
+        <li><b>Hardware absolute success is 55%.</b>
+          <span class="sub">Best in the comparison, far from solved.</span></li>
+        <li><b>Guidance wins hardware logL.</b>
+          <span class="sub">−464.9 vs our −471.8. Small spread, but it is not our column.</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~4 min · this slide buys more credibility than another result would</div>
+    <p>Deliver these <strong>as your own list</strong>, in your own voice, before anyone raises
+      them. A room that watches you volunteer the weak points stops hunting for hidden ones.</p>
+    <p>Rehearse the two-sentence answer to each:</p>
+    <ul>
+      <li><strong>Collision 6.7%:</strong> guidance's 0.0% comes with 28% goal reach. We trade a
+        small collision increase for 12 points of goal reach over projection. Safe-SR is the
+        metric that prices that trade correctly.</li>
+      <li><strong>2D 99 vs 100:</strong> the question was never whether you can be feasible, but
+        what feasibility costs. Projection pays five log-units.</li>
+      <li><strong>3D-Orient logL:</strong> when the constraint is off-distribution, there is no
+        in-distribution feasible action. We depart only as far as forced — and the max-EE-step
+        column shows we stay smooth while the baselines don't.</li>
+      <li><strong>Non-convergence:</strong> don't concede this vaguely — we can name the regime.
+        It's exactly when C misses the policy's support, and in that regime the question is
+        ill-posed for <em>every</em> sampler, not just ours. The terminal projection keeps it
+        safe; what it can't do is make it likely.</li>
+    </ul>
+    <div class="flag">Don't over-apologise. Name each one, give the one-line answer, move on.
+      Dwelling turns an honest limitation into a perceived fatal flaw.</div>
+  </div>
+</section>
+
+<!-- ===================== 30 · OPEN QUESTIONS =========================== -->
+<section class="slide" data-act="VI · Limits & questions" data-title="Open questions for the group" data-min="3" data-tier="1">
+  <p class="kicker"><span class="act">VI · Limits &amp; open questions</span><span class="rule"></span><span>Where I actually want your help</span></p>
+  <h2>Open questions</h2>
+  <div class="split">
+    <div class="col">
+      <ul class="pts tight q">
+        <li><b>A contraction rate for δ.</b>
+          <span class="sub">We know the failure regime (C outside the support) and we have Prop. 1's window law. What conditions on the prior and C would give an actual rate — and does k = 20 fall out of them rather than being swept?</span></li>
+        <li><b>Is the mode-switching story measurable?</b>
+          <span class="sub">Prop. 1 says a wide window spans multiple modes. Can we show it directly — cluster the routes and count switches as a function of σ<sub>w</sub> = δ/k?</span></li>
+        <li><b>Soft and probabilistic constraints.</b>
+          <span class="sub">A proximal step covers some of it. What is the anchor for a chance constraint, where "the nearest feasible point" isn't defined?</span></li>
+      </ul>
+    </div>
+    <div class="col">
+      <ul class="pts tight q">
+        <li><b>Multiple constraints at once.</b>
+          <span class="sub">Compose the projections (Dykstra), alternate them, or project onto the intersection? Does the residual still mean the right thing?</span></li>
+        <li><b>Why does k = 20 transfer so well?</b>
+          <span class="sub">One value costs ≤ 4.3 pp across four benchmarks with different action dimensions and constraint units. Since σ<sub>w</sub> = δ/k, k carries the units of δ — so that robustness is surprising and worth explaining.</span></li>
+        <li><b>Is logL 18.0 &gt; 15.0 selection or collapse?</b>
+          <span class="sub">Alignment of C with a high-density region explains the direction, but not whether diversity survives. We need a diversity measure to settle it.</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~5 min · this is the discussion; leave real time for it</div>
+    <p>These are genuinely open, and a lab meeting is the right room for them. Don't present
+      them as rhetorical — pause after the list and let people pick one.</p>
+    <p><strong>The two most likely to start a real conversation</strong> are the contraction proof
+      (someone in the room probably knows the right fixed-point argument) and the
+      diversity-vs-selection question, which is the sharpest objection anyone could make to the
+      18.0 &gt; 15.0 result.</p>
+    <p><strong>The k question is now a genuinely interesting one rather than a defensive one.</strong>
+      Proposition 1 gives σ<sub>w</sub> = δ/k, so k carries δ's units. That makes a single k = 20
+      transferring across four benchmarks — different action dimensions, different constraint
+      units, ≤ 4.3 pp against per-benchmark tuning — a real phenomenon that wants an explanation,
+      not just a convenient empirical fact. Someone in the room may have one.</p>
+  </div>
+</section>
+
+<!-- ===================== 31 · TAKEAWAY ================================= -->
+<section class="slide statement" data-act="VI · Limits & questions" data-title="Takeaway" data-min="1" data-tier="1">
+  <p class="kicker" style="position:absolute;top:52px;left:88px;right:88px"><span class="act">VI · Limits &amp; open questions</span><span class="rule"></span><span>Takeaway</span></p>
+  <blockquote>Project to learn <b>where to go.</b><br>Resample to stay <b>who you are.</b></blockquote>
+  <div class="attrib" style="margin-top:32px">
+    Any constraint you can project onto is now enforceable on any pretrained flow policy,
+    at deployment, for ~19% extra compute and no tuning.<br><br>
+    73.3% shelf safe-success · logL 18.0 above the prior's 15.0 · 55% zero-shot on hardware
+  </div>
+  <div class="notes">
+    <div class="timing">~1 min, then open the floor</div>
+    <p>Land the same idea you turned on in Act III, compressed to two lines. Then give the
+      practical statement — what someone in this room could actually take away and use:
+      <strong>if you have a flow policy and you can project onto your constraint, you can have
+      this by Friday.</strong></p>
+    <p>Then stop and take questions. If the room is quiet, restart it with the contraction
+      question or the diversity question from the previous slide — those two always get someone
+      talking.</p>
+  </div>
+</section>
+
+<!-- ===================== 32 · APPENDIX: ROLLOUTS ======================= -->
+<section class="slide" data-act="Appendix" data-title="Appendix: extra head-to-head rollouts" data-min="0" data-tier="4">
+  <p class="kicker"><span class="act">Appendix</span><span class="rule"></span><span>Spheres env · out-of-distribution layout</span></p>
+  <h2>Backup: the Spheres environment, in and out of distribution</h2>
+  <figure class="fig">
+    <img src="../viz/spheres_env_gifs/out_of_distribution_EnvSpheres3DExtraObjectsV00/amr_vs_guidance_sample01.gif" alt="Side-by-side rollout comparing CS-Pi and gradient guidance in an out-of-distribution spheres environment">
+    <figcaption>Side-by-side rollout in the Spheres environment with extra objects added at
+      deployment. <b>CS-Pi scores 1.00 in-distribution and 0.91 out-of-distribution</b>, against
+      0.06–0.24 out-of-distribution for the three barrier samplers.</figcaption>
+  </figure>
+  <div class="notes">
+    <div class="timing">Backup — for "does this generalise?" or for the CBF discussion</div>
+    <p>Two uses for this slide.</p>
+    <p><strong>1. Scene-level generalisation.</strong> The question <em>"does this work when the
+      scene itself is out of distribution, not just the constraint?"</em> is a harder one than the
+      paper's main claim, and Spheres OOD is the answer: 0.91.</p>
+    <p><strong>2. It's the strongest evidence for the mode-switching mechanism.</strong> Look at
+      the spread on the CBF table: in-distribution the barrier methods reach 0.36–0.62; out of
+      distribution they collapse to 0.06–0.24, while we go 1.00 → 0.91. Extra objects block more
+      modes, and blocking modes is precisely what a velocity correction cannot handle and a
+      resample can.</p>
+  </div>
+</section>
+
+<!-- ===================== 33 · APPENDIX: VERIFY ========================= -->
+<section class="slide" data-act="Appendix" data-title="Appendix: claims to verify before presenting" data-min="0" data-tier="4">
+  <p class="kicker"><span class="act">Appendix</span><span class="rule"></span><span>Presenter checklist — delete before the talk</span></p>
+  <h2>Check these against the paper before you present</h2>
+  <div class="split">
+    <div class="col">
+      <ul class="pts tight q">
+        <li><b>The stale-number check — do this one first.</b>
+          <span class="sub">The rebuttal records a versioning error: 25.7% should be 43.7%, and the supplementary is the correct version. Confirm no figure in this deck is from the stale version.</span></li>
+        <li><b>The full guidance α sweep.</b>
+          <span class="sub">The frontier chart draws a line between two measured endpoints. If the supplementary has the intermediate points, add them to the <code>FRONTIER</code> array — a measured curve beats an interpolated line.</span></li>
+        <li><b>Fig. 2 wall-clock per rollout.</b>
+          <span class="sub">Worth pasting into the speed slide; it prices trust and rejection in seconds rather than NFE.</span></li>
+      </ul>
+    </div>
+    <div class="col">
+      <ul class="pts tight q">
+        <li><b>The projection operator's exact form</b> for the box constraint, and the cost of
+          the solve per chunk.</li>
+        <li><b>The 2D benchmark's proper name.</b>
+          <span class="sub">The site's data key is <code>d3il</code>, suggesting the D3IL avoidance task.</span></li>
+        <li><b>Hardware logL semantics</b> — and whether guidance's −464.9 is within noise over 20 trials.</li>
+        <li><b>Claim scoping.</b>
+          <span class="sub">Per the rebuttal, "closest in every setting" becomes "closest <em>among constraint-satisfying samplers</em>." Keep the talk's phrasing inside that scope.</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">Not part of the talk — delete before presenting</div>
+    <p>The rebuttal resolved most of what was originally on this list: <strong>k = 20 at ≤ 4.3 pp
+      against per-benchmark tuning</strong>, the Proposition 1 window law, the terminal-projection
+      statistics, the in-support explanation, and the Spheres numbers are all now in the deck as
+      fact rather than inference. What's left here is genuinely unresolved.</p>
+    <p><strong>The stale-number item is the one that actually matters.</strong> A versioning error
+      is already documented; a wrong number on a slide in front of your own lab is a bad way to
+      find a second one.</p>
+    <p><strong>On claim scoping:</strong> the deck already respects it — the 2D table shows
+      rejection (+1.71) and the unguided prior (+1.65) beating us on raw log-likelihood, and the
+      in-distribution claim there is made on fully-in-support (0.857, genuinely best) rather than
+      on logL. Keep it that way when you edit.</p>
+  </div>
+</section>
+
+</div></div>
+
+<div id="rail">
+  <button type="button" id="btnTier" class="tierchip">essential · 43 min</button>
+  <span class="actname" id="railAct">—</span>
+  <span class="segs" id="railSegs"></span>
+  <span class="cnt" id="railCnt">1 / 1</span>
+  <button type="button" id="btnNotes">N notes</button>
+  <button type="button" id="btnOv">O overview</button>
+  <button type="button" id="btnHelp">?</button>
+</div>
+
+<aside id="notes">
+  <h4 id="nAct">—</h4>
+  <p class="ntitle" id="nTitle">—</p>
+  <div class="timing" id="nTiming"></div>
+  <div class="ncontent" id="nBody"></div>
+</aside>
+
+<div id="overview"></div>
+
+<div id="help"><div class="card">
+  <h3>Keys</h3>
+  <dl>
+    <dt>→ ␣ ↓</dt><dd>Next slide</dd>
+    <dt>← ↑</dt><dd>Previous slide</dd>
+    <dt>Home / End</dt><dd>First / last slide</dd>
+    <dt>C</dt><dd>Cycle talk length: essential 43 min → full 72 min → deep dive 85 min</dd>
+    <dt>N</dt><dd>Toggle speaker notes</dd>
+    <dt>O</dt><dd>Slide overview grid</dd>
+    <dt>F</dt><dd>Fullscreen</dd>
+    <dt>R</dt><dd>Replay media on this slide</dd>
+    <dt>Esc</dt><dd>Close overlay</dd>
+  </dl>
+</div></div>
+
+<script>
+(function(){
+  "use strict";
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var stage  = document.getElementById('stage');
+  var deck   = document.getElementById('deck');
+  var railSegs = document.getElementById('railSegs');
+  var railAct  = document.getElementById('railAct');
+  var railCnt  = document.getElementById('railCnt');
+  var notesEl  = document.getElementById('notes');
+  var ovEl     = document.getElementById('overview');
+  var helpEl   = document.getElementById('help');
+  var cur = 0;
+
+  // Notes are authored inside each slide; lift them out so they never render on
+  // the slide. The authored .timing line starts with its own minute estimate,
+  // which the panel now prints from data-min — strip the duplicate and keep only
+  // the delivery cue that follows it.
+  var noteHTML = slides.map(function(s){
+    var n = s.querySelector('.notes');
+    if (!n) return '<p>No notes for this slide.</p>';
+    var t = n.querySelector('.timing');
+    if (t) {
+      var cue = t.textContent.replace(/^\s*[~≈]?\s*[\d.]+\s*min\s*(·\s*)?/i, '').trim();
+      if (cue) { t.className = 'cue'; t.textContent = cue; }
+      else { t.parentNode.removeChild(t); }
+    }
+    var html = n.innerHTML;
+    n.parentNode.removeChild(n);
+    return html;
+  });
+
+  // remember original media sources so we can restart GIFs on slide entry
+  slides.forEach(function(s){
+    s.querySelectorAll('img').forEach(function(img){ img.dataset.osrc = img.getAttribute('src'); });
+  });
+
+  // ---- path tiers --------------------------------------------------------
+  // Every slide carries data-min (its budget) and data-tier:
+  //   1 essential (~43 min, fits a 45-minute slot) · 2 full talk (~72 min)
+  //   3 deep dive (~85 min) · 4 appendix, always reachable, never timed.
+  // "C" cycles the path; the rail shows which one is live and how long it runs.
+  var TIER_NAME = {1:'essential', 2:'full talk', 3:'deep dive'};
+  var level = 1, order = [], pos = 0, segs = [], cards = [];
+  function tierOf(s){ return parseInt(s.dataset.tier, 10) || 2; }
+  function minsOf(s){ return parseFloat(s.dataset.min) || 0; }
+
+  function buildPath(){
+    order = [];
+    slides.forEach(function(s,i){ if (tierOf(s) <= level) order.push(i); });
+    slides.forEach(function(s,i){ if (tierOf(s) === 4) order.push(i); });
+
+    railSegs.innerHTML = '';
+    ovEl.innerHTML = '';
+    segs = []; cards = [];
+
+    order.forEach(function(abs, k){
+      var s = slides[abs], mins = minsOf(s), tier = tierOf(s);
+
+      var seg = document.createElement('span');
+      seg.className = 'seg';
+      seg.title = (k+1) + '. ' + (s.dataset.title || '');
+      railSegs.appendChild(seg);
+      segs.push(seg);
+
+      var card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'ovcard tier-' + tier;
+      card.innerHTML = '<span class="n"></span><span class="t"></span>' +
+                       '<span class="a"><span class="tier"></span><span class="mins"></span></span>';
+      card.querySelector('.n').textContent = String(k+1).padStart(2,'0');
+      card.querySelector('.t').textContent = s.dataset.title || '';
+      card.querySelector('.a .tier').textContent =
+        tier === 4 ? 'backup' : (s.dataset.act || '');
+      card.querySelector('.a .mins').textContent = mins ? ('  ' + mins + ' min') : '';
+      card.addEventListener('click', function(){ closeOverlays(); go(k); });
+      ovEl.appendChild(card);
+      cards.push(card);
+    });
+
+    var total = order.reduce(function(a, abs){ return a + minsOf(slides[abs]); }, 0);
+    document.getElementById('btnTier').textContent =
+      TIER_NAME[level] + ' · ' + Math.round(total) + ' min';
+  }
+
+  function cycleLevel(){
+    var abs = cur;
+    level = level === 3 ? 1 : level + 1;
+    buildPath();
+    var k = order.indexOf(abs);
+    if (k < 0) {                     // this slide isn't on the new path
+      k = 0;                         // fall back to the nearest earlier one
+      for (var j = 0; j < order.length; j++) if (order[j] <= abs) k = j;
+    }
+    go(k);
+  }
+
+  // ---- scale to fit ------------------------------------------------------
+  function fit(){
+    var r = deck.getBoundingClientRect();
+    var s = Math.min((r.width - 40) / 1280, (r.height - 56) / 720);
+    stage.style.setProperty('--s', Math.max(0.2, s));
+  }
+  window.addEventListener('resize', fit);
+
+  // ---- media control: only the visible slide plays ------------------------
+  function media(i, action){
+    var s = slides[i]; if (!s) return;
+    s.querySelectorAll('video').forEach(function(v){
+      if (action === 'play') { v.currentTime = 0; var p = v.play(); if (p && p.catch) p.catch(function(){}); }
+      else v.pause();
+    });
+    if (action === 'play') {
+      // reassigning src restarts an animated GIF from frame 0
+      s.querySelectorAll('img').forEach(function(img){
+        if (img.dataset.osrc && /\.gif(\?|$)/i.test(img.dataset.osrc)) {
+          var o = img.dataset.osrc; img.setAttribute('src',''); img.setAttribute('src', o);
+        }
+      });
+    }
+  }
+
+  // ---- navigation --------------------------------------------------------
+  function go(k){
+    k = Math.max(0, Math.min(order.length - 1, k));
+    var abs = order[k];
+    if (abs !== cur) media(cur, 'pause');
+    slides[cur].classList.remove('on');
+    cur = abs; pos = k;
+    slides[cur].classList.add('on');
+
+    segs.forEach(function(sg,j){
+      sg.className = 'seg' + (j < pos ? ' done' : '') + (j === pos ? ' cur' : '');
+    });
+    cards.forEach(function(c,j){ c.classList.toggle('cur', j === pos); });
+
+    var s = slides[cur], tier = tierOf(s), mins = minsOf(s);
+    railAct.textContent = s.dataset.act || 'CS-Pi';
+    railCnt.textContent = (pos+1) + ' / ' + order.length;
+    document.getElementById('nAct').textContent   = s.dataset.act || 'CS-Pi';
+    document.getElementById('nTitle').textContent = s.dataset.title || '';
+
+    var elapsed = 0;
+    for (var j = 0; j < pos; j++) elapsed += minsOf(slides[order[j]]);
+    document.getElementById('nTiming').textContent = tier === 4
+      ? 'backup slide · not in any timed path'
+      : '≈ ' + mins + ' min here · ' + Math.round(elapsed) + ' min elapsed · ' +
+        TIER_NAME[tier] + ' tier';
+
+    document.getElementById('nBody').innerHTML = noteHTML[cur];
+    notesEl.scrollTop = 0;
+
+    history.replaceState(null, '', '#' + (cur+1));
+    fit();
+    media(cur, 'play');
+  }
+
+  function closeOverlays(){
+    ovEl.classList.remove('on');
+    helpEl.classList.remove('on');
+  }
+
+  document.addEventListener('keydown', function(e){
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var k = e.key;
+    if (k === 'Escape') { closeOverlays(); return; }
+    if (helpEl.classList.contains('on') && k !== '?') { closeOverlays(); return; }
+    if (k === 'ArrowRight' || k === ' ' || k === 'ArrowDown' || k === 'PageDown') { e.preventDefault(); go(pos+1); }
+    else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp') { e.preventDefault(); go(pos-1); }
+    else if (k === 'Home') { e.preventDefault(); go(0); }
+    else if (k === 'End')  { e.preventDefault(); go(order.length-1); }
+    else if (k === 'c' || k === 'C') { cycleLevel(); }
+    else if (k === 'n' || k === 'N') { toggleNotes(); }
+    else if (k === 'o' || k === 'O') { helpEl.classList.remove('on'); ovEl.classList.toggle('on'); }
+    else if (k === 'r' || k === 'R') { media(cur, 'play'); }
+    else if (k === '?') { ovEl.classList.remove('on'); helpEl.classList.toggle('on'); }
+    else if (k === 'f' || k === 'F') {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+    }
+  });
+
+  function toggleNotes(){
+    var on = notesEl.classList.toggle('on');
+    document.body.classList.toggle('notes-on', on);
+    fit();
+  }
+  document.getElementById('btnNotes').addEventListener('click', toggleNotes);
+  document.getElementById('btnOv').addEventListener('click', function(){ helpEl.classList.remove('on'); ovEl.classList.toggle('on'); });
+  document.getElementById('btnHelp').addEventListener('click', function(){ ovEl.classList.remove('on'); helpEl.classList.toggle('on'); });
+  helpEl.addEventListener('click', function(e){ if (e.target === helpEl) closeOverlays(); });
+
+  document.getElementById('btnTier').addEventListener('click', cycleLevel);
+
+  buildPath();
+  var startAbs = parseInt((location.hash || '').replace('#',''), 10);
+  var k0 = 0;
+  if (isFinite(startAbs) && startAbs > 0) {
+    var abs0 = startAbs - 1;
+    // a deep-linked slide may sit outside the default path; widen until it fits
+    while (order.indexOf(abs0) < 0 && level < 3) { level++; buildPath(); }
+    k0 = Math.max(0, order.indexOf(abs0));
+  }
+  fit();
+  go(k0);
+
+  // =========================================================================
+  // Figure 1: the guidance trade-off frontier (shelf benchmark).
+  // Every point below is measured. To add intermediate points from a full
+  // alpha sweep, push {label, c: collision%, g: goalReach%, s: safeSR%, ...}
+  // onto FRONTIER and set sweep:true so they join the dashed path.
+  // =========================================================================
+  var FRONTIER = [
+    {label:'Unguided prior',   c:82.0, g:72.0, s:3.3,  color:'#6b7c93', dx:0,   dy:-18, anchor:'middle', sweep:true},
+    {label:'Rejection',        c:40.7, g:67.3, s:33.3, color:'#6b7c93', dx:0,   dy:-18, anchor:'middle'},
+    {label:'CS-Pi (ours)',     c:6.7,  g:78.7, s:73.3, color:'#1d6fd4', dx:0,   dy:-20, anchor:'middle', ours:true},
+    {label:'Projection',       c:4.0,  g:66.0, s:62.0, color:'#8b5cf6', dx:16,  dy:1,   anchor:'start'},
+    {label:'Trust sampling',   c:0.7,  g:28.0, s:27.3, color:'#2a9d8f', dx:0,   dy:28,  anchor:'middle'},
+    {label:'Guidance, α tuned',c:0.0,  g:28.0, s:28.0, color:'#e0533d', dx:-14, dy:-26, anchor:'end', sweep:true}
+  ];
+
+  (function(){
+    var svg = document.getElementById('frontierChart');
+    if (!svg) return;
+    var X0 = 74, X1 = 852, Y0 = 26, Y1 = 336;
+    var LOGMAX = Math.log(91);
+    function px(c){ return X1 - (Math.log(1 + c) / LOGMAX) * (X1 - X0); }
+    function py(g){ return Y1 - (g / 100) * (Y1 - Y0); }
+    function el(name, attrs, text){
+      var n = document.createElementNS('http://www.w3.org/2000/svg', name);
+      for (var k in attrs) n.setAttribute(k, attrs[k]);
+      if (text != null) n.textContent = text;
+      svg.appendChild(n);
+      return n;
+    }
+
+    // grid + y axis
+    [0,25,50,75,100].forEach(function(v){
+      el('line', {x1:X0, y1:py(v), x2:X1, y2:py(v), stroke:'#e2e8f2', 'stroke-width':1});
+      el('text', {x:X0-12, y:py(v)+4, 'text-anchor':'end', fill:'#8595ab',
+                  'font-family':'"JetBrains Mono", monospace', 'font-size':12}, v);
+    });
+    // x ticks on the log(1+c) scale
+    [0,1,5,10,25,50,82].forEach(function(v){
+      el('line', {x1:px(v), y1:Y1, x2:px(v), y2:Y1+6, stroke:'#c9d5e6', 'stroke-width':1});
+      el('text', {x:px(v), y:Y1+21, 'text-anchor':'middle', fill:'#8595ab',
+                  'font-family':'"JetBrains Mono", monospace', 'font-size':12}, v);
+    });
+    el('line', {x1:X0, y1:Y1, x2:X1, y2:Y1, stroke:'#c9d5e6', 'stroke-width':1.5});
+
+    // axis titles — three anchored pieces so the arrows never run into the label
+    el('text', {x:X0, y:Y1+42, 'text-anchor':'start', fill:'#8595ab',
+                'font-family':'Inter, sans-serif', 'font-size':12.5}, '← more collisions');
+    el('text', {x:(X0+X1)/2, y:Y1+42, 'text-anchor':'middle', fill:'#4a5a72',
+                'font-family':'Inter, sans-serif', 'font-size':13, 'font-weight':600},
+       'collision rate %  (log scale)');
+    el('text', {x:X1, y:Y1+42, 'text-anchor':'end', fill:'#8595ab',
+                'font-family':'Inter, sans-serif', 'font-size':12.5}, 'collision-free →');
+    el('text', {x:18, y:(Y0+Y1)/2, 'text-anchor':'middle', fill:'#4a5a72',
+                'font-family':'Inter, sans-serif', 'font-size':13, 'font-weight':600,
+                transform:'rotate(-90 18 ' + ((Y0+Y1)/2) + ')'}, 'goal reach %  →');
+
+    // "better" corner
+    el('text', {x:X1-4, y:Y0+14, 'text-anchor':'end', fill:'#1f9d57',
+                'font-family':'Inter, sans-serif', 'font-size':12.5, 'font-weight':700},
+       'safe AND successful');
+
+    // the measured guidance sweep path
+    var sweep = FRONTIER.filter(function(d){ return d.sweep; });
+    if (sweep.length > 1) {
+      el('polyline', {
+        points: sweep.map(function(d){ return px(d.c) + ',' + py(d.g); }).join(' '),
+        fill:'none', stroke:'#e0533d', 'stroke-width':2,
+        'stroke-dasharray':'7 6', 'stroke-linecap':'round', opacity:.75
+      });
+      // label the sweep at 42% along it — clear of every plotted point
+      var a = sweep[0], b = sweep[sweep.length-1], f = 0.42;
+      var mx = px(a.c) + (px(b.c) - px(a.c)) * f;
+      var my = py(a.g) + (py(b.g) - py(a.g)) * f;
+      el('text', {x:mx, y:my - 34, 'text-anchor':'middle', fill:'#c0392b',
+                  'font-family':'Inter, sans-serif', 'font-size':13, 'font-weight':700},
+         'the guidance trade-off');
+      el('text', {x:mx, y:my - 19, 'text-anchor':'middle', fill:'#c0392b',
+                  'font-family':'Inter, sans-serif', 'font-size':12, opacity:.9},
+         'α = 0  →  α tuned');
+    }
+
+    // points, each direct-labelled so identity never depends on colour alone
+    FRONTIER.forEach(function(d){
+      var x = px(d.c), y = py(d.g), r = d.ours ? 9 : 6.5;
+      el('circle', {cx:x, cy:y, r:r + 2.5, fill:'#ffffff'});
+      var c = el('circle', {cx:x, cy:y, r:r, fill:d.color,
+                            stroke:'#ffffff', 'stroke-width':2});
+      var t = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      t.textContent = d.label + ' — collision ' + d.c + '%, goal reach ' + d.g +
+                      '%, safe-success ' + d.s + '%';
+      c.appendChild(t);
+      var lx = x + (d.dx || 0), ly = y + d.dy;
+      var sy = d.dy < 0 ? ly - 15 : ly + 16;   // the safe-SR line stacks outward
+      el('text', {x:lx, y:ly, 'text-anchor':d.anchor, fill:d.ours ? '#0f3f86' : '#14233a',
+                  'font-family':'Inter, sans-serif', 'font-size':13.5,
+                  'font-weight':d.ours ? 700 : 600}, d.label);
+      el('text', {x:lx, y:sy, 'text-anchor':d.anchor,
+                  fill:'#4a5a72', 'font-family':'"JetBrains Mono", monospace',
+                  'font-size':11.5}, 'safe-SR ' + d.s + '%');
+    });
+  })();
+
+  // =========================================================================
+  // Figure 2: Proposition 1. The policy prior seen through a Gaussian window
+  // of width sigma_w = delta/k, at two widths.
+  // =========================================================================
+  (function(){
+    var svg = document.getElementById('windowFig');
+    if (!svg) return;
+    var A0 = -3.2, A1 = 3.2, X0 = 46, X1 = 506;
+    var FEAS = 0.35, ANCHOR = 0.65;
+    function gx(a){ return X0 + (a - A0) / (A1 - A0) * (X1 - X0); }
+    function N(a, mu, sd){ return Math.exp(-(a-mu)*(a-mu) / (2*sd*sd)); }
+    function prior(a){ return 0.62 * N(a, -1.25, 0.40) + 0.52 * N(a, 1.15, 0.36); }
+
+    function el(name, attrs, text, parent){
+      var n = document.createElementNS('http://www.w3.org/2000/svg', name);
+      for (var k in attrs) n.setAttribute(k, attrs[k]);
+      if (text != null) n.textContent = text;
+      (parent || svg).appendChild(n);
+      return n;
+    }
+    function curve(fn, base, h, scale){
+      var pts = [];
+      for (var i = 0; i <= 180; i++){
+        var a = A0 + (A1 - A0) * i / 180;
+        pts.push(gx(a) + ',' + (base - Math.min(1, fn(a) / scale) * h));
+      }
+      return pts;
+    }
+
+    function panel(titleY, top, h, sigma, title, sub, tone){
+      var base = top + h;
+      // title sits above the plot box so it can never collide with the marks
+      el('text', {x:X0, y:titleY, fill:'#14233a', 'font-family':'Inter, sans-serif',
+                  'font-size':13, 'font-weight':700}, title);
+
+      // feasible region
+      el('rect', {x:gx(FEAS), y:top, width:(X1 - gx(FEAS)), height:h,
+                  fill:'#1f9d57', opacity:.055});
+      el('line', {x1:gx(FEAS), y1:top, x2:gx(FEAS), y2:base,
+                  stroke:'#1f9d57', 'stroke-width':1.5, 'stroke-dasharray':'4 4', opacity:.85});
+      el('text', {x:X1 - 2, y:top + 11, 'text-anchor':'end', fill:'#137a3d',
+                  'font-family':'"JetBrains Mono", monospace', 'font-size':10,
+                  'font-weight':700}, 'feasible set C');
+
+      // prior (curves scaled to 0.88h so the top stays clear)
+      el('polyline', {points: curve(prior, base, h * 0.88, 1.14).join(' '), fill:'none',
+                      stroke:'#8595ab', 'stroke-width':1.8, opacity:.85});
+      // window
+      function win(a){ return N(a, ANCHOR, sigma); }
+      el('polyline', {points: curve(win, base, h * 0.88, 1).join(' '), fill:'none',
+                      stroke:tone, 'stroke-width':1.6, 'stroke-dasharray':'5 4', opacity:.7});
+      // product, renormalised to the panel
+      var peak = 0;
+      for (var i = 0; i <= 180; i++){
+        var a = A0 + (A1 - A0) * i / 180;
+        peak = Math.max(peak, prior(a) * win(a));
+      }
+      var prod = curve(function(a){ return prior(a) * win(a); }, base, h * 0.88, peak * 1.02);
+      el('polygon', {points: gx(A0) + ',' + base + ' ' + prod.join(' ') + ' ' + gx(A1) + ',' + base,
+                     fill:tone, opacity:.22});
+      el('polyline', {points: prod.join(' '), fill:'none', stroke:tone, 'stroke-width':2.4});
+
+      // anchor
+      el('line', {x1:gx(ANCHOR), y1:top, x2:gx(ANCHOR), y2:base,
+                  stroke:tone, 'stroke-width':1.2, opacity:.45});
+      el('circle', {cx:gx(ANCHOR), cy:base, r:3.5, fill:tone});
+      el('text', {x:gx(ANCHOR) + 6, y:base - 6, fill:tone,
+                  'font-family':'"JetBrains Mono", monospace', 'font-size':11,
+                  'font-weight':700}, 'ĉ');
+
+      el('line', {x1:X0, y1:base, x2:X1, y2:base, stroke:'#c9d5e6', 'stroke-width':1.2});
+
+      // which mode is which — below the baseline, so nothing overlaps the curves
+      el('text', {x:gx(-1.25), y:base + 14, 'text-anchor':'middle', fill:'#8595ab',
+                  'font-family':'Inter, sans-serif', 'font-size':10.5,
+                  'font-weight':600}, 'blocked mode');
+      el('text', {x:gx(1.15), y:base + 14, 'text-anchor':'middle', fill:'#137a3d',
+                  'font-family':'Inter, sans-serif', 'font-size':10.5,
+                  'font-weight':600}, 'surviving mode');
+      el('text', {x:X0, y:base + 31, fill:'#4a5a72', 'font-family':'Inter, sans-serif',
+                  'font-size':11.5}, sub);
+    }
+
+    // legend: swatch + label, so the key never becomes one long run of text
+    var LEG = [
+      {kind:'line',  color:'#8595ab', dash:'',    label:'policy prior'},
+      {kind:'line',  color:'#1d6fd4', dash:'5 4', label:'Gaussian window'},
+      {kind:'swatch',color:'#1d6fd4', label:'the product we draw from'}
+    ];
+    var lx = X0;
+    LEG.forEach(function(item){
+      if (item.kind === 'line') {
+        el('line', {x1:lx, y1:11, x2:lx + 18, y2:11, stroke:item.color,
+                    'stroke-width':2, 'stroke-dasharray':item.dash});
+      } else {
+        el('rect', {x:lx, y:6, width:18, height:10, fill:item.color, opacity:.28});
+        el('line', {x1:lx, y1:6, x2:lx + 18, y2:6, stroke:item.color, 'stroke-width':2});
+      }
+      var t = el('text', {x:lx + 24, y:15, fill:'#4a5a72',
+                          'font-family':'Inter, sans-serif', 'font-size':11}, item.label);
+      lx += 24 + item.label.length * 5.6 + 20;
+    });
+
+    panel(42, 54, 118, 1.45,
+          'δ large  →  wide window  →  mode switch',
+          'The window spans both modes, so the redraw can leave the blocked one.', '#1d6fd4');
+    panel(232, 244, 118, 0.36,
+          'δ small  →  narrow window  →  refine',
+          'The window sits on the feasible set; the redraw polishes the mode it has.', '#1f9d57');
+  })();
+
+  // =========================================================================
+  // Live CS-Pi loop, ported from js/hero.js. Only animates while its slide is
+  // visible (a hidden slide has clientWidth 0, which would break the layout).
+  // =========================================================================
+  (function(){
+    var canvas = document.getElementById('heroCanvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var elStage = document.getElementById('vizStage');
+    var elDelta = document.getElementById('statDelta');
+    var elN     = document.getElementById('statN');
+    var elIter  = document.getElementById('statIter');
+    var SANS = '600 12px Inter, system-ui, sans-serif';
+    var MONO = '700 12px "JetBrains Mono", ui-monospace, monospace';
+
+    var S = {x:0.13, y:0.50}, G = {x:0.87, y:0.50};
+    var O = {x:0.50, y:0.50, r:0.105};
+    var MARGIN = 0.03, K = 1.0, TAU = 0.012;
+
+    function bezier(t,P){ var u=1-t; return {
+      x: u*u*S.x + 2*u*t*P.x + t*t*G.x,
+      y: u*u*S.y + 2*u*t*P.y + t*t*G.y }; }
+    function controlPoint(off){
+      var mid = {x:(S.x+G.x)/2, y:(S.y+G.y)/2};
+      return {x: mid.x + 0.02, y: mid.y - off};
+    }
+    function penetration(off){
+      var P = controlPoint(off), minD = Infinity, deep = null;
+      for (var i=0;i<=60;i++){
+        var t=i/60, p=bezier(t,P), d=Math.hypot(p.x-O.x, p.y-O.y);
+        if (d<minD){ minD=d; deep=p; }
+      }
+      return { delta: Math.max(0, O.r + MARGIN - minD), deep: deep };
+    }
+    var OFFSET_FEAS = 0;
+    for (var o=0; o<=0.6; o+=0.005){ if (penetration(o).delta <= TAU){ OFFSET_FEAS=o; break; } }
+    var GAIN = 0.90, NPTS = 64, nz1 = [], nz2 = [];
+    for (var i2=0;i2<NPTS;i2++){ nz1.push(Math.random()*2-1); nz2.push(Math.random()*2-1); }
+
+    var PH = {DRAW:'draw', EVAL:'eval', PROJECT:'project', RENOISE:'renoise', DONE:'done'};
+    var DUR = {draw:1300, eval:700, project:1100, renoise:850, done:1700};
+    var st;
+    function nVal(d){ return K/(K + d*6.0); }
+    function ease(t){ return t<0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2; }
+    function reset(){
+      st = { phase:PH.DRAW, t0:performance.now(), iter:1, offset:0, projOffset:0,
+             delta:penetration(0).delta, n:0, denoiseFrom:0 };
+      hud();
+    }
+    function hud(){
+      var names = { draw:'flow ODE · draw clean sample â', eval:'evaluate violation δ',
+                    project:'project â → c (nearest feasible)', renoise:'renoise c to depth n',
+                    done:'feasible ✓' };
+      if (elStage) elStage.textContent = names[st.phase] || '';
+      if (elIter)  elIter.textContent = 'iter ' + st.iter;
+      stats();
+    }
+    function stats(){
+      if (elDelta) elDelta.textContent = 'δ = ' + st.delta.toFixed(3);
+      if (elN) elN.textContent = 'n = k/(k+δ) = ' + (st.delta > TAU ? nVal(st.delta).toFixed(2) : '—');
+    }
+
+    var W=0, Hh=0, PADX=26, SCALE=0, OX=0, OY=0, VSPAN=0.42, lastW=-1;
+    function layout(){
+      var cssW = canvas.clientWidth || 900;
+      var cssH = canvas.clientHeight || Math.round(cssW*0.36);
+      var dpr = Math.max(1, window.devicePixelRatio||1);
+      canvas.width = Math.round(cssW*dpr); canvas.height = Math.round(cssH*dpr);
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      W=cssW; Hh=cssH;
+      var areaY = 44, areaH = Hh - areaY - 12, availW = W - 2*PADX;
+      SCALE = Math.min(availW, areaH/VSPAN);
+      OX = PADX + (availW-SCALE)/2; OY = areaY + areaH/2;
+    }
+    function px(p){ return {x: OX + p.x*SCALE, y: OY + (p.y-O.y)*SCALE}; }
+    function pr(r){ return r*SCALE; }
+    function roundRect(x,y,w,h,r){
+      ctx.beginPath(); ctx.moveTo(x+r,y);
+      ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+      ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+    }
+    function noiseBar(tNow){
+      var x0=PADX, x1=W-PADX, y=20, h=11;
+      var g=ctx.createLinearGradient(x0,0,x1,0);
+      g.addColorStop(0,'#0f3f86'); g.addColorStop(1,'#dbe9fb');
+      ctx.fillStyle=g; roundRect(x0,y,x1-x0,h,6); ctx.fill();
+      ctx.fillStyle='#6b7c93'; ctx.font='11px ui-monospace, monospace'; ctx.textBaseline='middle';
+      ctx.textAlign='left';  ctx.fillText('t=0  noise', x0, y-9);
+      ctx.textAlign='right'; ctx.fillText('clean  t=1', x1, y-9);
+      var mx = x0 + tNow*(x1-x0);
+      ctx.fillStyle='#14233a';
+      ctx.beginPath(); ctx.moveTo(mx,y-3); ctx.lineTo(mx-5,y-11); ctx.lineTo(mx+5,y-11); ctx.closePath(); ctx.fill();
+      ctx.fillRect(mx-1.5,y,3,h);
+      if (st.phase===PH.RENOISE){ ctx.textAlign='center'; ctx.fillText('renoise → n', mx, y+h+9); }
+    }
+    function scene(){
+      var s=px(S), g=px(G), oc=px(O);
+      ctx.strokeStyle='#1f9d57'; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(g.x,g.y,13,0,7); ctx.stroke();
+      ctx.fillStyle='#1f9d57'; ctx.beginPath(); ctx.arc(g.x,g.y,4,0,7); ctx.fill();
+      ctx.fillStyle='#137a3d'; ctx.font=SANS; ctx.textAlign='center'; ctx.textBaseline='bottom';
+      ctx.fillText('goal', g.x, g.y-16);
+      ctx.fillStyle='rgba(224,83,61,.13)'; ctx.strokeStyle='#e0533d'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(oc.x,oc.y,pr(O.r),0,7); ctx.fill(); ctx.stroke();
+      ctx.setLineDash([4,4]); ctx.strokeStyle='rgba(224,83,61,.4)';
+      ctx.beginPath(); ctx.arc(oc.x,oc.y,pr(O.r+MARGIN),0,7); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle='#c0392b'; ctx.textBaseline='middle'; ctx.fillText('obstacle', oc.x, oc.y);
+      ctx.fillStyle='#14233a'; ctx.beginPath(); ctx.arc(s.x,s.y,5,0,7); ctx.fill();
+      ctx.textBaseline='top'; ctx.fillText('start', s.x, s.y+8);
+    }
+    function pathPoints(off, denoise){
+      var P=controlPoint(off), amp=(1-denoise)*0.085, pts=[];
+      for (var i=0;i<=NPTS;i++){
+        var t=i/NPTS, b=bezier(t,P), b2=bezier(Math.min(1,t+0.01),P);
+        var dx=b2.x-b.x, dy=b2.y-b.y, L=Math.hypot(dx,dy)||1;
+        var env=Math.sin(Math.PI*t), k=i%NPTS;
+        var j=amp*env*(0.7*nz1[k] + 0.3*nz2[k]);
+        pts.push({x: b.x + (-dy/L)*j, y: b.y + (dx/L)*j});
+      }
+      return pts;
+    }
+    function strokePath(pts,color,w){
+      ctx.strokeStyle=color; ctx.lineWidth=w; ctx.lineJoin='round'; ctx.lineCap='round';
+      ctx.beginPath();
+      pts.forEach(function(p,i){ var q=px(p); if(i) ctx.lineTo(q.x,q.y); else ctx.moveTo(q.x,q.y); });
+      ctx.stroke();
+    }
+    function projection(off, opts){
+      var pen=penetration(off); if(!pen.deep) return;
+      var deep=px(pen.deep), R=O.r+MARGIN, dxc=pen.deep.x-O.x;
+      var cN = (Math.abs(dxc)<R)
+        ? {x:pen.deep.x, y:O.y - Math.sqrt(R*R - dxc*dxc)}
+        : {x:O.x + Math.sign(dxc)*R, y:O.y};
+      var c=px(cN);
+      if (pen.delta>TAU){
+        ctx.strokeStyle='#1d6fd4'; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+        ctx.beginPath(); ctx.moveTo(deep.x,deep.y); ctx.lineTo(c.x,c.y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle='#c0392b'; ctx.beginPath(); ctx.arc(deep.x,deep.y,4,0,7); ctx.fill();
+      }
+      ctx.fillStyle='#1d6fd4'; ctx.beginPath(); ctx.arc(c.x,c.y,5,0,7); ctx.fill();
+      ctx.font=MONO; ctx.textAlign='left'; ctx.textBaseline='bottom';
+      if (opts.delta && pen.delta>TAU){
+        ctx.fillStyle='#c0392b'; ctx.fillText('δ', (deep.x+c.x)/2+6, (deep.y+c.y)/2);
+      }
+      ctx.fillStyle='#1d6fd4'; ctx.fillText('c', c.x+8, c.y+2);
+      if (opts.label){
+        ctx.font=SANS; ctx.textAlign='center';
+        ctx.fillText('project  â → c', c.x, Math.min(deep.y,c.y)-12);
+      }
+    }
+    function check(){
+      var g=px(G); ctx.strokeStyle='#1f9d57'; ctx.lineWidth=4; ctx.lineCap='round';
+      var cx=g.x+26, cy=g.y-26;
+      ctx.beginPath(); ctx.moveTo(cx-8,cy); ctx.lineTo(cx-2,cy+7); ctx.lineTo(cx+10,cy-9); ctx.stroke();
+    }
+    function advance(){
+      switch(st.phase){
+        case PH.DRAW:
+          st.phase = (penetration(st.offset).delta <= TAU) ? PH.DONE : PH.EVAL; break;
+        case PH.EVAL:
+          st.n = nVal(penetration(st.offset).delta);
+          st.projOffset = st.offset + (OFFSET_FEAS - st.offset)*GAIN;
+          st.phase = PH.PROJECT; break;
+        case PH.PROJECT: st.phase = PH.RENOISE; break;
+        case PH.RENOISE:
+          st.offset = st.projOffset; st.iter += 1; st.denoiseFrom = st.n;
+          st.phase = PH.DRAW; break;
+        case PH.DONE: reset(); return;
+      }
+      st.t0 = performance.now(); hud();
+    }
+    function frame(now){
+      requestAnimationFrame(frame);
+      if (!canvas.clientWidth || !canvas.clientHeight) { lastW = -1; return; }
+      if (canvas.clientWidth !== lastW) { lastW = canvas.clientWidth; layout(); }
+      var prog = Math.min(1, (now - st.t0) / DUR[st.phase]);
+      ctx.clearRect(0,0,W,Hh);
+      var off = st.offset, denoise = 1, barT = 1;
+      if (st.phase===PH.DRAW){ denoise = st.denoiseFrom + (1-st.denoiseFrom)*prog; barT = denoise; }
+      else if (st.phase===PH.PROJECT){ off = st.offset + (OFFSET_FEAS-st.offset)*ease(prog); }
+      else if (st.phase===PH.RENOISE){ off = OFFSET_FEAS; denoise = 1 - prog*(1-st.n); barT = st.n + (1-st.n)*(1-prog); }
+      noiseBar(barT); scene();
+      var feasible = penetration(off).delta <= TAU;
+      strokePath(pathPoints(off,denoise), (st.phase===PH.DONE || feasible) ? '#1f9d57' : '#1d6fd4', 3.2);
+      if (st.phase===PH.EVAL) projection(off,{delta:true});
+      else if (st.phase===PH.PROJECT) projection(off,{delta:true,label:true});
+      else if (st.phase===PH.RENOISE) projection(off,{});
+      else if (st.phase===PH.DONE) check();
+      st.delta = penetration(off).delta;
+      if (st.phase !== PH.DONE) stats();
+      if (prog >= 1) advance();
+    }
+    canvas.addEventListener('click', reset);
+    window.addEventListener('resize', function(){ lastW = -1; });
+    reset(); requestAnimationFrame(frame);
+  })();
+})();
+</script>
+
+</body>
+</html>
