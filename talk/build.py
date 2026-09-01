@@ -30,10 +30,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TALK = ROOT / "talk"
-SRC = TALK / "deck.src.html"
 CACHE = TALK / ".cache"
-OUT_LOCAL = TALK / "index.html"
-OUT_EMBED = TALK / "dist" / "cspi-talk.embed.html"
+
+# Both decks build the same way. Local outputs must sit directly in talk/,
+# because build_local rewrites media tokens to "../<repo path>".
+DECKS = {
+    "long":  (TALK / "deck.src.html",  TALK / "index.html",
+              TALK / "dist" / "cspi-talk.embed.html"),
+    "short": (TALK / "short.src.html", TALK / "short.html",
+              TALK / "dist" / "cspi-talk-20min.embed.html"),
+}
 
 TOKEN = re.compile(r"\{\{M:([^}]+)\}\}")
 
@@ -195,32 +201,45 @@ def build_embed(src: str) -> str:
     return out
 
 
-def main():
-    if not SRC.exists():
-        sys.exit(f"missing source deck: {SRC}")
-    src = SRC.read_text(encoding="utf-8")
+def build_deck(which: str) -> int:
+    src_file, out_local, out_embed = DECKS[which]
+    if not src_file.exists():
+        sys.exit(f"missing source deck: {src_file}")
+    src = src_file.read_text(encoding="utf-8")
 
-    OUT_LOCAL.write_text(build_local(src), encoding="utf-8")
-    log(f"\nwrote {OUT_LOCAL.relative_to(ROOT)}  ({OUT_LOCAL.stat().st_size/1024:.0f}K)")
-    log("  present with:  python3 -m http.server 8000   ->  localhost:8000/talk/")
+    out_local.write_text(build_local(src), encoding="utf-8")
+    log(f"\nwrote {out_local.relative_to(ROOT)}  ({out_local.stat().st_size/1024:.0f}K)")
+    log(f"  present with:  python3 -m http.server 8000   ->  "
+        f"localhost:8000/talk/{'' if out_local.name == 'index.html' else out_local.name}")
 
     if "--local" in sys.argv:
-        return
+        return 0
 
-    try:
-        import PIL  # noqa: F401
-    except ImportError:
-        sys.exit("\nembed build needs Pillow:  pip install Pillow   (or run with --local)")
-
-    OUT_EMBED.parent.mkdir(parents=True, exist_ok=True)
-    OUT_EMBED.write_text(build_embed(src), encoding="utf-8")
-    size = OUT_EMBED.stat().st_size
-    log(f"\nwrote {OUT_EMBED.relative_to(ROOT)}  ({size/1024/1024:.2f} MB)")
+    out_embed.parent.mkdir(parents=True, exist_ok=True)
+    out_embed.write_text(build_embed(src), encoding="utf-8")
+    size = out_embed.stat().st_size
+    log(f"\nwrote {out_embed.relative_to(ROOT)}  ({size/1024/1024:.2f} MB)")
     pct = 100 * size / BUDGET
     if size > BUDGET:
         log(f"!! OVER the 16 MB Artifact ceiling ({pct:.0f}%) -- raise GIF_SKIP or drop media")
-        sys.exit(1)
+        return 1
     log(f"   {pct:.0f}% of the 16 MB Artifact ceiling")
+    return 0
+
+
+def main():
+    if "--local" not in sys.argv:
+        try:
+            import PIL  # noqa: F401
+        except ImportError:
+            sys.exit("\nembed build needs Pillow:  pip install Pillow   (or run with --local)")
+
+    picked = [d for d in DECKS if f"--{d}" in sys.argv] or list(DECKS)
+    rc = 0
+    for which in picked:
+        log(f"\n=== {which} deck ===")
+        rc |= build_deck(which)
+    sys.exit(rc)
 
 
 if __name__ == "__main__":

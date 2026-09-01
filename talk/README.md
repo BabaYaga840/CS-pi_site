@@ -1,17 +1,49 @@
 # CS-Pi lab talk
 
-A self-contained slide deck with speaker notes, built from the same figures,
+Self-contained slide decks with speaker notes, built from the same figures,
 rollout GIFs and hardware clips as the project page.
+
+**There are two decks, and they are different talks — not the same deck at two
+lengths.**
+
+| Deck | Source | Present from | For |
+|------|--------|--------------|-----|
+| **20-minute cut** | `short.src.html` | `talk/short.html` | A conference or group slot. 17 slides, one path, no tables. |
+| **45-minute lab talk** | `deck.src.html` | `talk/index.html` | A full lab meeting, and the backup material you answer questions from. 50 slides, three selectable lengths. |
+
+The short deck is not a subset of the long one. It follows the rule that a talk
+should build rather than display: the approach is **one abstract pipeline that
+grows across five slides** instead of a finished four-column figure, and every
+result is one message with one comparison — the paper's eight-panel 2D figure is
+cropped into single panels revealed one at a time, and the large results tables
+and the wall-clock chart are dropped entirely in favour of video plus two or
+three numbers. Reach for the long deck when someone asks for the table.
 
 ## Present it
 
 ```bash
 python3 -m http.server 8000     # from the repo root
-# open http://localhost:8000/talk/
+# 20-minute cut:  http://localhost:8000/talk/short.html
+# 45-minute deck: http://localhost:8000/talk/
 ```
 
-`talk/index.html` loads media by relative path, so it runs at full resolution
-with no size ceiling. This is the one to present from.
+Both load media by relative path, so they run at full resolution with no size
+ceiling. These are the ones to present from.
+
+## Time budget, 20-minute cut
+
+| Section | Slides | Runs |
+|---------|--------|------|
+| The problem | 1–3 | ~3 min |
+| Two attempts that fail | 4–6 | ~3.5 min |
+| The turn and the method | 7–10 | ~5.5 min |
+| Does it work | 11–15 | ~5.5 min |
+| Wrap | 16–17 | ~2 min |
+
+19.5 min total, so a 20-minute slot has slack. **If you are past "THE TURN"
+(slide 7) at eight minutes, you are on time.** The rail shows the running
+budget. Slides 9 (the live animation) and 16's middle bullet are the two safe
+things to cut live.
 
 ## Keys
 
@@ -25,10 +57,11 @@ with no size ceiling. This is the one to present from.
 | `F` | Fullscreen |
 | `?` | Key help |
 
-## Talk lengths
+## Talk lengths — 45-minute deck only
 
 Every slide carries a `data-min` budget and a `data-tier`. `C` cycles between
-three paths, and the rail shows which is live and how long it runs:
+three paths, and the rail shows which is live and how long it runs. (The
+20-minute cut has one path; `C` does nothing useful there.)
 
 | Path | Slides | Runs | Adds |
 |------|--------|------|------|
@@ -45,18 +78,31 @@ and rebuild.
 
 ## Build
 
-`talk/deck.src.html` is the single source. Media is referenced with
-`{{M:<repo-relative path>}}` tokens, and `talk/build.py` emits two builds:
+Each deck has one source file. Media is referenced with
+`{{M:<repo-relative path>}}` tokens, and `talk/build.py` emits a local and an
+embedded build for each:
 
 ```bash
-python3 talk/build.py            # both
-python3 talk/build.py --local    # skip the slow embedded build
+python3 talk/build.py                    # both decks, both builds
+python3 talk/build.py --short            # just the 20-minute cut
+python3 talk/build.py --long --local     # skip the slow embedded build
 ```
 
 | Output | What it is |
 |--------|------------|
-| `talk/index.html` | Full document, media as relative paths. Present from this. |
-| `talk/dist/cspi-talk.embed.html` | Body fragment with every asset inlined as a `data:` URI, for publishing as a shareable Artifact. |
+| `talk/short.html` | 20-minute cut, media as relative paths. Present from this. |
+| `talk/index.html` | 45-minute deck, media as relative paths. |
+| `talk/dist/cspi-talk-20min.embed.html` | The short deck with every asset inlined as a `data:` URI, for publishing as an Artifact. |
+| `talk/dist/cspi-talk.embed.html` | The same for the long deck. |
+
+Local outputs have to sit directly in `talk/`, because the local build rewrites
+media tokens to `../<repo path>`.
+
+`short.src.html` was seeded by copying the long deck's engine — CSS, notes
+panel, keyboard handling, rail, overview — and swapping in its own slides plus
+the pipeline renderer. It is now its own source file; there is no generator to
+re-run. The two engines are therefore duplicated, so **a fix to shared engine
+code has to be applied to both files.**
 
 The embedded build has a hard 16 MB ceiling, so GIFs are downscaled to 440 px
 and every 4th frame, and the large PNG filmstrips are re-encoded as JPEG. The
@@ -76,7 +122,13 @@ pip install Pillow
   `<section class="slide">` with `data-act`, `data-title`, `data-min`,
   `data-tier`, and a `<div class="notes">` that is lifted into the notes panel
   at load (it never renders on the slide itself).
-- **The four-column taxonomy** — the `TAXO` array in the deck's script. Act II
+- **The growing pipeline** (20-minute cut) — the `TAXO`-style renderer driven by
+  `<svg data-pipe="N">`, one state per slide: the untouched policy, guidance
+  bending the flow, projection repairing the answer, the turn that cuts the
+  arrow to `execute`, and the closed loop. Boxes keep their coordinates between
+  states so the audience tracks what was added. State 2 (the constraint
+  arriving) exists but no slide uses it.
+- **The four-column taxonomy** (45-minute deck) — the `TAXO` array in the deck's script. Act II
   builds it one column at a time: each slide holds an
   `<svg data-taxo="N">`, which renders the first `N` columns filled in with
   column `N` highlighted, and `data-taxo="5"` renders all four with nothing
@@ -95,6 +147,15 @@ pip install Pillow
   and wall-clock figures (`assets/fig_2d_distributions.png`,
   `assets/fig_wallclock.png`) were extracted from the rebuttal PDF at its
   embedded resolution — re-export from the originals if you have them.
+
+### One gotcha, if you add an SVG figure
+
+Give every `<marker>` (and any other `url(#id)` target) an id that is **unique
+per SVG instance**. A `url(#id)` reference resolves to the first match in the
+whole document, and every slide except the current one is `display:none`, where
+markers do not render at all — so a shared id means arrowheads silently vanish
+on every slide but the first. Both figure renderers suffix their marker ids with
+the diagram's state number for this reason.
 
 Styling follows the project page's tokens (`css/style.css`). The deck commits to
 a single light theme on purpose: every figure, GIF and clip in it has a light

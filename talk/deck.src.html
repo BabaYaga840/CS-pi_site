@@ -2653,11 +2653,17 @@ body.notes-on #deck{right:396px;}
         });
       }
 
+      // Marker ids must be unique per SVG: a url(#id) reference resolves to the
+      // FIRST match in the document, and every other taxonomy SVG lives on a
+      // display:none slide, where its markers do not render at all.
       var defs = el('defs', {});
+      var MK = [];
       ['#c2ccda', '#1d6fd4', '#6b7c93'].forEach(function(c, i){
-        var m = el('marker', {id:'taxoArrow' + i, viewBox:'0 0 8 8', refX:7, refY:4,
+        var id = 'taxoArrow' + upto + '_' + i;
+        var m = el('marker', {id:id, viewBox:'0 0 8 8', refX:7, refY:4,
                               markerWidth:5, markerHeight:5, orient:'auto'}, null, defs);
         el('path', {d:'M0,0 L8,4 L0,8 Z', fill:c}, null, m);
+        MK[i] = 'url(#' + id + ')';
       });
 
       // row labels down the left edge — they turn the columns into a grid
@@ -2701,7 +2707,7 @@ body.notes-on #deck{right:396px;}
           if (ri < ROWS.length - 1){
             el('line', {x1:cx, y1:r.y + r.h, x2:cx, y2:ROWS[ri + 1].y - 5,
                         stroke:on ? '#c2ccda' : '#eef2f7', 'stroke-width':1.4,
-                        'marker-end':on ? 'url(#taxoArrow0)' : 'none'});
+                        'marker-end':on ? MK[0] : 'none'});
           }
         });
 
@@ -2730,7 +2736,7 @@ body.notes-on #deck{right:396px;}
                          ' H' + lx + ' V' + ty + ' H' + (bx - 4),
                       fill:'none', stroke:m.tone, 'stroke-width':1.6,
                       'stroke-dasharray':'4 3',
-                      'marker-end':'url(#taxoArrow' + (m.ret === 'noise' ? 2 : 1) + ')'});
+                      'marker-end':MK[m.ret === 'noise' ? 2 : 1]});
           // paint-order puts a white halo behind the glyphs so the label reads
           // over the dashed line it sits on
           el('text', {x:lx + 4, y:my, fill:m.tone, 'text-anchor':'middle',
