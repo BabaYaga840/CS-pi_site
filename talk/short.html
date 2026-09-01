@@ -208,9 +208,11 @@ table.res .flag{color:var(--bad);font-weight:700;}
 .legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;}
 
 /* ---- sample-space method figure (slides 4-9) ----------------------------- */
-.geo-wrap{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center;}
-.geo{width:100%;max-width:1040px;height:auto;display:block;}
-.geo-wrap.tight .geo{max-width:880px;}
+.figrow{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;gap:26px;}
+.figrow .pipe{width:262px;flex:none;height:auto;display:block;}
+.figrow .geo{flex:1;min-width:0;max-width:820px;height:auto;display:block;}
+.figrow.tight .pipe{width:236px;}
+.figrow.tight .geo{max-width:740px;}
 .recipe{
   display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;flex:none;
   margin:6px 0 0;font-family:var(--mono);font-size:12px;color:var(--ink-faint);
@@ -403,7 +405,9 @@ body.notes-on #deck{right:396px;}
 <section class="slide" data-act="II · Two attempts" data-title="The draw lands in the obstacle" data-min="0.5" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span>The object we get to modify</span></p>
   <h2>The policy draws an action. Then we find out.</h2>
-  <div class="geo-wrap">
+  <div class="figrow">
+    <svg data-pipe="1" class="pipe" viewBox="0 0 320 340" role="img"
+         aria-label="The sampling pipeline as a vertical strip, in the state this slide adds."></svg>
     <svg data-geo="1" class="geo" viewBox="0 0 960 330" role="img"
          aria-label="Action space: the policy's mass sits on two routes, a constraint disc sits on one of them, and the policy's draw lands inside the disc."></svg>
   </div>
@@ -430,7 +434,9 @@ body.notes-on #deck{right:396px;}
 <section class="slide" data-act="II · Two attempts" data-title="Attempt 1: bend the flow" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span style="color:var(--red)">Attempt 1 · gradient guidance</span></p>
   <h2>Bend the velocity field toward feasibility</h2>
-  <div class="geo-wrap">
+  <div class="figrow">
+    <svg data-pipe="3" class="pipe" viewBox="0 0 320 340" role="img"
+         aria-label="The sampling pipeline as a vertical strip, in the state this slide adds."></svg>
     <svg data-geo="2" class="geo" viewBox="0 0 960 330" role="img"
          aria-label="Gradient guidance pushes the draw out of the obstacle, but it lands in the gap between the two routes, where the policy has no mass."></svg>
   </div>
@@ -465,7 +471,9 @@ body.notes-on #deck{right:396px;}
 <section class="slide" data-act="II · Two attempts" data-title="Attempt 2: project the answer" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span style="color:var(--purple)">Attempt 2 · projection</span></p>
   <h2>Draw first, then snap the answer onto the feasible set</h2>
-  <div class="geo-wrap">
+  <div class="figrow">
+    <svg data-pipe="4" class="pipe" viewBox="0 0 320 340" role="img"
+         aria-label="The sampling pipeline as a vertical strip, in the state this slide adds."></svg>
     <svg data-geo="3" class="geo" viewBox="0 0 960 330" role="img"
          aria-label="Projection moves the draw to the nearest feasible point c, a distance delta away. c is on the edge of the obstacle and off the policy's mass."></svg>
   </div>
@@ -496,7 +504,9 @@ body.notes-on #deck{right:396px;}
 <section class="slide" data-act="III · The idea" data-title="THE TURN" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span>The turn</span></p>
   <h2>c is not an action. It is a target.</h2>
-  <div class="geo-wrap">
+  <div class="figrow">
+    <svg data-pipe="5" class="pipe" viewBox="0 0 320 340" role="img"
+         aria-label="The sampling pipeline as a vertical strip, in the state this slide adds."></svg>
     <svg data-geo="4" class="geo" viewBox="0 0 960 330" role="img"
          aria-label="Rejection sampling redraws from noise again and again; most redraws land back in the obstacle, and none of them use c or delta."></svg>
   </div>
@@ -528,7 +538,9 @@ body.notes-on #deck{right:396px;}
 <section class="slide" data-act="III · The idea" data-title="Redraw the policy, biased toward c" data-min="2" data-tier="1">
   <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span style="color:var(--blue)">CS-Pi · one pass</span></p>
   <h2>Redraw the policy through a window centred at c</h2>
-  <div class="geo-wrap tight">
+  <div class="figrow tight">
+    <svg data-pipe="6" class="pipe" viewBox="0 0 320 340" role="img"
+         aria-label="The sampling pipeline as a vertical strip, in the state this slide adds."></svg>
     <svg data-geo="5" class="geo" viewBox="0 0 960 330" role="img"
          aria-label="A Gaussian window centred at c overlaps the policy's mass; the redraw lands in that overlap, on the data and closer to the feasible set."></svg>
   </div>
@@ -571,7 +583,9 @@ body.notes-on #deck{right:396px;}
 <section class="slide" data-act="III · The idea" data-title="Repeat until δ is zero" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span style="color:var(--blue)">CS-Pi · the loop, and k</span></p>
   <h2>Repeat. Every pass lands closer, and every pass is the policy's.</h2>
-  <div class="geo-wrap tight">
+  <div class="figrow tight">
+    <svg data-pipe="7" class="pipe" viewBox="0 0 320 340" role="img"
+         aria-label="The sampling pipeline as a vertical strip, in the state this slide adds."></svg>
     <svg data-geo="6" class="geo" viewBox="0 0 960 330" role="img"
          aria-label="Three passes: draw, project, redraw through a window at c; the window shrinks with delta each pass, and the third draw is feasible and on the policy's mass."></svg>
   </div>
@@ -1124,6 +1138,154 @@ body.notes-on #deck{right:396px;}
 
 
   // =========================================================================
+  // The sampler, as a pipeline strip beside the sample-space figure on slides
+  // 4-9. Stacked vertically so it fits the side of a slide at a readable size;
+  // the return arrow up the left edge is the renoise. Boxes hold their row
+  // from one state to the next, and execute drops one row when the
+  // projection stage appears, so the audience sees what was added.
+  //
+  //   1  the policy, untouched        noise -> flow -> â -> execute
+  //   3  attempt 1: bend the flow     -α ∇C pushed into every flow step
+  //   4  attempt 2: repair the answer project, then execute c
+  //   5  the turn                     keep the projection, cut the execute
+  //   6  the loop                     renoise to n and re-run
+  //   7  the loop, repeated           until δ ≈ 0, then execute
+  // =========================================================================
+  (function(){
+    var svgs = document.querySelectorAll('svg[data-pipe]');
+    if (!svgs.length) return;
+
+    var SVGNS = 'http://www.w3.org/2000/svg';
+    var SOFT = '#4a5a72', FAINT = '#8595ab', LINE = '#c9d5e6';
+    var RED = '#e0533d', PURPLE = '#8b5cf6', BLUE = '#1d6fd4', GOOD = '#1f9d57';
+    var BX = 62, BW = 170, BH = 42, CX = BX + BW / 2;
+    var ROW = {noise:28, flow:94, action:160, fix:226, exec:292};
+
+    function render(svg){
+      var st = parseInt(svg.dataset.pipe, 10) || 1;
+      var execY = st <= 3 ? ROW.fix : ROW.exec;
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+      function el(name, attrs, text, parent){
+        var n = document.createElementNS(SVGNS, name);
+        for (var k in attrs) n.setAttribute(k, attrs[k]);
+        if (text != null) n.textContent = text;
+        (parent || svg).appendChild(n);
+        return n;
+      }
+      function lines(arr, cx, cy, fill, size, weight){
+        var lh = size + 3, top = cy - (arr.length - 1) * lh / 2 + size / 3;
+        arr.forEach(function(t, i){
+          el('text', {x:cx, y:top + i * lh, 'text-anchor':'middle', fill:fill,
+                      'font-family':'Inter, sans-serif', 'font-size':size,
+                      'font-weight':weight || 500}, t);
+        });
+      }
+      function box(y, txt, tone, soft, dashed){
+        el('rect', {x:BX, y:y, width:BW, height:BH, rx:8,
+                    fill:soft || '#fff', stroke:tone || LINE,
+                    'stroke-width':tone ? 1.8 : 1.2,
+                    'stroke-dasharray':dashed ? '5 4' : 'none'});
+        lines(txt, CX, y + BH / 2, tone || SOFT, txt.length > 1 ? 12 : 13, tone ? 600 : 500);
+      }
+      function down(y0, y1, tone, dashed){
+        el('line', {x1:CX, y1:y0 + BH + 3, x2:CX, y2:y1 - 8, stroke:tone || '#c2ccda',
+                    'stroke-width':1.8, 'stroke-dasharray':dashed ? '4 4' : 'none',
+                    'marker-end':dashed ? 'none' : mk(tone)});
+      }
+      function mono(attrs, text){
+        return el('text', Object.assign({'font-family':'"JetBrains Mono", monospace',
+                                         'font-weight':700, stroke:'#fff', 'stroke-width':3.5,
+                                         'paint-order':'stroke', 'stroke-linejoin':'round'},
+                                        attrs), text);
+      }
+
+      // Marker ids must be unique per SVG: a url(#id) reference resolves to the
+      // FIRST match in the document, and every other pipeline strip lives on a
+      // display:none slide, where its markers do not render at all.
+      var defs = el('defs', {});
+      var MK = {};
+      [['g', '#c2ccda'], [BLUE, BLUE], [RED, RED], [PURPLE, PURPLE]].forEach(function(p, i){
+        var id = 'pipeArrow' + st + '_' + i;
+        var m = el('marker', {id:id, viewBox:'0 0 8 8', refX:7, refY:4,
+                              markerWidth:5, markerHeight:5, orient:'auto'}, null, defs);
+        el('path', {d:'M0,0 L8,4 L0,8 Z', fill:p[1]}, null, m);
+        MK[p[0]] = 'url(#' + id + ')';
+      });
+      function mk(tone){ return MK[tone] || MK.g; }
+
+      mono({x:CX, y:14, 'text-anchor':'middle', fill:FAINT, 'font-size':9.5,
+            'letter-spacing':'.1em'}, 'ONE SAMPLING PASS');
+
+      // ---- the spine, present in every state ------------------------------
+      box(ROW.noise, ['a₀ ~ N(0, I)']);
+      down(ROW.noise, ROW.flow);
+      box(ROW.flow, st === 3 ? ['flow ODE', 'bent at every step'] : ['flow ODE'],
+          st === 3 ? RED : null, st === 3 ? '#fdf1ef' : null);
+      down(ROW.flow, ROW.action);
+      box(ROW.action, st === 3 ? ['â', 'bent toward C'] : ['â', 'a policy sample'],
+          st === 3 ? RED : null, st === 3 ? '#fdf1ef' : null);
+
+      if (st === 1){
+        down(ROW.action, execY);
+        box(execY, ['execute â']);
+      }
+
+      if (st === 3){
+        // the constraint gradient, pushed into the flow from outside
+        [10, 21, 32].forEach(function(dy){
+          el('line', {x1:BX + BW + 36, y1:ROW.flow + dy, x2:BX + BW + 6, y2:ROW.flow + dy,
+                      stroke:RED, 'stroke-width':1.6, 'marker-end':MK[RED]});
+        });
+        mono({x:BX + BW + 42, y:ROW.flow + 25, fill:RED, 'font-size':11}, '−α ∇C');
+        down(ROW.action, execY, RED);
+        box(execY, ['execute', 'a bent sample'], RED, '#fdf1ef');
+      }
+
+      if (st >= 4){
+        down(ROW.action, ROW.fix, PURPLE);
+        var fixTone = st >= 6 ? BLUE : PURPLE;
+        box(ROW.fix, st === 4 ? ['project onto C', 'nearest feasible c']
+                              : ['project onto C', 'to get c and δ'],
+            fixTone, st >= 6 ? '#eaf2fd' : '#f4efff');
+      }
+
+      if (st === 4){
+        down(ROW.fix, ROW.exec, PURPLE);
+        box(ROW.exec, ['execute c'], PURPLE, '#f4efff');
+      }
+
+      if (st === 5){
+        // the arrow to execute is cut: this is the turn
+        down(ROW.fix, ROW.exec, '#c2ccda', true);
+        box(ROW.exec, ['execute'], null, null, true);
+        var my = (ROW.fix + BH + ROW.exec) / 2;
+        el('line', {x1:CX - 9, y1:my - 9, x2:CX + 9, y2:my + 9, stroke:RED,
+                    'stroke-width':3, 'stroke-linecap':'round'});
+        el('line', {x1:CX + 9, y1:my - 9, x2:CX - 9, y2:my + 9, stroke:RED,
+                    'stroke-width':3, 'stroke-linecap':'round'});
+        mono({x:CX + 16, y:my + 4, fill:RED, 'font-size':10.5}, 'not an action');
+      }
+
+      if (st >= 6){
+        down(ROW.fix, ROW.exec, BLUE);
+        box(ROW.exec, ['execute', 'a policy sample'], GOOD, '#e9f7ee');
+        // back into the flow, partway down -- not back to noise
+        var y0 = ROW.fix + BH / 2, y1 = ROW.flow + BH * 0.7, lx = 30;
+        el('path', {d:'M' + BX + ',' + y0 + ' H' + lx + ' V' + y1 + ' H' + (BX - 6),
+                    fill:'none', stroke:BLUE, 'stroke-width':2,
+                    'stroke-dasharray':'5 4', 'marker-end':MK[BLUE]});
+        var my2 = (y0 + y1) / 2;
+        mono({x:lx - 8, y:my2, fill:BLUE, 'font-size':9, 'text-anchor':'middle',
+              transform:'rotate(-90 ' + (lx - 8) + ' ' + my2 + ')'},
+             st === 6 ? 'renoise to n = k/(k+δ)' : 'renoise · until δ ≈ 0');
+      }
+    }
+
+    [].forEach.call(svgs, render);
+  })();
+
+  // =========================================================================
   // The method, built up in sample space. One picture that grows across
   // slides 4-9: the policy's mass (two thin routes -- the data manifold is
   // low-dimensional, which is exactly why a projection leaves it), a
@@ -1204,9 +1366,9 @@ body.notes-on #deck{right:396px;}
       // a two-line label: a bold headline in the tone, a plain line under it
       function label(x, y, head, sub, tone, anchor){
         halo({x:x, y:y, 'text-anchor':anchor || 'start', fill:tone,
-              'font-size':14.5, 'font-weight':700}, head);
-        if (sub) halo({x:x, y:y + 18, 'text-anchor':anchor || 'start', fill:SOFT,
-                       'font-size':13}, sub);
+              'font-size':16, 'font-weight':700}, head);
+        if (sub) halo({x:x, y:y + 19, 'text-anchor':anchor || 'start', fill:SOFT,
+                       'font-size':14.5}, sub);
       }
       function dot(p, tone, faint, r){
         r = r || 7.5;
@@ -1274,12 +1436,12 @@ body.notes-on #deck{right:396px;}
       var ly = 17;
       el('line', {x1:18, y1:ly - 4, x2:42, y2:ly - 4, stroke:'#cfd9e7', 'stroke-width':8,
                   'stroke-linecap':'round'});
-      halo({x:50, y:ly, fill:SOFT, 'font-size':12.5}, 'the policy’s mass — two routes the demonstrations took');
-      el('circle', {cx:395, cy:ly - 4, r:5.5, fill:RED, opacity:.16});
-      el('circle', {cx:395, cy:ly - 4, r:5.5, fill:'none', stroke:RED, 'stroke-width':1.4});
-      halo({x:407, y:ly, fill:SOFT, 'font-size':12.5}, 'the constraint, added at deployment');
-      halo({x:942, y:ly, 'text-anchor':'end', fill:FAINT, 'font-size':12.5},
-           'everything outside the red disc is the feasible set C');
+      halo({x:50, y:ly, fill:SOFT, 'font-size':13.5}, 'the policy’s mass: two routes');
+      el('circle', {cx:300, cy:ly - 4, r:5.5, fill:RED, opacity:.16});
+      el('circle', {cx:300, cy:ly - 4, r:5.5, fill:'none', stroke:RED, 'stroke-width':1.4});
+      halo({x:312, y:ly, fill:SOFT, 'font-size':13.5}, 'the constraint, added at deployment');
+      halo({x:942, y:ly, 'text-anchor':'end', fill:FAINT, 'font-size':13.5},
+           'outside the red disc is the feasible set C');
 
       // ---- state 1: the draw ------------------------------------------------
       if (st === 1){

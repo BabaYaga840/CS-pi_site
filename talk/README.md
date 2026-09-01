@@ -124,6 +124,10 @@ pip install Pillow
   `<section class="slide">` with `data-act`, `data-title`, `data-min`,
   `data-tier`, and a `<div class="notes">` that is lifted into the notes panel
   at load (it never renders on the slide itself).
+- **The pipeline strip** (20-minute cut) — `<svg data-pipe="N">` beside each
+  sample-space figure on slides 4–9: the sampler as stacked boxes, one state
+  per slide (untouched, guidance, projection, the cut arrow, the renoise
+  return, the loop repeated). Execute drops a row when projection appears.
 - **The sample-space method figure** (20-minute cut) — the renderer driven by
   `<svg data-geo="N">`, one state per slide 4–9: the policy's draw lands in the
   obstacle; guidance bends it off every route; projection snaps it to the rim,
