@@ -32,9 +32,9 @@ three paths, and the rail shows which is live and how long it runs:
 
 | Path | Slides | Runs | Adds |
 |------|--------|------|------|
-| **essential** | 18 | ~44 min | The spine. Fits a 45-minute slot with questions. Default. |
-| **full talk** | 32 | ~73 min | Proposition 1, the projection implementation, the speed table, the live loop, per-benchmark rollouts |
-| **deep dive** | 37 | ~85 min | The Jensen-swap bound, the CBF comparison, the guidance α side-by-side, config 2 |
+| **essential** | 23 | ~45 min | The spine: the taxonomy build, the guidance frontier, the method, and the 2D and shelf tasks with their results. Fits a 45-minute slot with questions. Default. |
+| **full talk** | 41 | ~84 min | Proposition 1, the projection implementation, the Spheres and 3D-Orient task introductions, both compute slides, the live loop, per-benchmark rollouts |
+| **deep dive** | 47 | ~98 min | The Jensen-swap bound, the CBF comparison, the guidance α side-by-side, the proposed Spheres support sweep, config 2 |
 
 Slides outside the current path are skipped by the arrow keys but stay reachable
 from the overview, so a deep-dive slide can be pulled up to answer a question.
@@ -76,12 +76,25 @@ pip install Pillow
   `<section class="slide">` with `data-act`, `data-title`, `data-min`,
   `data-tier`, and a `<div class="notes">` that is lifted into the notes panel
   at load (it never renders on the slide itself).
+- **The four-column taxonomy** — the `TAXO` array in the deck's script. Act II
+  builds it one column at a time: each slide holds an
+  `<svg data-taxo="N">`, which renders the first `N` columns filled in with
+  column `N` highlighted, and `data-taxo="5"` renders all four with nothing
+  highlighted (the assembled slide). Editing a column's copy in `TAXO` updates
+  every slide it appears on. Rows are the five stages of one sampling pass, and
+  the two dashed return arrows — rejection to pure noise, CS-Pi to partway down
+  the flow — are the point of the figure; keep them visually comparable.
 - **The guidance frontier chart** — the `FRONTIER` array in the deck's script.
   Only the two ends of the α sweep are measured today; adding intermediate
   points from the supplementary is one line each, and they join the dashed path
   automatically if you set `sweep:true`.
 - **The Proposition 1 figure** and the live CS-Pi loop are drawn in the same
   script block. The loop is ported from `js/hero.js`.
+- **Task introductions** sit immediately before the results they explain, one
+  per benchmark, so no table arrives before its task has been described. The 2D
+  and wall-clock figures (`assets/fig_2d_distributions.png`,
+  `assets/fig_wallclock.png`) were extracted from the rebuttal PDF at its
+  embedded resolution — re-export from the originals if you have them.
 
 Styling follows the project page's tokens (`css/style.css`). The deck commits to
 a single light theme on purpose: every figure, GIF and clip in it has a light

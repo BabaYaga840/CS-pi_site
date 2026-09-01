@@ -285,7 +285,7 @@ body.notes-on #deck{right:396px;}
     <p><strong>Pick your path with <kbd>C</kbd> before you start.</strong> The deck carries three,
       and the rail shows which is live and how long it runs:</p>
     <ul>
-      <li><strong>essential · 43 min · 18 slides</strong> — the spine. Fits a 45-minute slot with
+      <li><strong>essential · 45 min · 18 slides</strong> — the spine. Fits a 45-minute slot with
         time for questions. This is the default.</li>
       <li><strong>full talk · 72 min · 32 slides</strong> — adds Proposition 1, the projection
         implementation, the speed table, the live loop, and the per-benchmark rollouts.</li>
@@ -444,7 +444,7 @@ body.notes-on #deck{right:396px;}
 </section>
 
 <!-- ===================== 6 · IN-DIST IS SAFETY ========================= -->
-<section class="slide" data-act="I · The bind" data-title="In-distribution is a safety property" data-min="3" data-tier="1">
+<section class="slide" data-act="I · The bind" data-title="In-distribution is a safety property" data-min="2.5" data-tier="1">
   <p class="kicker"><span class="act">I · The bind</span><span class="rule"></span><span>The argument that earns the rest of the talk</span></p>
   <h2>In-distribution is a <em>safety</em> property, not a statistic</h2>
   <p class="dek">Gradient guidance on the 7-DoF shelf task achieves the
@@ -477,40 +477,205 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 7 · FOUR WAYS ================================= -->
-<section class="slide" data-act="II · Why samplers fail" data-title="Four ways to enforce a constraint" data-min="2" data-tier="1">
-  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span>Taxonomy</span></p>
-  <h2>Four ways to enforce a constraint at inference</h2>
-  <figure class="fig">
-    <img src="{{M:assets/concept.png}}" alt="Four inference-time constraint enforcement strategies: gradient guidance, projection, rejection, and CS-Pi">
-    <figcaption><b>Inference-time constraint enforcement on a flow-matching policy.</b>
-      Gradient guidance steers each ODE step by the constraint gradient at an estimate of the
-      final sample. Projection runs the unmodified flow and snaps the endpoint onto the feasible
-      set. Rejection redraws complete samples until one is feasible. CS-Pi runs the flow,
-      projects, and renoises to a depth set by the residual δ, then re-runs.</figcaption>
-  </figure>
+<!-- ===================== 7 · TAXONOMY, COLUMN 1 ======================== -->
+<section class="slide" data-act="II · Why samplers fail" data-title="Column 1: gradient guidance" data-min="1" data-tier="1">
+  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span>Taxonomy · 1 of 4</span></p>
+  <h2>There are only so many places to intervene</h2>
+  <div class="split wide-r">
+    <div class="col">
+      <p class="dek">One sampling pass has five stages. Every inference-time constraint method
+        is just a choice of <strong>which stage to touch</strong>.</p>
+      <h3 class="sub" style="color:var(--red)">Gradient guidance touches the flow itself</h3>
+      <ul class="pts tight neg">
+        <li>At every ODE step, form a one-step estimate x̂₀ of the clean action and add
+          −α∇C(x̂₀) to the velocity.</li>
+        <li>The trajectory never runs unmodified, so <strong>the endpoint is not a draw from the
+          policy</strong> — it is a draw from a bent version of it.</li>
+      </ul>
+      <div class="callout neg">Executes: a nudged sample. Nothing downstream can undo the bend.</div>
+    </div>
+    <div class="col center">
+      <svg data-taxo="1" viewBox="0 0 660 384" role="img"
+           aria-label="Five-stage sampling pipeline. Gradient guidance modifies the flow ODE stage."
+           style="width:100%;height:auto"></svg>
+    </div>
+  </div>
   <div class="notes">
-    <div class="timing">~2 min · orient them on the figure, don't argue yet</div>
-    <p>Walk the four panels left to right and name them only. The next four slides take each
-      one apart in turn, so resist the urge to give the punchline here.</p>
-    <p>Do plant the axis you'll judge them on, though: <strong>for each one, ask "is the thing
-      we execute a sample from the policy?"</strong> That single question is what separates
-      CS-Pi from all three baselines, and if you install it now the rest of Act II is fast.</p>
+    <div class="timing">~1 min · set up the grid, then fill one column</div>
+    <p><strong>Spend your first fifteen seconds on the row labels, not the column.</strong> The
+      five rows are the whole frame for Act II: noise, flow, endpoint, fix-up, execute. Once the
+      audience has that grid, each baseline is one sentence — "this one touches <em>that</em> row."</p>
+    <p>Then plant the question you will judge every column on, and repeat it verbatim four times:</p>
+    <p class="say">"Is the thing we execute a sample from the policy?"</p>
+    <p>For guidance the answer is no, and it is no <em>by construction</em> rather than by
+      accident — the method's entire mechanism is bending the flow. The bottom chip says
+      "biased by design" for that reason. Don't argue the magnitude of the bias yet; the next
+      three slides after the taxonomy do that with numbers.</p>
+  </div>
+</section>
+
+<!-- ===================== 7b · TAXONOMY, COLUMN 2 ======================= -->
+<section class="slide" data-act="II · Why samplers fail" data-title="Column 2: projection" data-min="1" data-tier="1">
+  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span>Taxonomy · 2 of 4</span></p>
+  <h2>Or leave the flow alone and fix the answer</h2>
+  <div class="split wide-r">
+    <div class="col">
+      <p class="dek">Guidance paid for feasibility inside the flow. The alternative is to run the
+        flow honestly and repair the endpoint afterwards.</p>
+      <h3 class="sub" style="color:var(--purple)">Projection touches the fix-up stage</h3>
+      <ul class="pts tight">
+        <li>Run the unmodified flow, take the endpoint â₁, and snap it to the nearest point of
+          the feasible set C.</li>
+        <li><strong>Feasible by construction</strong>, cheap, and it needs no gradient — the two
+          things guidance could not give us.</li>
+        <li>But the snapped point is chosen for proximity, not for likelihood.
+          <span class="sub">Nothing in the operator knows what the policy would have done, so the result can sit anywhere — including in a region the demonstrations never visit.</span></li>
+      </ul>
+      <div class="callout" style="border-color:var(--purple);background:#f4efff;color:#5b34b8">
+        Executes: the projection. Feasible, but no longer a policy sample.</div>
+    </div>
+    <div class="col center">
+      <svg data-taxo="2" viewBox="0 0 660 384" role="img"
+           aria-label="Projection modifies the fix-up stage, snapping the endpoint onto the feasible set."
+           style="width:100%;height:auto"></svg>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~1 min · plant the asset you will re-use in Act III</div>
+    <p>This is the column the whole talk turns on, so introduce it warmly rather than as another
+      failure. <strong>Everything in the "mechanism" half of this slide is a genuine strength</strong>
+      — cheap, exact, gradient-free — and Act III keeps all of it.</p>
+    <p>The single defect, and say it in exactly these terms because the phrasing recurs at the
+      turn: <strong>the projection is chosen for proximity, not for likelihood.</strong> Nearest
+      is not most-likely, and in a bimodal policy the nearest feasible point is often on the
+      wrong side of the obstacle entirely.</p>
+    <p>Resist previewing the fix. The audience should leave this slide thinking projection is
+      the best of a bad set, which is precisely the setup for slide "THE TURN".</p>
+  </div>
+</section>
+
+<!-- ===================== 7c · TAXONOMY, COLUMN 3 ======================= -->
+<section class="slide" data-act="II · Why samplers fail" data-title="Column 3: rejection" data-min="1" data-tier="1">
+  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span>Taxonomy · 3 of 4</span></p>
+  <h2>Or refuse to repair anything, and just try again</h2>
+  <div class="split wide-r">
+    <div class="col">
+      <p class="dek">If editing the sample is what ruins it, don't edit. Draw complete samples
+        and keep the first feasible one.</p>
+      <h3 class="sub">Rejection also touches fix-up — but by discarding</h3>
+      <ul class="pts tight">
+        <li>Draw, test against C, and if it fails, <strong>throw the whole trajectory away and
+          restart from pure noise</strong>.</li>
+        <li>This is the one baseline that is <em>correct</em>: what survives is an exact draw
+          from the policy conditioned on feasibility. It is the reference we want to match.</li>
+        <li>The cost is unbounded.
+          <span class="sub">The accept rate is the prior's own mass on C, so as the constraint gets tighter the expected number of redraws blows up — 6,732 NFE on the 2D benchmark against CS-Pi's 283, and it still only reaches 68.1% safe-SR because the budget runs out.</span></li>
+      </ul>
+      <div class="callout warn">Executes: a real policy sample — if you can afford to wait for one.</div>
+    </div>
+    <div class="col center">
+      <svg data-taxo="3" viewBox="0 0 660 384" role="img"
+           aria-label="Rejection discards infeasible samples and restarts from pure noise."
+           style="width:100%;height:auto"></svg>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~1 min · the return arrow is the whole slide</div>
+    <p><strong>Point at the dashed arrow.</strong> It leaves the fix-up row and travels all the
+      way back to the top — to pure noise. Rejection throws away every bit of computation it
+      just did, including the part that was fine.</p>
+    <p>Give rejection its due: it is the only statistically correct baseline on the board, and
+      on the 2D benchmark it is the second most in-distribution method in the table. When
+      someone asks "why not just reject?", the answer is never "it's wrong", it's <strong>"it's
+      right and unaffordable"</strong> — and it degrades exactly where you need it most, because
+      a tighter constraint means a smaller accept rate.</p>
+    <p class="say">"Rejection restarts from scratch. Hold that arrow in your head — the last
+      column changes only where it lands."</p>
+  </div>
+</section>
+
+<!-- ===================== 7d · TAXONOMY, COLUMN 4 ======================= -->
+<section class="slide" data-act="II · Why samplers fail" data-title="Column 4: CS-Pi" data-min="1" data-tier="1">
+  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span style="color:var(--blue)">Taxonomy · 4 of 4 · where we land</span></p>
+  <h2>Ours changes one thing: how far back the arrow goes</h2>
+  <div class="split wide-r">
+    <div class="col">
+      <p class="dek">Same five stages, same fix-up row, same idea of trying again. The only
+        difference from rejection is <strong>where the retry re-enters the pipeline</strong>.</p>
+      <ul class="pts tight">
+        <li>Run the flow, project the endpoint onto C — and then <strong>use the projection as a
+          target rather than as the answer</strong>.</li>
+        <li>Renoise only to depth n = k/(k+δ), where δ is how far the projection had to move the
+          sample, and re-run from there.</li>
+        <li>A confident sample that barely violated C gets a shallow retry; a sample that was
+          badly wrong gets a deep one, and can switch modes entirely.</li>
+      </ul>
+      <div class="callout">Executes: a policy sample that happens to satisfy C. The projection is
+        never the thing we run.</div>
+    </div>
+    <div class="col center">
+      <svg data-taxo="4" viewBox="0 0 660 384" role="img"
+           aria-label="CS-Pi projects and renoises to a partial depth, re-entering inside the flow rather than at pure noise."
+           style="width:100%;height:auto"></svg>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~1.5 min · a teaser, deliberately — Act III earns it</div>
+    <p>You are showing the answer before you have argued for it. That is on purpose: the paper's
+      own figure does the same, and it gives the audience somewhere to put the next eight slides.
+      <strong>Say out loud that this is a preview</strong> so nobody thinks the argument is
+      finished.</p>
+    <p>Everything is in the geometry of the two dashed arrows. Put them side by side with your
+      hand: <strong>rejection's arrow goes to the top, ours stops partway down.</strong> That is
+      the entire method — one number, how far back to go, and δ supplies it for free because the
+      projection already computed it.</p>
+    <p>If you get "so it's just rejection with a warm start?" — yes, and that framing is a gift.
+      Take it, then say the warm start is <em>adaptive</em> and comes from the residual you were
+      already paying for. Prop. 1 later says exactly what distribution it draws from.</p>
+    <div class="qa"><b>Don't</b> get pulled into the δ→n formula here. Slide "The renoise depth
+      IS the algorithm" is where that lives, and it needs the full three minutes.</div>
+  </div>
+</section>
+
+<!-- ===================== 7e · TAXONOMY, ASSEMBLED ===================== -->
+<section class="slide" data-act="II · Why samplers fail" data-title="Four ways to enforce a constraint" data-min="1.5" data-tier="1">
+  <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span>Taxonomy · all four</span></p>
+  <h2>Four ways to enforce a constraint at inference</h2>
+  <div class="grow" style="display:flex;flex-direction:column;min-height:0">
+    <svg data-taxo="5" viewBox="0 0 660 384" role="img"
+         aria-label="All four inference-time constraint strategies side by side: gradient guidance, projection, rejection, and CS-Pi."
+         style="width:100%;height:100%;min-height:0"></svg>
+  </div>
+  <p class="tnote">Read it by row: everyone shares the same flow model, and they differ only in
+    which stage they touch. Read it by column: only the right-hand two execute something the
+    policy would actually have produced — and only one of them is affordable.</p>
+  <div class="notes">
+    <div class="timing">~1.5 min · the map they should keep for the rest of Act II</div>
+    <p>This is the slide to leave up while you take questions on the taxonomy, and the one to
+      flip back to whenever someone loses the thread later.</p>
+    <p>Drive the bottom row home. <strong>Two of the four never execute a policy sample at
+      all</strong> — guidance because it bent the flow, projection because it replaced the
+      answer. That is not a tuning problem, it is what those methods <em>are</em>.</p>
+    <p class="say">"Everything on this board is a different answer to one question: what do you
+      do with a sample that isn't feasible? Bend it, replace it, or throw it away. We do a
+      fourth thing — we ask for another one, starting from what we learned."</p>
+    <p>Then set expectations for the next stretch: <strong>the following slides go back to
+      columns one, two and three and show what each costs in measured numbers</strong>, because
+      "it's biased" is a claim, not evidence. If you are tight on time, the frontier chart and
+      the projection slide are the two that must survive.</p>
+    <div class="qa"><b>If asked about CBF / control-barrier samplers:</b> they sit in column one
+      — they modify the velocity field, just with a QP instead of a gradient. There is a
+      dedicated slide on them later in the deep-dive path.</div>
   </div>
 </section>
 
 <!-- ===================== 8 · GUIDANCE ================================== -->
-<section class="slide" data-act="II · Why samplers fail" data-title="Gradient guidance" data-min="2.5" data-tier="1">
+<section class="slide" data-act="II · Why samplers fail" data-title="Gradient guidance" data-min="2" data-tier="2">
   <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span style="color:var(--red)">Baseline 1 · Gradient guidance</span></p>
   <h2>Guidance steers on a gradient taken at a point that isn't a plan yet</h2>
   <div class="split wide-l">
     <div class="col">
-      <h3 class="sub">The mechanism</h3>
-      <ul class="pts tight neg">
-        <li>At each ODE step, form a one-step (Tweedie) estimate x̂₀ of the clean action.</li>
-        <li>Evaluate the constraint gradient ∇C(x̂₀) there and nudge the step by it.</li>
-      </ul>
-      <h3 class="sub" style="margin-top:6px">Why it breaks</h3>
+      <h3 class="sub">Why it breaks</h3>
       <ul class="pts tight neg">
         <li>Early in the trajectory x̂₀ is an <strong>average over modes</strong> — a blur, not a plan.
           <span class="sub">Nudging a blur toward feasibility does not select a feasible route; it interpolates between routes, and the interpolation of two good paths around an obstacle goes straight through it.</span></li>
@@ -766,13 +931,13 @@ body.notes-on #deck{right:396px;}
 </section>
 
 <!-- ===================== 10 · PROJECTION =============================== -->
-<section class="slide" data-act="II · Why samplers fail" data-title="Projection" data-min="2.5" data-tier="1">
+<section class="slide" data-act="II · Why samplers fail" data-title="Projection" data-min="2" data-tier="1">
   <p class="kicker"><span class="act">II · Why today's samplers fail</span><span class="rule"></span><span style="color:var(--purple)">Baseline 3 · Projection</span></p>
   <h2>Projection is feasible, cheap — and executes an action the policy would never draw</h2>
   <div class="split wide-l">
     <div class="col">
       <ul class="pts tight">
-        <li>Run the unmodified flow to a clean action, snap it onto the feasible set, execute.</li>
+        <li>Column 2, with the numbers attached: run the flow, snap the endpoint onto C, execute.</li>
         <li><strong>Feasible by construction</strong>, and it costs nothing: no extra flow calls at all.</li>
         <li>It is the <strong>strongest baseline in this paper</strong> — 62.0% on the shelf,
           100% safe on the 2D benchmark, 40% on hardware.</li>
@@ -998,7 +1163,7 @@ body.notes-on #deck{right:396px;}
 </section>
 
 <!-- ===================== 16 · THE DEPTH ================================ -->
-<section class="slide" data-act="IV · The method" data-title="The renoise depth IS the algorithm" data-min="3" data-tier="1">
+<section class="slide" data-act="IV · The method" data-title="The renoise depth IS the algorithm" data-min="2.5" data-tier="1">
   <p class="kicker"><span class="act">IV · The method</span><span class="rule"></span><span>The one idea to remember</span></p>
   <h2>The renoise depth <em>is</em> the algorithm</h2>
   <p class="dek">The violation tells you how far to search. That's the whole feedback law —
@@ -1172,7 +1337,7 @@ body.notes-on #deck{right:396px;}
 </section>
 
 <!-- ===================== 17 · WHY IN-DIST ============================== -->
-<section class="slide" data-act="IV · The method" data-title="Why it stays in-distribution" data-min="2.5" data-tier="1">
+<section class="slide" data-act="IV · The method" data-title="Why it stays in-distribution" data-min="2.5" data-tier="2">
   <p class="kicker"><span class="act">IV · The method</span><span class="rule"></span><span>The distributional claim</span></p>
   <h2>Why the output stays in-distribution — and lands <em>above</em> the prior</h2>
   <div class="split wide-l">
@@ -1270,49 +1435,106 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 19 · SETUP ==================================== -->
-<section class="slide" data-act="V · Evidence" data-title="Setup: benchmarks and metrics" data-min="1.5" data-tier="2">
-  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>How to read the next five slides</span></p>
-  <h2>Four benchmarks, escalating from diagnostic to real hardware</h2>
-  <div class="split">
+<!-- ===================== 19 · SETUP =================================== -->
+<section class="slide" data-act="V · Evidence" data-title="Setup: four tasks, four questions" data-min="1.5" data-tier="1">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>How to read Act V</span></p>
+  <h2>Four tasks, because they answer four different questions</h2>
+  <p class="dek">None of these is a scaled-up version of the one before it. Each was built to
+    isolate something the others can't show, so the tables only mean what the task lets them mean.</p>
+  <div class="split wide-l">
     <div class="col">
-      <h3 class="sub">Benchmarks</h3>
       <ul class="pts tight">
-        <li><b>2D avoidance</b> — 6 scenarios, 200 rollouts per cell. Diagnostic: can you have
-          both properties at once?</li>
-        <li><b>Shelf pick-and-place</b> — 7-DoF Franka, 5 scenarios, 150 tasks. Deployment-time
-          obstacles absent at training.</li>
-        <li><b>3D-Orient</b> — 7-DoF reach with an orientation preference, 90 rollouts per cell.
-          A different cost entirely.</li>
-        <li><b>Hardware</b> — zero-shot Franka with π₀.₅, 2 layouts × 10 trials × 5 methods.</li>
+        <li><b>2D avoidance</b> — <em>can we see the distribution?</em>
+          <span class="sub">Low enough dimension to plot every method's samples against the prior. The only place the central claim is directly visible rather than inferred from a metric.</span></li>
+        <li><b>Shelf pick-and-place</b> — <em>does it survive a real manipulation stack?</em>
+          <span class="sub">7-DoF Franka, five clutter layouts, including ones where the obstacle sits on the demonstrated route rather than beside it.</span></li>
+        <li><b>Spheres-avoid</b> — <em>how much comes from the prior?</em>
+          <span class="sub">The same method against demonstration data that does and doesn't cover the scene. Isolates what CS-Pi inherits from the policy versus what it adds.</span></li>
+        <li><b>3D-Orient</b> — <em>what if the constraint is only a preference?</em>
+          <span class="sub">A soft cost instead of a hard feasible set, where staying on the manifold matters more than driving the cost down.</span></li>
       </ul>
+      <p class="tnote">Then <b>hardware</b>, which is not a fifth question but the same ones asked
+        without a simulator: zero-shot on a Franka with π₀.₅, 2 layouts × 10 trials × 5 methods.</p>
     </div>
     <div class="col">
-      <h3 class="sub">Metrics</h3>
+      <h3 class="sub">The four metrics, everywhere</h3>
       <ul class="pts tight">
-        <li><b>Safe-SR</b> — collision-free <em>and</em> picked <em>and</em> placed. The headline
-          metric, because it can't be gamed by refusing to move.</li>
-        <li><b>logL</b> — mean log-likelihood the prior assigns to a method's samples.
-          The prior's own draws are the reference point.</li>
+        <li><b>Safe-SR</b> — collision-free <em>and</em> picked <em>and</em> placed. Conjoined on
+          purpose, so "don't move" scores zero.</li>
+        <li><b>logL</b> — mean log-likelihood the prior assigns to a method's own samples. The
+          prior's unmodified draws are the reference point, not zero.</li>
         <li><b>Fully-in-support</b> — fraction of rollouts whose <em>every</em> waypoint lies
-          inside the demonstration support. A strict in-distribution check.</li>
-        <li><b>NFE</b> — flow-model calls per trajectory. The compute axis.</li>
+          inside the demonstration support. The strict in-distribution check.</li>
+        <li><b>NFE</b> — flow-model calls per trajectory. The compute axis; wall-clock comes
+          later.</li>
       </ul>
+      <div class="callout">Baselines get their best hyperparameter per method, per task. We are
+        not beating an untuned baseline.</div>
     </div>
   </div>
   <div class="notes">
-    <div class="timing">~2 min · don't skip, the tables depend on these definitions</div>
-    <p>Resist the urge to rush this — every table in Act V is unreadable if safe-SR and logL
-      aren't already understood, and a lab audience will stop you to ask.</p>
-    <p>Re-state the safe-SR point from Act I in one line: <strong>it conjoins safety and task
-      success on purpose, so that "don't move" scores zero.</strong></p>
-    <p>Note that baselines get their <strong>best hyperparameter per method</strong> — we're not
-      beating an untuned baseline. Say it before someone asks.</p>
+    <div class="timing">~1.5 min · the contract for the next twelve slides</div>
+    <p>The mistake this slide exists to prevent: <strong>reading four tables as four repetitions
+      of the same experiment.</strong> They are four different questions, and a number that looks
+      like a regression on one task is often the intended behaviour there.</p>
+    <p>Say the four questions out loud in order — see it, stress it, source it, invert it — and
+      tell them each task gets its own introduction right before its numbers. That promise is
+      what buys you their patience for the setup slides.</p>
+    <p>On metrics, the one that needs defending is <strong>safe-SR conjoining safety with task
+      success</strong>. Someone always proposes reporting them separately; the answer is that a
+      method which refuses to move scores 100% on safety alone, and we didn't want a metric that
+      rewards that.</p>
+    <p>Land the hyperparameter line before anyone asks it as a challenge.</p>
+  </div>
+</section>
+
+<!-- ===================== 19b · TASK 1 · 2D ============================ -->
+<section class="slide" data-act="V · Evidence" data-title="Task 1: 2D — see the distribution" data-min="2.5" data-tier="1">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>Task 1 · 2D avoidance · what it is for</span></p>
+  <h2>Two dimensions, so you can look at the answer instead of trusting a metric</h2>
+  <p class="dek">A bimodal policy — two clusters of demonstrated behaviour. We block the
+    <span style="color:var(--red);font-weight:600">left mode</span> with a constraint the
+    demonstrations never had, and ask every method to sample. Everything in this talk becomes
+    visible at once: who is feasible, who is still on the data, and who is both.</p>
+  <figure class="fig">
+    <img src="{{M:assets/fig_2d_distributions.png}}" alt="Eight panels of 2D sample scatter plots, one per method, with the left mode blocked by a constraint and per-panel feasible, in-support and median log-likelihood scores">
+    <figcaption><b>Every method's actual samples, same prior, same blocked mode.</b>
+      Per panel: <span style="color:#b3123c;font-weight:600">feasible %</span> ·
+      <span style="color:#0f766e;font-weight:600">in-support %</span> ·
+      <span style="color:#6b3fd4;font-weight:600">median logL</span>. Rejection sampling is the
+      ideal we want to match. Numbers here are for this mode-blocked configuration and are not
+      the six-scenario averages in the next table.</figcaption>
+  </figure>
+  <div class="notes">
+    <div class="timing">~2.5 min · slow down — this is the one picture that proves the thesis</div>
+    <p><strong>Walk the top row and let them do the reading.</strong> Unguided: both clusters
+      populated, 53% feasible — it doesn't know about the constraint. Rejection: the left cluster
+      is empty and the right one is untouched, 100% / 94%. <strong>That panel is the target.</strong>
+      Everything else in the figure is judged by how close it looks to it.</p>
+    <p>Then CS-Pi, right beside it: 100% / 91%, a cluster of the same shape in the same place.
+      Then projection: 100% feasible, but look where the samples <em>are</em> — every draw that
+      started in the blocked mode is pinned to the rim of the blocked circle, a ring of points no
+      demonstration ever produced. 49% in-support, logL −1.73.</p>
+    <p class="say">"Projection's samples are all legal and half of them look nothing like the
+      data. That ring on the boundary is what −1.73 log-likelihood looks like when you draw it."</p>
+    <p>The bottom row is the barrier-function family, and it is the same ring every time.
+      <strong>All three land at 49% in-support</strong> — SafeDiffuser and SAD-Flower at −1.73,
+      certified SafeFlowMatcher at −2.59, worse than projection. The samples that began in the
+      blocked mode never migrate to the surviving cluster; they stop at the boundary and stay
+      there. A velocity-level correction can push a sample out of the unsafe set, but it can't
+      decide to go somewhere else entirely.</p>
+    <p><strong>Flag the honest wrinkle yourself:</strong> the last panel, SafeFlowMatcher when
+      its certificate does not hold, gets the best log-likelihood on the board (+0.45) by simply
+      not enforcing much — 53% feasible, the same as doing nothing. Being in-distribution is easy
+      if you skip the constraint. That's why we never report likelihood without feasibility.</p>
+    <div class="qa"><b>Expect:</b> "these are different numbers from your table." Yes — this
+      configuration is the single mode-blocked toy from the rebuttal; the table is a
+      macro-average over six scenarios. Say it before they do.</div>
   </div>
 </section>
 
 <!-- ===================== 20 · 2D RESULTS =============================== -->
-<section class="slide" data-act="V · Evidence" data-title="2D avoidance: you can have both" data-min="2.5" data-tier="1">
+<section class="slide" data-act="V · Evidence" data-title="2D avoidance: you can have both" data-min="2" data-tier="1">
   <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>Benchmark 1 · 2D avoidance</span></p>
   <h2>You can have both</h2>
   <div class="tablewrap">
@@ -1352,6 +1574,60 @@ body.notes-on #deck{right:396px;}
       guidance gets; that's the trend across the next two benchmarks.</div>
   </div>
 </section>
+
+<!-- ===================== 21 · TASK 2 · SHELF =========================== -->
+<section class="slide" data-act="V · Evidence" data-title="Task 2: Shelf — when the obstacle is on the route" data-min="2" data-tier="1">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>Task 2 · Shelf pick-and-place · what it is for</span></p>
+  <h2>A real manipulation stack, and obstacles that don't politely stand aside</h2>
+  <div class="split wide-l">
+    <div class="col">
+      <p class="dek">7-DoF Franka, pick from a shelf and place. The policy is trained on clean
+        demonstrations; <strong>every obstacle here is added at deployment time</strong> and
+        appears in no demonstration.</p>
+      <h3 class="sub">Five layouts, escalating in one specific way</h3>
+      <ul class="pts tight">
+        <li><b>Two flankers (top)</b> · <b>tall table pillar</b> — obstacles <em>beside</em> the
+          demonstrated approach. The demonstrated route still works; it just needs to be held.</li>
+        <li><b>Neighbour at the mid rung</b> · <b>at the low rung</b> — an object on the shelf
+          itself, encroaching on where the gripper wants to be.</li>
+        <li><b>Clutter combo</b> — several at once, and now the demonstrated route is
+          <em>gone</em>.
+          <span class="sub">This is the case the whole design targets: no local correction to the demonstrated behaviour is feasible, so the sampler has to find a different behaviour the policy also knows.</span></li>
+      </ul>
+      <div class="callout">The question this task answers: does the method still work when
+        satisfying the constraint requires a <strong>different plan</strong>, not a nudged one?</div>
+    </div>
+    <div class="col center">
+      <div class="tiles wrap2">
+        <div class="tile dimt"><div class="n">5</div><div class="l">Scenarios</div><div class="s">30 tasks each</div></div>
+        <div class="tile dimt"><div class="n">150</div><div class="l">Tasks</div><div class="s">per method</div></div>
+        <div class="tile negt"><div class="n">82%</div><div class="l">Prior collides</div><div class="s">it has never seen these obstacles</div></div>
+        <div class="tile dimt"><div class="n">7</div><div class="l">DoF</div><div class="s">Franka, joint space</div></div>
+      </div>
+      <div class="callout warn" style="margin-top:14px">…while still reaching the goal 72% of the
+        time. The prior is competent and oblivious — exactly the deployment situation this paper
+        is about. We are adding a requirement to a good policy, not repairing a bad one.</div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~2 min · the distinction that makes the next tables readable</div>
+    <p>The one idea to land: <strong>"obstacle near the route" and "obstacle on the route" are
+      different problems</strong>, and almost every method looks fine on the first.</p>
+    <p>If the obstacle merely flanks the demonstrated path, a small correction suffices, and
+      guidance, barrier functions and projection can all produce one. When the obstacle occupies
+      the route, the only feasible answers are <em>other behaviours the policy already has</em> —
+      approach from the other side, use a different rung. You cannot reach those by perturbing;
+      you have to resample.</p>
+    <p class="say">"Every method can dodge. The question is whether it can change its mind."</p>
+    <p>Set up the 82% now so it isn't a surprise in the table. The prior is a good policy — 72%
+      goal reach — that has simply never seen these objects. <strong>We are not fixing a bad
+      policy, we are adding a requirement to a good one.</strong></p>
+    <div class="qa"><b>If asked why not retrain:</b> that's the alternative this whole line of
+      work exists to avoid — you'd need demonstrations for every obstacle configuration you might
+      ever meet. Keep it to one sentence; the limitations slide returns to it.</div>
+  </div>
+</section>
+
 
 <!-- ===================== 21 · SHELF ROLLOUTS =========================== -->
 <section class="slide" data-act="V · Evidence" data-title="Shelf: same scenario, two samplers" data-min="2" data-tier="2">
@@ -1422,6 +1698,151 @@ body.notes-on #deck{right:396px;}
     <div class="qa"><b>Expect:</b> "could you tune CS-Pi to get collisions down?" Presumably yes,
       by iterating longer or tightening the feasible set margin — and you'd trade NFE for it.
       If you have that ablation, this is the moment for it.</div>
+  </div>
+</section>
+
+<!-- ===================== 24 · TASK 3 · SPHERES ========================= -->
+<section class="slide" data-act="V · Evidence" data-title="Task 3: Spheres — what the data buys you" data-min="2.5" data-tier="2">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>Task 3 · Spheres-avoid · what it is for</span></p>
+  <h2>The one task where we vary the <em>data</em> instead of the method</h2>
+  <p class="dek">CS-Pi never trains anything — every sample it returns is one the prior could
+    have produced. So its ceiling is set by what the demonstrations cover. Spheres-avoid is the
+    task built to measure that dependence directly: same policy, same loop, scenes that move
+    inside and outside the demonstrated support.</p>
+  <div class="split">
+    <div class="media-frame mf-ours">
+      <div class="mf-head"><span>IN DISTRIBUTION</span><span class="spacer"></span><span class="pill ok">scene the demos cover</span></div>
+      <img src="{{M:viz/spheres_env_gifs/in_distribution_EnvSpheres3D/unguided_vs_amr_sample00.gif}}" alt="Unguided policy versus CS-Pi in the Spheres environment, scene layout covered by the demonstrations">
+    </div>
+    <div class="media-frame">
+      <div class="mf-head"><span>OUT OF DISTRIBUTION</span><span class="spacer"></span><span class="pill no">extra objects, unseen</span></div>
+      <img src="{{M:viz/spheres_env_gifs/out_of_distribution_EnvSpheres3DExtraObjectsV00/unguided_vs_amr_sample00.gif}}" alt="Unguided policy versus CS-Pi in the Spheres environment with extra objects added beyond the demonstration support">
+    </div>
+  </div>
+  <p class="tnote">Clips show the scene shift — unguided on the left of each, CS-Pi on the right;
+    the burned-in figure is the collision-cost readout, not a per-clip verdict.
+    <b>Across the benchmark, at each method's swept-best configuration, CS-Pi goes
+    1.00&nbsp;→&nbsp;0.91 under this shift</b>, while the barrier samplers go
+    0.36&nbsp;→&nbsp;0.06 (SafeDiffuser), 0.62&nbsp;→&nbsp;0.24 (SafeFlowMatcher),
+    0.43&nbsp;→&nbsp;0.12 (SAD-Flower).</p>
+  <div class="notes">
+    <div class="timing">~2.5 min · the "how much is really yours" slide</div>
+    <p>This task answers the sharpest question a lab audience asks about any training-free
+      method: <strong>how much of the result is the method and how much is the prior?</strong></p>
+    <p>The measured answer so far is the ID → OOD pair. Adding objects the demonstrations never
+      contained costs us nine points, 1.00 → 0.91. <strong>Say plainly that some degradation is
+      expected and correct</strong> — if the demonstrations contain no behaviour that clears the
+      new object, no sampler that only draws from the prior can invent one. Rejection would fail
+      here too, and for the same reason.</p>
+    <p>The contrast is what makes it a result. The barrier samplers don't degrade gracefully,
+      they collapse — 0.24 is the best any of them manages OOD. Their correction is local, so
+      when the feasible route requires a different behaviour they have nothing to fall back on;
+      we fall back on the rest of the policy's support.</p>
+    <p class="say">"Our failure mode is the prior running out of ideas. Theirs is the correction
+      running out of room. Only one of those gets better with more data."</p>
+    <p><strong>Then propose the experiment on the right-hand panel of the next slide as future
+      work, honestly labelled.</strong> ID/OOD is a two-point sample of a curve we should
+      actually draw.</p>
+  </div>
+</section>
+
+<!-- ===================== 24b · THE SUPPORT SWEEP ======================= -->
+<section class="slide" data-act="V · Evidence" data-title="Spheres: the support sweep we should run" data-min="2" data-tier="3">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>Task 3 · proposed study · <em>not yet measured</em></span></p>
+  <h2>The experiment this task is really set up for</h2>
+  <p class="dek">ID and OOD are two points. The interesting object is the curve between them:
+    retrain the prior on demonstration sets of deliberately varied coverage, hold the method
+    fixed, and watch safe-SR and logL move.</p>
+  <div class="split">
+    <div class="col">
+      <h3 class="sub">The knob</h3>
+      <ul class="pts tight q">
+        <li><b>Narrow the support</b> — fewer demonstrations, tighter around one route.
+          <span class="sub">Fewer modes to switch to, so the renoise step has nowhere to land. Prediction: our safe-SR falls toward projection's, because a deep renoise returns to the same behaviour it left.</span></li>
+        <li><b>Widen the support</b> — more varied routes, more approach angles.
+          <span class="sub">Prediction: our safe-SR rises and the gap over projection widens, because switching modes is only possible when there is a second mode.</span></li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3 class="sub">What each outcome would mean</h3>
+      <ul class="pts tight q">
+        <li>If safe-SR tracks support width, the method's contribution is precisely
+          <strong>"find the feasible mode the policy already has"</strong> — which is the claim,
+          made falsifiable.</li>
+        <li>If it doesn't, we are getting feasibility from the projection anchor rather than from
+          the prior, and the honest description of the method changes.</li>
+        <li>logL should be flat in support width, since it is measured against whichever prior
+          is in play. <span class="sub">If it isn't flat, the metric is confounded and the paper needs to say so.</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout warn">Nothing on this slide is measured. It is the study the benchmark was
+    built to support, and the one I'd run next.</div>
+  <div class="notes">
+    <div class="timing">~2 min · deep-dive path only — but a strong slide for a lab audience</div>
+    <p>This slide is here because a lab meeting is the right room to propose an experiment in,
+      and because it is a genuinely load-bearing test of the paper's story. <strong>Be
+      unambiguous that it is unrun</strong> — the callout says so, say it too, and never let a
+      prediction on this slide get quoted later as a result.</p>
+    <p>The reason it matters: the paper's mechanism claim is that CS-Pi succeeds by locating a
+      feasible mode the policy already has. That claim predicts a specific dependence on
+      demonstration coverage, and <strong>a claim that predicts nothing is not doing any
+      work</strong>. This sweep is what would make it falsifiable.</p>
+    <p>The second bullet in the right column is the one to dwell on if there's interest: there is
+      a real alternative explanation in which the anchor, not the prior, is doing the work. A
+      narrow-support run separates them.</p>
+    <div class="qa"><b>Good question to invite:</b> how would you vary support width without also
+      varying data quantity? Sub-sample by route diversity at fixed trajectory count. Worth
+      saying you've thought about the confound.</div>
+  </div>
+</section>
+
+<!-- ===================== 25 · TASK 4 · 3D-ORIENT ======================= -->
+<section class="slide" data-act="V · Evidence" data-title="Task 4: 3D-Orient — the priorities invert" data-min="2" data-tier="2">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>Task 4 · 3D-Orient · what it is for</span></p>
+  <h2>When the requirement is a preference, staying on the data matters more</h2>
+  <div class="split wide-l">
+    <div class="col">
+      <p class="dek">Everything so far has been a hard set: a collision either happens or it
+        doesn't, and you would trade a lot of likelihood to avoid one. 3D-Orient deliberately
+        inverts that.</p>
+      <ul class="pts tight">
+        <li>The requirement is an <b>end-effector orientation preference</b> held along a reach —
+          dense, smooth, and never catastrophic to violate slightly.
+          <span class="sub">It is absent from the policy's training data, so the unmodified policy satisfies it 1.1% of the time while reaching the goal 100% of the time.</span></li>
+        <li>A dense smooth cost is the <b>best possible case for gradient guidance</b> — the one
+          setting where its machinery should shine. We put it on the board on purpose.</li>
+        <li>And now the trade runs the other way: <b>driving the cost down is cheap, and it is
+          what destroys you.</b>
+          <span class="sub">Nothing stops a method from satisfying the orientation with a trajectory no arm would execute. Watch the max-EE-step column in the next table, not the success column.</span></li>
+      </ul>
+    </div>
+    <div class="col center">
+      <div class="callout neg">On the shelf, feasibility dominates: we accepted 6.7% collisions
+        to keep the plan realistic.</div>
+      <div class="callout good" style="margin-top:2px">Here it inverts: the cost is negotiable
+        and <b>the manifold is not</b>. A metre-scale jump that satisfies the orientation is a
+        worse answer than a smooth trajectory that misses it.</div>
+      <div class="callout" style="margin-top:2px">Same loop, same code. Only the projection
+        operator changed — swap the feasible-set snap for an end-effector proximity step.</div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~2 min · the conceptual pivot of Act V</div>
+    <p>This is the task people misread most, so frame it before the numbers. <strong>3D-Orient is
+      not a harder shelf. It is the shelf with the priorities reversed.</strong></p>
+    <p>On the shelf, a collision is terminal, so trading likelihood for feasibility is obviously
+      right and we did it. Here, missing the orientation by a little costs almost nothing, while
+      leaving the manifold costs everything — the arm executes the trajectory either way.</p>
+    <p class="say">"Same machinery, opposite trade. If a method only knows how to buy
+      feasibility with likelihood, this is the task where that habit stops working."</p>
+    <p><strong>Say explicitly that this is the friendliest possible setting for guidance</strong>
+      — dense, differentiable, smooth, exactly what its bias analysis assumes. We are not
+      choosing a task that breaks it by construction. Then the next table is much harder to
+      dismiss, and the max-EE-step numbers land as a genuine finding rather than a gotcha.</p>
+    <p>Also flag the generality point in one line: nothing changed in the loop except the
+      projection operator. It's the cleanest evidence that the method is a template, not a
+      collision-avoidance trick.</p>
   </div>
 </section>
 
@@ -1660,15 +2081,49 @@ body.notes-on #deck{right:396px;}
       perception pipeline too. Note that guidance and trust also land near 0.135–0.139 s despite
       very different NFE, which tells you the per-step overhead is dominated by things other than
       flow calls on real hardware.</div>
-    <div class="flag"><b>From the rebuttal:</b> Fig. 2 has full average wall-clock per rollout on
-      a log scale across all methods. If you want the single cleanest compute slide, drop that
-      figure in here — it's stronger than this NFE table because it prices trust sampling's inner
-      iterations and rejection's redraws in seconds rather than flow calls.</div>
+    <div class="qa"><b>The next slide is the stronger version of this one.</b> It has measured
+      wall-clock per rollout across all methods, which prices the barrier methods' QP solves and
+      trust sampling's inner iterations in seconds rather than flow calls. If you only have time
+      for one compute slide, use that one and keep this table for the NFE question.</div>
+  </div>
+</section>
+
+<!-- ===================== 28b · WALL CLOCK ============================== -->
+<section class="slide" data-act="V · Evidence" data-title="Wall-clock, priced in seconds" data-min="2" data-tier="2">
+  <p class="kicker"><span class="act">V · Evidence</span><span class="rule"></span><span>The compute bill · measured wall-clock</span></p>
+  <h2>The same bill in seconds, where the hidden costs show up</h2>
+  <figure class="fig">
+    <img src="{{M:assets/fig_wallclock.png}}" style="background:transparent" alt="Stacked bar chart of average milliseconds per rollout for every method on 2D avoidance, shelf pick-and-place and 3D-Orient, broken into flow forward passes, constraint operator, cost evaluation and other, with success rate labelled per bar">
+    <figcaption><b>Average ms per rollout, log scale, split by where the time goes</b> — flow
+      forwards, constraint operator, cost gradient, other. The percentage after each bar is that
+      method's success rate, so a fast bar with a low number is not a bargain.</figcaption>
+  </figure>
+  <div class="notes">
+    <div class="timing">~2 min · the honest version of the cost story</div>
+    <p>NFE undersells what some baselines actually cost, because it only counts flow calls.
+      <strong>This figure prices the constraint operator too</strong>, and that is where the
+      barrier methods hide their bill.</p>
+    <p>The number to lead with on the shelf: <strong>SafeDiffuser at 40,928 ms per rollout for
+      12% success</strong>, and SAD-Flower at 22,470 ms for 59%. Ours is 4,234 ms for 73% —
+      roughly ten times faster than SafeDiffuser and six times better at the task. The orange
+      segment is the QP solve, and it dominates their runtime entirely.</p>
+    <p>Then the fair comparison: projection is 2,138 ms at 62%, we are 4,234 ms at 73%.
+      <strong>We are about twice the cost of the cheapest credible baseline for eleven points of
+      safe-SR</strong>, and that is the trade to defend, not the one against SafeDiffuser.</p>
+    <p class="say">"Only one method on this board clears 70%, and it costs about twice the
+      cheapest baseline that clears 60%."</p>
+    <p>Note the pattern across the three panels: our overhead is dominated by extra flow
+      forwards, which scale predictably, while the barrier methods' overhead is dominated by a
+      solver whose cost depends on the constraint geometry. <strong>One of those you can budget
+      for in advance.</strong></p>
+    <div class="qa"><b>If asked about 2D:</b> everything is fast and close there — 383 ms for us
+      against 179 ms for projection. Differences only become interesting once the constraint
+      geometry is non-trivial, which is itself worth saying.</div>
   </div>
 </section>
 
 <!-- ===================== 29 · LIMITATIONS ============================== -->
-<section class="slide" data-act="VI · Limits & questions" data-title="Limitations (the three I'd attack)" data-min="3" data-tier="1">
+<section class="slide" data-act="VI · Limits & questions" data-title="Limitations (the three I'd attack)" data-min="2.5" data-tier="1">
   <p class="kicker"><span class="act">VI · Limits &amp; open questions</span><span class="rule"></span><span>Say these before the audience does</span></p>
   <h2>Where I'd attack this paper</h2>
   <div class="split">
@@ -1720,7 +2175,7 @@ body.notes-on #deck{right:396px;}
 </section>
 
 <!-- ===================== 30 · OPEN QUESTIONS =========================== -->
-<section class="slide" data-act="VI · Limits & questions" data-title="Open questions for the group" data-min="3" data-tier="1">
+<section class="slide" data-act="VI · Limits & questions" data-title="Open questions for the group" data-min="2.5" data-tier="1">
   <p class="kicker"><span class="act">VI · Limits &amp; open questions</span><span class="rule"></span><span>Where I actually want your help</span></p>
   <h2>Open questions</h2>
   <div class="split">
@@ -1806,6 +2261,27 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
+<!-- ===================== 32b · APPENDIX: PAPER FIGURE ================== -->
+<section class="slide" data-act="Appendix" data-title="Appendix: the taxonomy as it appears in the paper" data-min="0" data-tier="4">
+  <p class="kicker"><span class="act">Appendix</span><span class="rule"></span><span>Paper Fig. 1</span></p>
+  <h2>The same four columns, in the paper's own figure</h2>
+  <figure class="fig">
+    <img src="{{M:assets/concept.png}}" alt="The paper's figure of four inference-time constraint enforcement strategies: gradient guidance, projection, rejection, and CS-Pi">
+    <figcaption><b>Inference-time constraint enforcement on a flow-matching policy.</b>
+      Gradient guidance steers each ODE step by the constraint gradient at an estimate of the
+      final sample. Projection runs the unmodified flow and snaps the endpoint onto the feasible
+      set. Rejection redraws complete samples until one is feasible. CS-Pi runs the flow,
+      projects, and renoises to a depth set by the residual δ, then re-runs.</figcaption>
+  </figure>
+  <div class="notes">
+    <div class="timing">Backup · for anyone who has read the paper</div>
+    <p>The built-up SVG version in Act II is the one to present from — it reveals one column at a
+      time and makes the two return arrows comparable, which the paper figure doesn't.</p>
+    <p>Keep this slide for the case where someone has the paper open and wants to map your
+      diagram onto Fig. 1, or when a reviewer-style question refers to the figure by number.</p>
+  </div>
+</section>
+
 <!-- ===================== 33 · APPENDIX: VERIFY ========================= -->
 <section class="slide" data-act="Appendix" data-title="Appendix: claims to verify before presenting" data-min="0" data-tier="4">
   <p class="kicker"><span class="act">Appendix</span><span class="rule"></span><span>Presenter checklist — delete before the talk</span></p>
@@ -1817,8 +2293,10 @@ body.notes-on #deck{right:396px;}
           <span class="sub">The rebuttal records a versioning error: 25.7% should be 43.7%, and the supplementary is the correct version. Confirm no figure in this deck is from the stale version.</span></li>
         <li><b>The full guidance α sweep.</b>
           <span class="sub">The frontier chart draws a line between two measured endpoints. If the supplementary has the intermediate points, add them to the <code>FRONTIER</code> array — a measured curve beats an interpolated line.</span></li>
-        <li><b>Fig. 2 wall-clock per rollout.</b>
-          <span class="sub">Worth pasting into the speed slide; it prices trust and rejection in seconds rather than NFE.</span></li>
+        <li><b>The two figures lifted from the rebuttal PDF.</b>
+          <span class="sub">Fig. 1 is now the 2D task slide and Fig. 2 is the wall-clock slide. Both were extracted from the PDF at its embedded resolution — check they are the current versions and re-export at higher resolution if you have the originals.</span></li>
+        <li><b>How the 2D toy relates to the 2D avoidance table.</b>
+          <span class="sub">The figure's panel scores (CS-Pi 100% / 91% / +0.33) are the single mode-blocked configuration; the table is a six-scenario macro-average (99.0 / 0.857 / 1.53). The deck says so in the caption — confirm that is the right description.</span></li>
       </ul>
     </div>
     <div class="col">
@@ -1852,7 +2330,7 @@ body.notes-on #deck{right:396px;}
 </div></div>
 
 <div id="rail">
-  <button type="button" id="btnTier" class="tierchip">essential · 43 min</button>
+  <button type="button" id="btnTier" class="tierchip">essential · 45 min</button>
   <span class="actname" id="railAct">—</span>
   <span class="segs" id="railSegs"></span>
   <span class="cnt" id="railCnt">1 / 1</span>
@@ -2090,6 +2568,183 @@ body.notes-on #deck{right:396px;}
   }
   fit();
   go(k0);
+
+
+  // =========================================================================
+  // Figure 0: the four-column taxonomy, built one column at a time.
+  // Every <svg data-taxo="N"> renders the same grid with the first N columns
+  // filled in and column N highlighted; the rest stay as empty dashed frames,
+  // so the diagram accumulates across slides instead of arriving all at once.
+  // Rows are the five stages of one sampling pass, and a column's colour marks
+  // the row where that method intervenes. The two return arrows are the point
+  // of the whole figure: rejection restarts from pure noise, CS-Pi restarts
+  // from partway down the flow.
+  // =========================================================================
+  var TAXO = [
+    {
+      key:'guidance', name:'Gradient guidance', tone:'#e0533d', soft:'#fdf1ef',
+      flow:['k flow steps —','every one nudged','by ∇C(x̂₀)'], flowHot:true,
+      end:['â₁, already bent','toward C'], endHot:true,
+      fix:['none'], fixHot:false, fixDim:true,
+      run:['a nudged','sample'], mark:'✗', foot:['biased by design'],
+      ret:null
+    },
+    {
+      key:'projection', name:'Projection', tone:'#8b5cf6', soft:'#f4efff',
+      flow:['k flow steps,','untouched'], flowHot:false,
+      end:['â₁ ~ policy'], endHot:false,
+      fix:['snap â₁ onto','the feasible set C'], fixHot:true,
+      run:['the projection','itself'], mark:'✗', foot:['feasible, but','off-support'],
+      ret:null
+    },
+    {
+      key:'rejection', name:'Rejection', tone:'#6b7c93', soft:'#eef2f7',
+      flow:['k flow steps,','untouched'], flowHot:false,
+      end:['â₁ ~ policy'], endHot:false,
+      fix:['feasible? if not,','discard it and','start over'], fixHot:true,
+      run:['a real policy','sample'], mark:'✓', foot:['correct, but','cost unbounded'],
+      ret:'noise'
+    },
+    {
+      key:'cspi', name:'CS-Pi (ours)', tone:'#1d6fd4', soft:'#eaf2fd',
+      flow:['k flow steps,','untouched'], flowHot:false,
+      end:['â₁ ~ policy'], endHot:false,
+      fix:['project, then renoise','only to n = k/(k+δ)'], fixHot:true,
+      run:['a feasible','policy sample'], mark:'✓',
+      foot:['and the retry','depth is set by δ'],
+      ret:'flow'
+    }
+  ];
+
+  (function(){
+    var svgs = document.querySelectorAll('svg[data-taxo]');
+    if (!svgs.length) return;
+
+    var SVGNS = 'http://www.w3.org/2000/svg';
+    var LABW = 78, X0 = 88, COLW = 132, GAP = 14, LANE = 15;
+    var ROWS = [
+      {key:'noise', label:'noise',    y:34,  h:28},
+      {key:'flow',  label:'flow ode', y:76,  h:56},
+      {key:'end',   label:'endpoint', y:146, h:36},
+      {key:'fix',   label:'fix-up',   y:196, h:56},
+      {key:'run',   label:'execute',  y:266, h:34}
+    ];
+    var CHIPY = 316, CHIPH = 26;
+
+    function rowOf(k){ for (var i = 0; i < ROWS.length; i++) if (ROWS[i].key === k) return ROWS[i]; }
+
+    function render(svg){
+      var upto = parseInt(svg.dataset.taxo, 10) || 4;
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+      function el(name, attrs, text, parent){
+        var n = document.createElementNS(SVGNS, name);
+        for (var k in attrs) n.setAttribute(k, attrs[k]);
+        if (text != null) n.textContent = text;
+        (parent || svg).appendChild(n);
+        return n;
+      }
+      function lines(arr, cx, row, fill, weight){
+        var lh = 13.5, top = row.y + row.h / 2 - (arr.length - 1) * lh / 2 + 4;
+        arr.forEach(function(t, i){
+          el('text', {x:cx, y:top + i * lh, 'text-anchor':'middle', fill:fill,
+                      'font-family':'Inter, sans-serif', 'font-size':11,
+                      'font-weight':weight || 500}, t);
+        });
+      }
+
+      var defs = el('defs', {});
+      ['#c2ccda', '#1d6fd4', '#6b7c93'].forEach(function(c, i){
+        var m = el('marker', {id:'taxoArrow' + i, viewBox:'0 0 8 8', refX:7, refY:4,
+                              markerWidth:5, markerHeight:5, orient:'auto'}, null, defs);
+        el('path', {d:'M0,0 L8,4 L0,8 Z', fill:c}, null, m);
+      });
+
+      // row labels down the left edge — they turn the columns into a grid
+      ROWS.forEach(function(r){
+        el('text', {x:LABW, y:r.y + r.h / 2 + 4, 'text-anchor':'end', fill:'#8595ab',
+                    'font-family':'"JetBrains Mono", monospace', 'font-size':10.5,
+                    'font-weight':700, 'letter-spacing':'.06em'}, r.label.toUpperCase());
+      });
+      el('text', {x:LABW, y:CHIPY + CHIPH / 2 + 4, 'text-anchor':'end', fill:'#8595ab',
+                  'font-family':'"JetBrains Mono", monospace', 'font-size':10.5,
+                  'font-weight':700, 'letter-spacing':'.06em'}, 'SAMPLE?');
+
+      TAXO.forEach(function(m, i){
+        var cx0 = X0 + i * (COLW + GAP), on = i < upto, focus = (i === upto - 1);
+        var bx = cx0 + LANE, bw = COLW - LANE, cx = bx + bw / 2;
+
+        // the column being introduced sits on a tinted card
+        if (focus){
+          el('rect', {x:cx0 - 5, y:4, width:COLW + 10, height:CHIPY + CHIPH + 38,
+                      rx:10, fill:m.soft, stroke:m.tone, 'stroke-width':1.5});
+        }
+
+        el('text', {x:cx, y:22, 'text-anchor':'middle',
+                    fill:on ? m.tone : '#c2ccda',
+                    'font-family':'Inter, sans-serif', 'font-size':12.5,
+                    'font-weight':700}, m.name);
+
+        ROWS.forEach(function(r, ri){
+          var hot = on && ((r.key === 'flow' && m.flowHot) || (r.key === 'end' && m.endHot) ||
+                           (r.key === 'fix' && m.fixHot) || r.key === 'run');
+          var dim = on && r.key === 'fix' && m.fixDim;
+          el('rect', {x:bx, y:r.y, width:bw, height:r.h, rx:7,
+                      fill:!on ? '#fbfcfe' : (hot ? m.soft : '#fff'),
+                      stroke:!on ? '#e6ebf3' : (hot ? m.tone : '#d8e0ec'),
+                      'stroke-width':hot ? 1.5 : 1,
+                      'stroke-dasharray':!on ? '3 3' : 'none'});
+          if (on){
+            lines(r.key === 'noise' ? ['a₀ ~ N(0, I)'] : m[r.key], cx, r,
+                  dim ? '#aab6c6' : (hot ? m.tone : '#43536b'), hot ? 600 : 500);
+          }
+          if (ri < ROWS.length - 1){
+            el('line', {x1:cx, y1:r.y + r.h, x2:cx, y2:ROWS[ri + 1].y - 5,
+                        stroke:on ? '#c2ccda' : '#eef2f7', 'stroke-width':1.4,
+                        'marker-end':on ? 'url(#taxoArrow0)' : 'none'});
+          }
+        });
+
+        if (!on) return;
+
+        // the chip answers the question in the row label; the caveat sits below
+        el('rect', {x:bx, y:CHIPY, width:bw, height:CHIPH, rx:13,
+                    fill:m.mark === '✓' ? '#e9f7ee' : '#fbe4e1'});
+        el('text', {x:cx, y:CHIPY + 17, 'text-anchor':'middle',
+                    fill:m.mark === '✓' ? '#12683a' : '#a8382a',
+                    'font-family':'Inter, sans-serif', 'font-size':12,
+                    'font-weight':700}, m.mark + '  ' + (m.mark === '✓' ? 'yes' : 'no'));
+        m.foot.forEach(function(t, fi){
+          el('text', {x:cx, y:CHIPY + CHIPH + 15 + fi * 12, 'text-anchor':'middle',
+                      fill:'#8595ab', 'font-family':'Inter, sans-serif',
+                      'font-size':10, 'font-weight':500}, t);
+        });
+
+        // The return arrow, and how far up it reaches, is the whole argument:
+        // rejection re-enters at pure noise, CS-Pi re-enters inside the flow.
+        if (m.ret){
+          var from = rowOf('fix'), to = rowOf(m.ret);
+          var ty = m.ret === 'noise' ? to.y + to.h / 2 : to.y + to.h * 0.74;
+          var lx = cx0 + 5, my = (from.y + from.h / 2 + ty) / 2;
+          el('path', {d:'M' + bx + ',' + (from.y + from.h / 2) +
+                         ' H' + lx + ' V' + ty + ' H' + (bx - 4),
+                      fill:'none', stroke:m.tone, 'stroke-width':1.6,
+                      'stroke-dasharray':'4 3',
+                      'marker-end':'url(#taxoArrow' + (m.ret === 'noise' ? 2 : 1) + ')'});
+          // paint-order puts a white halo behind the glyphs so the label reads
+          // over the dashed line it sits on
+          el('text', {x:lx + 4, y:my, fill:m.tone, 'text-anchor':'middle',
+                      'font-family':'"JetBrains Mono", monospace', 'font-size':9,
+                      'font-weight':700, stroke:'#fff', 'stroke-width':3.5,
+                      'paint-order':'stroke', 'stroke-linejoin':'round',
+                      transform:'rotate(-90 ' + (lx + 4) + ' ' + my + ')'},
+                     m.ret === 'noise' ? 'FULL RESTART' : 'PARTIAL');
+        }
+      });
+    }
+
+    [].forEach.call(svgs, render);
+  })();
 
   // =========================================================================
   // Figure 1: the guidance trade-off frontier (shelf benchmark).
