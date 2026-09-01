@@ -12,10 +12,10 @@ lengths.**
 | **45-minute lab talk** | `deck.src.html` | `talk/index.html` | A full lab meeting, and the backup material you answer questions from. 50 slides, three selectable lengths. |
 
 The short deck is not a subset of the long one. It follows the rule that a talk
-should build rather than display: the approach is **one sample-space picture
-that grows across six slides** — the policy's two routes, a constraint on one of
-them, and a dot for where each method's draw lands — instead of a finished
-four-column figure, and every
+should build rather than display: the approach is **one flow-time picture that
+grows across six slides**, paired with a pipeline strip — noise becoming an
+action along the flow's own time axis, with each method shown as a place on that
+axis where it intervenes — instead of a finished four-column figure, and every
 result is one message with one comparison — the paper's eight-panel 2D figure is
 cropped into single panels revealed one at a time, and the large results tables
 and the wall-clock chart are dropped entirely in favour of video plus two or
@@ -125,22 +125,21 @@ pip install Pillow
   `data-tier`, and a `<div class="notes">` that is lifted into the notes panel
   at load (it never renders on the slide itself).
 - **The pipeline strip** (20-minute cut) — `<svg data-pipe="N">` beside each
-  sample-space figure on slides 4–9: the sampler as stacked boxes, one state
-  per slide (untouched, guidance, projection, the cut arrow, the renoise
-  return, the loop repeated). Execute drops a row when projection appears.
-- **The sample-space method figure** (20-minute cut) — the renderer driven by
-  `<svg data-geo="N">`, one state per slide 4–9: the policy's draw lands in the
-  obstacle; guidance bends it off every route; projection snaps it to the rim,
-  off the route; rejection redraws from noise with no memory; the biased redraw
-  through a window at c; and the iteration, with windows shrinking as δ does.
-  Nothing moves between states, so the audience tracks the same â, c and
-  windows from slide to slide. The routes are thin bands on purpose — the data
-  manifold is low-dimensional, which is exactly why a projection leaves it. The
-  geometry is exact and was found by a small search (c is the true nearest rim
-  point, every redraw is on the route and inside its window, and the route
-  curves toward the rim so the redraws really do get closer); if you move the
-  disc or the route, re-check those claims before presenting. The equation on
-  slide 8 and the k tiles on slide 9 are plain HTML, not part of the SVG.
+  figure on slides 4–9: the sampler as stacked boxes, one state per slide
+  (untouched, guidance, projection, rejection with its restart arrow back to
+  noise, the renoise return into the flow, the loop repeated). Execute drops a
+  row when a fix-up stage appears.
+- **The flow-time figure** (20-minute cut) — `<svg data-flow="N">`, one state
+  per slide 4–9. Noise on the left becomes an action on the right along the
+  flow's own time axis; the grey lines are draws gathering late into two
+  behaviours; a red band at the top violates the constraint. Every method is a
+  position on that axis: guidance pushes mid-flow against the flow's blurred
+  guess x̂₀ and lands in the gap, projection edits at t = 1, rejection restarts
+  at t = 0, CS-Pi takes c back to t = n and re-runs. Each state's explanation
+  sits in a caption strip above the plot; inside the plot only short tags, so
+  the paths stay readable. The equation on slide 8 and the k tiles on slide 9
+  are plain HTML. If you change the geometry constants (`A0`, `A1`, `N1`,
+  `R1`, …), re-check that the redraws still end where the captions say.
 - **The four-column taxonomy** (45-minute deck) — the `TAXO` array in the deck's script. Act II
   builds it one column at a time: each slide holds an
   `<svg data-taxo="N">`, which renders the first `N` columns filled in with
