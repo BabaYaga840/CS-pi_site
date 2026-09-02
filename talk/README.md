@@ -8,12 +8,16 @@ lengths.**
 
 | Deck | Source | Present from | For |
 |------|--------|--------------|-----|
-| **20-minute cut** | `short.src.html` | `talk/short.html` | A conference or group slot. 17 slides, one path, no tables. |
+| **20-minute cut** | `short.src.html` | `talk/short.html` | A conference or group slot. 21 slides, one path, no tables. |
 | **45-minute lab talk** | `deck.src.html` | `talk/index.html` | A full lab meeting, and the backup material you answer questions from. 50 slides, three selectable lengths. |
 
-The short deck is not a subset of the long one. It follows the rule that a talk
-should build rather than display: the approach is **one flow-time picture that
-grows across six slides**, paired with a pipeline strip — noise becoming an
+The short deck is not a subset of the long one. It opens for a mixed audience
+(vision, robotics, ML): the pretrained flow policy, the unguided policy
+colliding on both hardware layouts, the constraint, the goal as one equation, the two properties we want (feasible and plausible, with the
+hardware clips as evidence), and a one-slide flow-matching primer — so nothing
+in the method act relies on background the room does not share. It then follows
+the rule that a talk should build rather than display: the approach is **one
+flow-time picture that grows across seven slides**, paired with a pipeline strip — noise becoming an
 action along the flow's own time axis, with each method shown as a place on that
 axis where it intervenes — instead of a finished four-column figure, and every
 result is one message with one comparison — the paper's eight-panel 2D figure is
@@ -36,16 +40,16 @@ ceiling. These are the ones to present from.
 
 | Section | Slides | Runs |
 |---------|--------|------|
-| The problem | 1–3 | ~3 min |
-| Two attempts that fail | 4–6 | ~3.5 min |
-| The turn and the method | 7–10 | ~5.5 min |
-| Does it work | 11–15 | ~5.5 min |
-| Wrap | 16–17 | ~2 min |
+| The setup: policy, collisions, constraint, goal, two properties, flow matching | 1–7 | ~5 min |
+| Two attempts that fail, and rejection | 8–11 | ~4 min |
+| The turn and the method | 12–14 | ~4 min |
+| Does it work | 15–19 | ~5.5 min |
+| Wrap | 20–21 | ~2 min |
 
-19.5 min total, so a 20-minute slot has slack. **If you are past "THE TURN"
-(slide 7) at eight minutes, you are on time.** The rail shows the running
-budget. Slides 10 (the live animation) and 16's middle bullet are the two safe
-things to cut live.
+20 min total, so cut slide 14 (the live animation, 1 min) if the slot is tight.
+**If you are past "THE TURN" (slide 12) at nine minutes, you are on time.** The
+rail shows the running budget. Slide 14 and slide 20's middle bullet are the
+two safe things to cut live.
 
 ## Keys
 
@@ -124,20 +128,31 @@ pip install Pillow
   `<section class="slide">` with `data-act`, `data-title`, `data-min`,
   `data-tier`, and a `<div class="notes">` that is lifted into the notes panel
   at load (it never renders on the slide itself).
+- **The act I figures** (20-minute cut) — three one-off SVGs drawn in the
+  script: `data-policy` (slide 2: observation in, a different action chunk per
+  draw; the photo comes from its `data-src` media token), `data-cset` (slide 4:
+  the feasible set, a draw outside it, its projection and δ) and `data-goal`
+  (slide 5: the policy's density with the infeasible part cut away). The
+  flow-matching primer on slide 7 is `data-flow="0"`: the flow-time figure with
+  no red band and one training pair drawn as a straight line. Slide 3 shows the
+  unguided policy colliding on both hardware layouts using the annotated
+  filmstrips `assets/hw_v1_fail.png` and `assets/hw_v2_fail.png` (the repo has
+  no unguided hardware video); each strip is cropped to its five frames with
+  `object-fit`, so swapping in a `<video>` of the same run is a one-line change.
 - **The pipeline strip** (20-minute cut) — `<svg data-pipe="N">` beside each
-  figure on slides 4–9: the sampler as stacked boxes, one state per slide
+  figure on slides 8–13: the sampler as stacked boxes, one state per slide
   (untouched, guidance, projection, rejection with its restart arrow back to
   noise, the renoise return into the flow, the loop repeated). Execute drops a
   row when a fix-up stage appears.
 - **The flow-time figure** (20-minute cut) — `<svg data-flow="N">`, one state
-  per slide 4–9. Noise on the left becomes an action on the right along the
+  per slide 7–13. Noise on the left becomes an action on the right along the
   flow's own time axis; the grey lines are draws gathering late into two
   behaviours; a red band at the top violates the constraint. Every method is a
   position on that axis: guidance pushes mid-flow against the flow's blurred
   guess x̂₀ and lands in the gap, projection edits at t = 1, rejection restarts
   at t = 0, CS-Pi takes c back to t = n and re-runs. Each state's explanation
   sits in a caption strip above the plot; inside the plot only short tags, so
-  the paths stay readable. The equation on slide 8 and the k tiles on slide 9
+  the paths stay readable. The equation on slide 12 and the k tiles on slide 13
   are plain HTML. If you change the geometry constants (`A0`, `A1`, `N1`,
   `R1`, …), re-check that the redraws still end where the captions say.
 - **The four-column taxonomy** (45-minute deck) — the `TAXO` array in the deck's script. Act II
@@ -159,6 +174,26 @@ pip install Pillow
   and wall-clock figures (`assets/fig_2d_distributions.png`,
   `assets/fig_wallclock.png`) were extracted from the rebuttal PDF at its
   embedded resolution — re-export from the originals if you have them.
+- **The hardware clips** (the two properties on slide 6, results on slide 19) play the
+  colour-graded versions in `assets/hardware/graded/`, not the raw
+  `assets/hardware/*.mp4`. Regenerate with `python3 tools/grade_hardware_clips.py`
+  (needs numpy, Pillow, opencv-python-headless, imageio-ffmpeg, torch,
+  transformers; CLIPSeg and SlimSAM download from Hugging Face on first run).
+  It washes the background toward white, keeps the arm, apple and plate at
+  full colour, and tints that layout's obstacles red; the two hand-held clips
+  are stabilised by fitting a shift and zoom to the plate each frame. Graded
+  clips are committed; `tools/.preview/` (`--preview`'s contact sheets) is
+  git-ignored.
+
+  | Layout | Obstacles tinted | Clips |
+  |--------|-------------------|-------|
+  | 1 (slide 6) | cups and bowl | `cspi_success_0`, `project_fail` |
+  | 2 (slide 19) | the two canisters | `gradient_guidance`, `trust_fail` |
+
+  To change the look, edit the constants at the top of the script: `SAT_FG`
+  (foreground saturation), `BG_SAT` / `BG_WASH` / `BG_BLUR` (background
+  desaturation, white-wash strength, blur), and `TINT` / `TINT_T` (obstacle
+  tint colour and blend strength).
 
 ### One gotcha, if you add an SVG figure
 

@@ -207,7 +207,7 @@ table.res .flag{color:var(--bad);font-weight:700;}
 .vizfoot{display:flex;gap:13px;align-items:center;padding:6px 13px;flex-wrap:wrap;border-top:1px solid var(--line);font-size:11px;color:var(--ink-soft);flex:none;}
 .legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;}
 
-/* ---- sample-space method figure (slides 4-9) ----------------------------- */
+/* ---- flow-time method figure (slides 8-13) ------------------------------- */
 .figrow{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;gap:26px;}
 .figrow .pipe{width:250px;flex:none;height:auto;display:block;}
 .figrow .geo{flex:1;min-width:0;max-width:700px;height:auto;display:block;}
@@ -240,6 +240,34 @@ table.res .flag{color:var(--bad);font-weight:700;}
 .eqpart.f2{border-color:var(--blue);}
 .eqrow .eqfoot{grid-column:1/-1;margin:0;font-size:13.5px;line-height:1.4;color:var(--ink-soft);text-align:center;}
 .tile .n sub{font-size:.55em;}
+
+/* ---- act I figures (slides 2-6) ------------------------------------------ */
+.figwrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
+.figwrap .wide{width:100%;max-width:1040px;height:auto;display:block;}
+.chips{display:flex;gap:7px;flex-wrap:wrap;flex:none;margin:0;font-family:var(--mono);font-size:12px;}
+.chips .step{border:1px solid var(--line-firm);border-radius:6px;padding:3px 10px;color:var(--ink-soft);background:#fff;}
+.chips .step.red{color:#a8382a;background:#fdf1ef;border-color:#f2cfc8;}
+.chips .step.hot{font-weight:700;border-color:currentColor;}
+.cset{width:100%;height:auto;display:block;flex:none;}
+ul.pts.defs li{font-size:15px;line-height:1.4;}
+.goal{width:100%;height:auto;display:block;}
+.bigeq{margin:0;font-family:var(--mono);font-weight:700;font-size:26px;color:var(--ink);letter-spacing:-.01em;line-height:1.3;}
+.bigeq sup,.bigeq sub{font-size:.6em;}
+.col .eqfoot{margin:8px 0 0;font-size:15px;line-height:1.45;color:var(--ink-soft);}
+.prop{flex:none;}
+.prop .pn{font-family:var(--mono);font-weight:700;font-size:14.5px;color:var(--ink);}
+.prop .pn .sym{color:var(--blue-deep);font-size:17px;}
+.prop .pd{font-size:14px;color:var(--ink-soft);line-height:1.4;margin-top:3px;min-height:2.8em;}
+.fmfig{width:100%;height:auto;display:block;}
+.tiles.rows{grid-auto-flow:row;grid-template-columns:1fr;align-content:center;}
+
+.strips{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:18px;}
+.striprow{display:flex;align-items:center;gap:16px;}
+.striplabel{flex:none;width:150px;display:flex;flex-direction:column;gap:3px;}
+.striplabel b{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink);}
+.striplabel span{font-size:12.5px;line-height:1.35;color:var(--ink-soft);}
+.stripframe{flex:1;min-width:0;aspect-ratio:4560/536;border-radius:8px;overflow:hidden;background:var(--panel);}
+.stripframe img{width:100%;height:100%;object-fit:cover;object-position:left center;display:block;}
 
 /* ---- chrome -------------------------------------------------------------- */
 #rail{
@@ -322,89 +350,245 @@ body.notes-on #deck{right:396px;}
     <p>One sentence of framing before you advance: <strong>"This is a sampling method. The policy
       is frozen, and we never take a gradient of the constraint."</strong> That rules out the two
       things people will otherwise assume you did.</p>
-    <p><b>Budget for the whole talk:</b> ~3 min problem, ~4 min why the obvious fixes fail,
-      ~6 min the method, ~5 min results, ~2 min wrap. If you are past the turn at 8 minutes you
-      are on time.</p>
+    <p><b>Budget for the whole talk:</b> ~5 min setup (the policy, the collisions, the constraint,
+      the goal, the two properties, flow matching), ~4 min why the obvious fixes fail, ~4 min the method,
+      ~5.5 min results, ~2 min wrap. If you are past the turn at 9 minutes you are on time.</p>
   </div>
 </section>
 
-<!-- ===================== 2 · HOOK ====================================== -->
-<section class="slide" data-act="I · The problem" data-title="Hook: same policy, same scene" data-min="1" data-tier="1">
-  <p class="kicker"><span class="act">I · The problem</span><span class="rule"></span><span>Franka · π₀.₅ · zero-shot</span></p>
-  <h2>Same policy. Same scene. One thing changed.</h2>
-  <p class="dek">Pick the apple, place it on the blue plate — with an obstacle that was never in
-    the demonstrations. Both clips run the <strong>same frozen π₀.₅</strong>. 4× speed.</p>
-  <div class="split">
-    <div class="media-frame mf-bad">
-      <div class="mf-head"><span>Projection baseline</span><span class="spacer"></span><span class="pill no">fail</span></div>
-      <video src="../assets/hardware/project_fail.mp4" autoplay loop muted playsinline></video>
+<!-- ===================== 2 · THE POLICY ================================ -->
+<section class="slide" data-act="I · The setup" data-title="What we start with: a pretrained flow policy" data-min="0.5" data-tier="1">
+  <p class="kicker"><span class="act">I · The setup</span><span class="rule"></span><span>What we start with</span></p>
+  <h2>We start with a policy that already works — and stays frozen</h2>
+  <div class="figwrap">
+    <svg data-policy data-src="../assets/hardware/cspi_success_0.jpg" class="wide" viewBox="0 0 900 240" role="img"
+         aria-label="A pretrained flow-matching policy as a box: an observation goes in, and each draw from the policy is a different action chunk."></svg>
+  </div>
+  <div class="tiles">
+    <div class="tile"><div class="l">Trained by imitation</div><div class="s">Physical Intelligence's π₀.₅, Diffusion Policy,
+      any flow-matching policy: a camera image and the joint state go in, a chunk of the next H actions comes out.</div></div>
+    <div class="tile"><div class="l">A distribution, not a function</div><div class="s">The same observation gives a different
+      action chunk each time you draw a sample. Demonstrations showed several ways to do the task, and the policy kept all of them.</div></div>
+    <div class="tile ours"><div class="l">Frozen</div><div class="s">No retraining, no finetuning, no training data.
+      The only thing we are allowed to do with it is draw samples.</div></div>
+  </div>
+  <div class="notes">
+    <div class="timing">~45 s · everyone in the room has met this object; name it and move</div>
+    <p>The vision people know diffusion models, the robotics people know imitation learning, the
+      ML people know flows. Give each of them their word: <strong>"a diffusion-style policy,
+      trained by imitation, that we treat as a frozen generative model over actions."</strong></p>
+    <p>Two things need to land. First, <strong>it is a distribution</strong>: draw twice and you
+      get two different action chunks, because the demonstrations contained several ways of doing
+      the task. That multimodality is what makes the middle of this talk hard.</p>
+    <p>Second, <strong>frozen means frozen</strong>: no gradient steps, no finetuning, no access to
+      the data. The policy is a black box you can sample from, and that is the whole interface.</p>
+    <p class="say">"Everything we do is at inference time. The weights never change."</p>
+  </div>
+</section>
+
+<!-- ===================== 3 · RUN IT AS-IS ============================= -->
+<section class="slide" data-act="I · The setup" data-title="Run it as-is: it collides" data-min="0.5" data-tier="1">
+  <p class="kicker"><span class="act">I · The setup</span><span class="rule"></span><span>Run it as it is · Franka · π₀.₅ · two obstacle layouts</span></p>
+  <h2>Run the policy as it is, and it drives straight into the obstacle</h2>
+  <div class="strips">
+    <div class="striprow">
+      <div class="striplabel"><b>layout 1</b><span>cups and a bowl on the route to the plate</span></div>
+      <div class="stripframe"><img src="../assets/hw_v1_fail.png" alt="Five frames of the unguided policy on layout 1: the gripper knocks over the red cup and drags the apple through the obstacle, two frames flagged as collisions"></div>
     </div>
-    <div class="media-frame mf-ours">
-      <div class="mf-head"><span>CS-Pi (ours)</span><span class="spacer"></span><span class="pill ok">success</span></div>
-      <video src="../assets/hardware/cspi_success_0.mp4" autoplay loop muted playsinline></video>
+    <div class="striprow">
+      <div class="striplabel"><b>layout 2</b><span>two canisters beside the apple</span></div>
+      <div class="stripframe"><img src="../assets/hw_v2_fail.png" alt="Five frames of the unguided policy on layout 2: the arm sweeps through the canister, one frame flagged as a collision"></div>
+    </div>
+  </div>
+  <p class="tnote">The same frozen π₀.₅, no constraint handling, on two obstacle layouts that were never
+    in its training data. Frames run left to right; <b style="color:#c2410c">orange frames are collisions</b>.
+    The policy is not wrong — nothing it was ever given says the obstacle is there.</p>
+  <div class="notes">
+    <div class="timing">~30 s · the problem, before any notation: it hits things</div>
+    <p>Two rows, two layouts, one policy. Point at the orange frames and say what happened: on
+      layout 1 the gripper takes the red cup with it and drags the apple through the stack; on
+      layout 2 it sweeps through the canister on the way to the apple.</p>
+    <p class="say">"This is not a bad policy. It does the task. It has simply never been told the
+      obstacle exists — and there is nothing in the interface to tell it."</p>
+    <p>That last clause is the setup for the next slide: the requirement arrives at deployment,
+      after training, and we need a way to hand it to a frozen policy.</p>
+    <p class="flag">These are the annotated rollout frames from the paper (the repo has no unguided
+      hardware video). When the unguided clips exist, swap each strip for a
+      <code>&lt;video&gt;</code> in the same frame; the layout labels already match the clip
+      layouts on the two-properties and hardware slides.</p>
+  </div>
+</section>
+
+<!-- ===================== 4 · CONSTRAINTS =============================== -->
+<section class="slide" data-act="I · The setup" data-title="What arrives at deployment: a constraint" data-min="0.5" data-tier="1">
+  <p class="kicker"><span class="act">I · The setup</span><span class="rule"></span><span>What arrives at deployment</span></p>
+  <h2>The requirement arrives at deployment, and no demonstration had it</h2>
+  <div class="split wide-l">
+    <div class="col">
+      <div class="media-frame">
+        <div class="mf-head"><span>pick the apple, place it on the plate — around the stack</span><span class="spacer"></span><span class="pill no">layout 1</span></div>
+        <img src="../assets/hardware/cspi_success_0.jpg" alt="A Franka arm above a table with an apple, a blue plate, and a stack of cups and a bowl that were never in the demonstrations">
+      </div>
+      <p class="chips"><span class="step red hot">here: obstacle boxes from a depth camera</span><span class="step">joint limits</span><span class="step">workspace bounds</span><span class="step">a required end-effector pose</span></p>
+    </div>
+    <div class="col">
+      <svg data-cset class="cset" viewBox="0 0 460 290" role="img"
+           aria-label="Action space with a feasible set C. A draw a lies outside it; the projection maps a to the nearest feasible action, and δ is the distance between them."></svg>
+      <ul class="pts tight defs">
+        <li><span class="cs">C</span> — the <strong>feasible set</strong>: the actions that satisfy the constraint.
+          It changes between deployments, and it was not in the training data.</li>
+        <li>All we assume is that it is cheap to <strong>check</strong> whether an action is in C, and
+          cheap to <strong>project</strong> onto it: <span class="cs">Π<sub>C</sub>(a)</span> is the nearest
+          feasible action, and <span class="cs">δ</span> is how far a had to move.</li>
+      </ul>
     </div>
   </div>
   <div class="notes">
-    <div class="timing">~1 min · let both clips loop once, then talk over the second</div>
-    <p class="say">"Same policy weights. Same scene. Same constraint. The only difference is how
-      the actions were <em>sampled</em>."</p>
-    <p><strong>Do not explain the method here.</strong> Say only: π₀.₅ zero-shot on a Franka, no
-      finetuning, and the constraint is obstacle boxes from a ZED 2 depth pipeline — real
-      perception, not ground truth.</p>
-    <p>Then make the promise that buys you the next fifteen minutes: <strong>"By the end you'll
-      know exactly what changed, and it's a loop you could write this afternoon."</strong></p>
-    <div class="qa">"Cherry-picked?" — one trial; aggregate is 55% vs 40% over 20 trials, and it's
-      on the results slide. Say that immediately, don't deflect.</div>
+    <div class="timing">~30 s · define C and the projection once, here — both come back constantly</div>
+    <p>The photo is layout 1 from the previous slide, before the arm moves. The cups and the bowl
+      were never in a demonstration, and the obstacle boxes come from a ZED 2 depth pipeline at run
+      time. Real perception, not ground truth.</p>
+    <p><strong>Define two things and nothing else.</strong> C is the set of feasible actions. The
+      projection Π<sub>C</sub> takes any action to the nearest feasible one, and δ is the distance it
+      had to move. Say out loud that this is all the access we need: <em>membership and projection,
+      no gradient of anything</em>. For obstacle boxes and joint limits, both are a few lines.</p>
+    <p>Do not say what we do with the projection yet. The next act spends a slide on why the obvious
+      use of it — execute Π<sub>C</sub>(a) — is a mistake.</p>
   </div>
 </section>
 
-<!-- ===================== 3 · THE BIND ================================== -->
-<section class="slide" data-act="I · The problem" data-title="Two requirements, and every method picks one" data-min="1.5" data-tier="1">
-  <p class="kicker"><span class="act">I · The problem</span><span class="rule"></span><span>The bind</span></p>
-  <h2>A deployed policy has to satisfy two things at once</h2>
-  <div class="split">
-    <div class="col">
-      <h3 class="sub">1 · Satisfy the constraint</h3>
-      <ul class="pts tight">
-        <li>Obstacles, joint limits, workspace bounds, a required end-effector pose — <strong>none
-          of it was in the demonstrations</strong>, and it changes between deployments.</li>
-        <li>Retraining per constraint is exactly what we are trying to avoid.</li>
-      </ul>
-      <h3 class="sub" style="margin-top:4px">2 · Stay in the policy's distribution</h3>
-      <ul class="pts tight">
-        <li>Not an aesthetic preference — a <strong>safety property</strong>.</li>
-        <li>Off-distribution actions are where the learned dynamics stop being predictive, where
-          trajectories stop being smooth, and where the arm does things nobody trained it to do.</li>
-      </ul>
+<!-- ===================== 5 · THE GOAL ================================== -->
+<section class="slide" data-act="I · The setup" data-title="The goal: sample from the policy, subject to C" data-min="0.5" data-tier="1">
+  <p class="kicker"><span class="act">I · The setup</span><span class="rule"></span><span>The problem, in one line</span></p>
+  <h2>Sample from the policy — but only actions that satisfy the constraint</h2>
+  <div class="split wide-l">
+    <div class="col center">
+      <svg data-goal class="goal" viewBox="0 0 620 250" role="img"
+           aria-label="The policy's action distribution as a bimodal curve. The region that violates C is shaded red. The target is the same curve with the red part removed."></svg>
     </div>
     <div class="col center">
-      <div class="callout neg">Today you pick one. The strongest constraint-satisfying baseline
-        on our shelf task is feasible <b>96% of the time</b> and pays for it with samples the
-        policy assigns almost no mass to.</div>
-      <div class="callout warn" style="margin-top:2px">And the strongest in-distribution method
-        is the unmodified policy, which <b>collides in 82%</b> of the same tasks.</div>
-      <div class="callout good" style="margin-top:2px">The claim of this talk: <b>you do not have
-        to pick.</b></div>
+      <p class="bigeq">p<sup>★</sup>(a | o) ∝ π<sub>θ</sub>(a | o) · 𝟙[a ∈ C]</p>
+      <p class="eqfoot" style="text-align:left">The policy's own distribution, with the infeasible
+        part cut away. Nothing else moves: where the policy put its mass, the target keeps it.</p>
+      <div class="callout" style="margin-top:8px">This is a <b>sampling problem</b>. The target is fixed
+        by the policy and by C. Every method in this talk is a different way of drawing from it —
+        with the policy frozen, and with only the check and the projection as access to C: never a
+        gradient of the constraint.</div>
     </div>
   </div>
   <div class="notes">
-    <div class="timing">~1.5 min · the frame for everything after it</div>
-    <p><strong>Requirement 2 is the one that needs defending</strong>, so spend your words there.
-      An audience accepts "don't hit things" instantly and hears "stay in-distribution" as a
-      modelling nicety. It isn't.</p>
-    <p class="say">"In-distribution is a safety property. Off the data manifold, nothing you
-      validated about the policy still holds."</p>
-    <p>The two callouts on the right are the bind in measured numbers, and they set up the whole
-      middle of the talk: every existing method sits at one end or the other.</p>
-    <p>Land the last line as a promise, then go straight to the pipeline — do not start listing
-      baselines yet.</p>
+    <div class="timing">~30 s · state the target distribution, and that we are not allowed to change the policy</div>
+    <p>The whole problem in one equation, so say it in words: <strong>"the policy's distribution,
+      restricted to the feasible set."</strong> On the left, the curve is what the policy draws;
+      the red part violates C; the target is what is left.</p>
+    <p>Stress that the target does not move the surviving mass around. It does not pull actions
+      toward the boundary and it does not smear them. If a method's samples look different from
+      the black curve outside the red region, the method is wrong, not the target.</p>
+    <p>Then the rules: the policy is frozen, we never take a gradient of C, and the only access to
+      C is the check and the projection from the previous slide. Every baseline in the next act
+      breaks one of these rules or fails at the target.</p>
   </div>
 </section>
 
-<!-- ===================== 4 · THE FLOW, UNTOUCHED ======================= -->
+<!-- ===================== 6 · FEASIBLE AND PLAUSIBLE ==================== -->
+<section class="slide" data-act="I · The setup" data-title="Two properties: feasible and plausible" data-min="1" data-tier="1">
+  <p class="kicker"><span class="act">I · The setup</span><span class="rule"></span><span>Two properties · the same arm, policy and scene as before</span></p>
+  <h2>Two things we want from every executed action</h2>
+  <div class="split">
+    <div class="col">
+      <div class="prop"><div class="pn"><span class="sym">Feasible</span> · a ∈ C</div>
+        <div class="pd">It satisfies the constraint: clear of the obstacle, inside the limits, at the pose.</div></div>
+      <div class="media-frame mf-bad">
+        <div class="mf-head"><span>Feasible only · execute the projected action Π<sub>C</sub>(a)</span><span class="spacer"></span><span class="pill no">fail</span></div>
+        <video src="../assets/hardware/graded/project_fail.mp4" autoplay loop muted playsinline></video>
+      </div>
+    </div>
+    <div class="col">
+      <div class="prop"><div class="pn"><span class="sym">Plausible</span> · the policy could have drawn it</div>
+        <div class="pd">It has density under π<sub>θ</sub>(a | o) — where everything you validated about the policy still holds.</div></div>
+      <div class="media-frame mf-ours">
+        <div class="mf-head"><span>Feasible and plausible · CS-Pi (ours)</span><span class="spacer"></span><span class="pill ok">success</span></div>
+        <video src="../assets/hardware/graded/cspi_success_0.mp4" autoplay loop muted playsinline></video>
+      </div>
+    </div>
+  </div>
+  <p class="tnote">Same frozen π₀.₅, same scene, same constraint; only the sampling differs. 4× speed,
+    background faded. Left: every executed action is feasible, and the task still fails, because those
+    actions are ones the policy never produces. Plausible alone fails too: the unmodified policy collides
+    in 82% of the simulated shelf tasks shown later. <b>Today's methods pick one. The claim of this talk: you don't have to.</b></p>
+  <div class="notes">
+    <div class="timing">~1.25 min · name the two properties, then let the clips make the argument</div>
+    <p><strong>Plausibility is the one that needs defending</strong>, so spend your words there. An
+      audience accepts "don't hit things" instantly and hears "stay in-distribution" as a modelling
+      nicety. It isn't: off the data manifold, the learned dynamics stop being predictive, the
+      trajectories stop being smooth, and the arm does things nobody trained it to do.</p>
+    <p class="say">"Plausible is a safety property. Off the data, nothing you validated about the
+      policy still holds."</p>
+    <p>The left clip is the proof: execute the projected action and you are feasible at every step
+      — and the arm never completes the task, because it is executing actions the policy would
+      never have drawn. The right clip is the same policy, the same scene, sampled our way.</p>
+    <p><strong>Do not explain the method here.</strong> Say only: π₀.₅ zero-shot on a Franka, no
+      finetuning, obstacle boxes from a ZED 2 depth pipeline. Then make the promise that buys you
+      the next fifteen minutes: <strong>"By the end you'll know exactly what changed, and it's a
+      loop you could write this afternoon."</strong></p>
+    <div class="qa">"Cherry-picked?" — one trial; aggregate is 55% vs 40% over 20 trials, and it's
+      on the results slide. Say that immediately, don't deflect.</div>
+    <p>The bind in measured numbers, if you want it: the strongest feasibility-first baseline on our
+      shelf task is feasible 96% of the time and pays with samples the policy assigns almost no mass
+      to; the strongest in-distribution method is the unmodified policy, which collides in 82% of the
+      same tasks.</p>
+    <p>This is <strong>layout 1</strong>: the obstacles are the two cups and the bowl at the back of
+      the table, tinted red in the clip; the canister stack is scenery. Layout 2, where the canisters
+      are the obstacle, is on the hardware results slide. The clips are colour-graded and the
+      background is washed out so the arm, apple and plate read from the back of the room; nothing
+      in the footage was altered otherwise.</p>
+  </div>
+</section>
+
+<!-- ===================== 7 · FLOW MATCHING ============================= -->
+<section class="slide" data-act="I · The setup" data-title="Flow matching, just enough" data-min="1" data-tier="1">
+  <p class="kicker"><span class="act">I · The setup</span><span class="rule"></span><span>Background · flow matching, just enough to follow the method</span></p>
+  <h2>Flow matching: noise on the left becomes an action on the right</h2>
+  <div class="split wide-l">
+    <div class="col center">
+      <svg data-flow="0" class="fmfig" viewBox="0 0 700 330" role="img"
+           aria-label="A flow policy on its time axis: draws start as noise at t = 0, follow the learned velocity, and end at t = 1 as actions gathered into two behaviours. One training pair is shown as a straight dashed line from a noise sample to a demonstrated action, with the intermediate state x_t marked."></svg>
+    </div>
+    <div class="tiles rows">
+      <div class="tile"><div class="l">Train</div><div class="s">Pair a noise sample ε with a demo action a.
+        The path between them is a straight line, <span class="cs">x<sub>t</sub> = (1−t)·ε + t·a</span>.
+        Learn the velocity along it: <span class="cs">v<sub>θ</sub>(x<sub>t</sub>, t, o) ≈ a − ε</span>.
+        The observation o conditions everything; it is dropped from the figure.</div></div>
+      <div class="tile"><div class="l">Sample</div><div class="s">Start from fresh noise ε at t = 0 and
+        follow v<sub>θ</sub> to t = 1. The paths curve, because the field averages over every pair, and
+        they gather late into the demonstrated behaviours: A and B are two ways the demos did the task.
+        Where the draws end is the policy's distribution, π<sub>θ</sub>(a | o).</div></div>
+      <div class="tile ours"><div class="l">The fact we will use</div><div class="s">At time t the flow expects a
+        mix of (1−t) noise and t action. Mix <em>any</em> action with noise at that ratio, and the flow
+        will continue from there as if it had drawn it.</div></div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~1 min · one picture, three sentences; the third tile is the one to remember</div>
+    <p>Teach the axis: left to right is flow time. A draw starts as pure noise at t = 0, the learned
+      velocity moves it, and at t = 1 it is an action. The grey lines are draws. They gather into
+      two bundles because the demonstrations showed two behaviours — that is the multimodality from
+      the policy slide, seen from the side.</p>
+    <p><strong>Training</strong> is the dashed line: pick a noise sample and a demonstrated action,
+      draw the straight line between them, and regress the velocity onto a − ε at points along it.
+      That is all flow matching is. <strong>Sampling</strong> follows the learned field, and the paths
+      curve because the field is an average over all the pairs that pass nearby.</p>
+    <p class="say">"Here is the one fact the method rests on: a point on that dashed line is a
+      legitimate state of the flow at time t. Take any action, mix it with noise at the right ratio,
+      and the flow will carry on from there."</p>
+    <p>Do not say "renoise" yet. When it arrives in act III it should sound like this slide.</p>
+  </div>
+</section>
+
+<!-- ===================== 8 · THE FLOW, UNTOUCHED ======================= -->
 <section class="slide" data-act="II · Two attempts" data-title="The flow, untouched" data-min="0.5" data-tier="1">
-  <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span>The object we get to modify</span></p>
-  <h2>Noise goes in on the left. An action comes out on the right.</h2>
+  <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span>The same picture, with the constraint on it</span></p>
+  <h2>Put the constraint on the picture. The flow does not know it is there.</h2>
   <div class="figrow">
     <svg data-pipe="1" class="pipe" viewBox="0 0 320 340" role="img"
          aria-label="The sampling pipeline as a vertical strip: noise, flow ODE, a policy sample, execute."></svg>
@@ -412,23 +596,24 @@ body.notes-on #deck{right:396px;}
          aria-label="A flow policy on its time axis: draws start as noise at t = 0, follow the flow, and end at t = 1 in one of two behaviours. The policy's draw ends inside the band of actions that violate the constraint."></svg>
   </div>
   <p class="recipe"><span class="step hot blue">draw â from the policy</span><span class="arr">→</span><span class="step">execute</span></p>
-  <p class="tnote">A flow policy integrates a learned velocity field from t = 0 to t = 1. Where the
-    draws end is the policy's distribution: here, two behaviours the demonstrations showed. The
-    red band is a constraint the demonstrations never had. Nothing in the flow knows it exists.</p>
+  <p class="tnote">The flow from the background slide, with C drawn on it: the red band is the set
+    of actions that violate the constraint. Nothing in the flow knows it exists, so some draws end
+    inside it — like this one. The strip on the left is the same pass as a recipe: noise, flow,
+    a draw, execute. Every method that follows changes one row of it.</p>
   <div class="notes">
-    <div class="timing">~30 s · teach the axis once, then every method is a place on it</div>
-    <p>This picture is going to grow for the next five slides, so <strong>teach the axis before
-      you add anything.</strong> Left to right is flow time: a draw starts as pure noise at t = 0,
-      the velocity field moves it, and at t = 1 it is an action. The grey lines are draws. They
-      gather into two bundles because the demonstrations showed two behaviours.</p>
-    <p>Then the constraint: the red band at the top is the set of actions that violate it. The
-      policy was never told, so some of its draws end up there — like the blue one.</p>
+    <div class="timing">~30 s · add the band to the picture they already know, then move</div>
+    <p>The axis was taught on the flow-matching slide, so <strong>do not re-teach it</strong>. Add
+      one thing: the red band at the top is C's complement — the actions that violate the
+      constraint. The policy was never told, so some of its draws end up there, like the blue one.
+      This picture is going to grow for the next five slides.</p>
+    <p>Point at the strip on the left once: one sampling pass, top to bottom. Each baseline will
+      change one row of it, and the figure on the right shows what that does to the draw.</p>
     <p class="say">"The policy is frozen. Every method in this talk is a place on this axis where
       you intervene: in the middle, at the end, or by going back. That's the whole design space."</p>
   </div>
 </section>
 
-<!-- ===================== 5 · ATTEMPT 1 · GUIDANCE ====================== -->
+<!-- ===================== 9 · ATTEMPT 1 · GUIDANCE ====================== -->
 <section class="slide" data-act="II · Two attempts" data-title="Attempt 1: push in the middle" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span style="color:var(--red)">Attempt 1 · gradient guidance</span></p>
   <h2>Why pushing the velocity mid-flow goes wrong</h2>
@@ -469,7 +654,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 6 · ATTEMPT 2 · PROJECTION ==================== -->
+<!-- ===================== 10 · ATTEMPT 2 · PROJECTION ==================== -->
 <section class="slide" data-act="II · Two attempts" data-title="Attempt 2: fix the answer at the end" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span style="color:var(--purple)">Attempt 2 · projection</span></p>
   <h2>Let the flow finish, then snap the answer onto C</h2>
@@ -503,7 +688,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 7 · REJECTION ================================= -->
+<!-- ===================== 11 · REJECTION ================================= -->
 <section class="slide" data-act="II · Two attempts" data-title="Or: throw it away and redraw" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span style="color:var(--slate)">The honest fix · rejection sampling</span></p>
   <h2>Or throw the draw away and start again from noise</h2>
@@ -535,7 +720,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 8 · THE TURN · ONE PASS ======================= -->
+<!-- ===================== 12 · THE TURN · ONE PASS ======================= -->
 <section class="slide" data-act="III · The idea" data-title="THE TURN: bias the redraw toward c" data-min="2" data-tier="1">
   <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span style="color:var(--blue)">CS-Pi · one pass</span></p>
   <h2>Don't execute c. Don't discard it. Redraw, biased toward it.</h2>
@@ -547,7 +732,7 @@ body.notes-on #deck{right:396px;}
   </div>
   <p class="recipe"><span class="step">draw â</span><span class="arr">→</span><span class="step">project → c, δ</span><span class="arr">→</span><span class="step hot blue">renoise c to t = n = k/(k+δ), re-run the flow</span><span class="arr">→</span><span class="step">a′</span></p>
   <div class="eqrow">
-    <p class="eqmain">a′ &nbsp;∼&nbsp; (1/Z) · <span class="f1">p<sub>data</sub>(a′)</span> · <span class="f2">exp(−k²‖a′ − c‖² / 2δ²)</span></p>
+    <p class="eqmain">a′ &nbsp;∼&nbsp; (1/Z) · <span class="f1">π<sub>θ</sub>(a′ | o)</span> · <span class="f2">exp(−k²‖a′ − c‖² / 2δ²)</span></p>
     <div class="eqpart f1"><b>the policy's own density</b>The redraw comes out of the flow, so it is
       a real draw: it can only end where the policy's draws end.</div>
     <div class="eqpart f2"><b>a Gaussian centred on the projected point</b>Its width is δ/k:
@@ -580,7 +765,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 9 · ITERATE, AND k =========================== -->
+<!-- ===================== 13 · ITERATE, AND k =========================== -->
 <section class="slide" data-act="III · The idea" data-title="Repeat until δ is zero" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span style="color:var(--blue)">CS-Pi · the loop, and k</span></p>
   <h2>Repeat. Each pass goes back less far, and lands closer.</h2>
@@ -621,7 +806,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 10 · LIVE LOOP ================================ -->
+<!-- ===================== 14 · LIVE LOOP ================================ -->
 <section class="slide" data-act="III · The idea" data-title="Live: watch δ go to zero" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span>Live · click the canvas to restart</span></p>
   <h2>Watch δ go to zero</h2>
@@ -661,7 +846,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 11 · 2D SETUP ================================= -->
+<!-- ===================== 15 · 2D SETUP ================================= -->
 <section class="slide" data-act="IV · Does it work" data-title="2D: what the right answer looks like" data-min="0.5" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>2D diagnostic · setup</span></p>
   <h2>First, what does the right answer even look like?</h2>
@@ -691,7 +876,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 12 · 2D MONEY SHOT =========================== -->
+<!-- ===================== 16 · 2D MONEY SHOT =========================== -->
 <section class="slide" data-act="IV · Does it work" data-title="2D: feasible is easy, feasible and on-data is not" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>2D diagnostic · both are 100% feasible</span></p>
   <h2>Both of these satisfy the constraint perfectly</h2>
@@ -727,7 +912,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 13 · SHELF ==================================== -->
+<!-- ===================== 17 · SHELF ==================================== -->
 <section class="slide" data-act="IV · Does it work" data-title="Shelf: when the obstacle is on the route" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>7-DoF Franka · 150 tasks · obstacles added at deployment</span></p>
   <h2>In simulation, where the obstacle blocks the demonstrated route</h2>
@@ -763,7 +948,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 14 · 3D-ORIENT =============================== -->
+<!-- ===================== 18 · 3D-ORIENT =============================== -->
 <section class="slide" data-act="IV · Does it work" data-title="3D-Orient: a cost, not a constraint" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>7-DoF reach · orientation held throughout · same loop, new operator</span></p>
   <h2>Swap the projection and it enforces something else entirely</h2>
@@ -798,9 +983,9 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 15 · HARDWARE ================================= -->
+<!-- ===================== 19 · HARDWARE ================================= -->
 <section class="slide" data-act="IV · Does it work" data-title="Hardware: zero-shot on a Franka" data-min="1" data-tier="1">
-  <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>π₀.₅ · no finetuning · ZED 2 perception · 20 trials per method</span></p>
+  <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>π₀.₅ · no finetuning · ZED 2 perception · 2 layouts · 20 trials per method</span></p>
   <h2>And it survives real perception</h2>
   <div class="split wide-r">
     <div class="col center">
@@ -814,9 +999,15 @@ body.notes-on #deck{right:396px;}
         policy meeting obstacles nobody trained it for, with constraints from a depth camera —
         and it is 15 points above the best alternative.</div>
     </div>
-    <div class="media-frame mf-bad">
-      <div class="mf-head"><span>Gradient guidance on hardware</span><span class="spacer"></span><span class="pill no">fail</span></div>
-      <video src="../assets/hardware/gradient_guidance.mp4" autoplay loop muted playsinline></video>
+    <div class="col">
+      <div class="media-frame mf-bad">
+        <div class="mf-head"><span>Layout 2 · gradient guidance</span><span class="spacer"></span><span class="pill no">fail</span></div>
+        <video src="../assets/hardware/graded/gradient_guidance.mp4" autoplay loop muted playsinline></video>
+      </div>
+      <div class="media-frame mf-bad">
+        <div class="mf-head"><span>Layout 2 · trust sampling</span><span class="spacer"></span><span class="pill no">fail</span></div>
+        <video src="../assets/hardware/graded/trust_fail.mp4" autoplay loop muted playsinline></video>
+      </div>
     </div>
   </div>
   <div class="notes">
@@ -827,14 +1018,18 @@ body.notes-on #deck{right:396px;}
     <p>The framing that makes 55% a real result: frozen π₀.₅, zero-shot, obstacles absent from
       training, constraints from a ZED 2 depth pipeline with real noise — and 15 points clear of
       the best baseline.</p>
-    <p>The clip is guidance thrashing, which is the same off-manifold pathology from 3D-Orient in
-      physical units. Let it loop while you deliver the tiles.</p>
+    <p>Both clips are <strong>layout 2</strong> — the canister stack is the obstacle (tinted red),
+      with the apple beneath it — so the deck shows both hardware layouts: layout 1 on the
+      two-properties slide, layout 2 here. The top clip is guidance thrashing, which is the same off-manifold pathology
+      from 3D-Orient in physical units. The bottom one is trust sampling failing the same layout.
+      Let them loop while you deliver the tiles. (There is no CS-Pi success clip for layout 2 in
+      the repo; the number for it is 50% vs 40% for projection.)</p>
     <p><strong>Cost, in one line:</strong> about one extra forward pass on average, still running
       around 7 Hz on the arm — versus roughly 30× for rejection sampling.</p>
   </div>
 </section>
 
-<!-- ===================== 16 · LIMITATIONS ============================= -->
+<!-- ===================== 20 · LIMITATIONS ============================= -->
 <section class="slide" data-act="V · Wrap" data-title="What it doesn't do" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">V · Wrap</span><span class="rule"></span><span>Say these before the audience does</span></p>
   <h2>Three things it doesn't do</h2>
@@ -870,7 +1065,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 17 · TAKEAWAY ================================ -->
+<!-- ===================== 21 · TAKEAWAY ================================ -->
 <section class="slide statement" data-act="V · Wrap" data-title="Takeaway" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">V · Wrap</span><span class="rule"></span><span>Takeaway</span></p>
   <blockquote>The projection is a cheap, clean, gradient-free feasibility signal.
@@ -1138,8 +1333,213 @@ body.notes-on #deck{right:396px;}
 
 
   // =========================================================================
-  // The sampler, as a pipeline strip beside the sample-space figure on slides
-  // 4-9. Stacked vertically so it fits the side of a slide at a readable size;
+  // Act I figures: the policy as a box (slide 2), the feasible set and its
+  // projection (slide 3), and the target distribution (slide 4). Each is a
+  // single SVG, so its marker ids only need to be unique across the deck.
+  // =========================================================================
+  (function(){
+    var SVGNS = 'http://www.w3.org/2000/svg';
+    var INK = '#14233a', SOFT = '#4a5a72', FAINT = '#8595ab', LINE = '#c9d5e6';
+    var RED = '#e0533d', PURPLE = '#8b5cf6', BLUE = '#1d6fd4', DEEP = '#0f3f86', GOOD = '#1f9d57';
+
+    function helpers(svg, tag){
+      function el(name, attrs, text, parent){
+        var n = document.createElementNS(SVGNS, name);
+        for (var k in attrs) n.setAttribute(k, attrs[k]);
+        if (text != null) n.textContent = text;
+        (parent || svg).appendChild(n);
+        return n;
+      }
+      function halo(attrs, text){
+        return el('text', Object.assign({stroke:'#fff', 'stroke-width':4, 'paint-order':'stroke',
+                                         'stroke-linejoin':'round',
+                                         'font-family':'Inter, sans-serif'}, attrs), text);
+      }
+      function mono(attrs, text){
+        return halo(Object.assign({'font-family':'"JetBrains Mono", monospace',
+                                   'font-weight':700}, attrs), text);
+      }
+      var defs = el('defs', {}), MK = {};
+      [BLUE, RED, PURPLE, LINE, SOFT].forEach(function(c, i){
+        var id = tag + 'Arrow' + i;
+        var m = el('marker', {id:id, viewBox:'0 0 8 8', refX:6, refY:4, markerWidth:5,
+                              markerHeight:5, orient:'auto'}, null, defs);
+        el('path', {d:'M0,0 L8,4 L0,8 Z', fill:c}, null, m);
+        MK[c] = 'url(#' + id + ')';
+      });
+      function arrow(x0, y0, x1, y1, tone, width, dashed){
+        el('line', {x1:x0, y1:y0, x2:x1, y2:y1, stroke:tone, 'stroke-width':width || 2,
+                    'stroke-dasharray':dashed ? '5 4' : 'none', 'marker-end':MK[tone]});
+      }
+      function dot(x, y, tone, r){
+        r = r || 6.5;
+        el('circle', {cx:x, cy:y, r:r + 2.5, fill:'#fff'});
+        el('circle', {cx:x, cy:y, r:r, fill:tone});
+      }
+      return {el:el, halo:halo, mono:mono, arrow:arrow, dot:dot, defs:defs, MK:MK};
+    }
+
+    // ---- slide 2: observation in, a different action chunk out each draw ---
+    var pol = document.querySelector('svg[data-policy]');
+    if (pol){
+      var h = helpers(pol, 'policy'), el = h.el, halo = h.halo, mono = h.mono;
+      var img = pol.getAttribute('data-src');
+      var IX = 16, IY = 54, IW = 236, IH = 133, IMID = IY + IH / 2;
+      var clip = el('clipPath', {id:'policyClip'}, null, h.defs);
+      el('rect', {x:IX, y:IY, width:IW, height:IH, rx:10}, null, clip);
+      if (img) el('image', {href:img, x:IX, y:IY, width:IW, height:IH,
+                            preserveAspectRatio:'xMidYMid slice', 'clip-path':'url(#policyClip)'});
+      el('rect', {x:IX, y:IY, width:IW, height:IH, rx:10, fill:'none', stroke:LINE, 'stroke-width':1.2});
+      mono({x:IX + IW / 2, y:IY - 14, 'text-anchor':'middle', fill:SOFT, 'font-size':12.5}, 'observation o');
+      halo({x:IX + IW / 2, y:IY + IH + 18, 'text-anchor':'middle', fill:FAINT, 'font-size':11},
+           'camera image + joint state');
+
+      h.arrow(IX + IW + 10, IMID, 318, IMID, SOFT, 2);
+
+      var PX = 324, PY = 66, PW = 236, PH = 110;
+      el('rect', {x:PX, y:PY, width:PW, height:PH, rx:12, fill:'#eaf1fb', stroke:BLUE, 'stroke-width':1.8});
+      mono({x:PX + PW / 2, y:PY + 40, 'text-anchor':'middle', fill:DEEP, 'font-size':21}, 'π_θ( a | o )');
+      halo({x:PX + PW / 2, y:PY + 64, 'text-anchor':'middle', fill:INK, 'font-size':13, 'font-weight':600},
+           'flow-matching policy');
+      halo({x:PX + PW / 2, y:PY + 86, 'text-anchor':'middle', fill:FAINT, 'font-size':11},
+           'trained on demonstrations · frozen');
+
+      // three draws, fanning out to three action chunks
+      var AX = 648, AW = 236, AH = 58, AYS = [22, 92, 162];
+      halo({x:AX + AW, y:12, 'text-anchor':'end', fill:FAINT, 'font-size':11, 'font-weight':600},
+           'action chunk a · the next H steps of one joint');
+      var shapes = [[0, 22, 1], [8, -16, 1.4], [-6, 12, 0.6]];
+      AYS.forEach(function(ay, i){
+        var amid = ay + AH / 2;
+        el('path', {d:'M' + (PX + PW + 8) + ',' + IMID + ' C' + (PX + PW + 60) + ',' + IMID + ' ' +
+                        (AX - 60) + ',' + amid + ' ' + (AX - 10) + ',' + amid,
+                    fill:'none', stroke:BLUE, 'stroke-width':1.8, 'marker-end':h.MK[BLUE]});
+        el('rect', {x:AX, y:ay, width:AW, height:AH, rx:8, fill:'#f5f8fc', stroke:LINE, 'stroke-width':1.2});
+        var pts = [];
+        for (var k = 0; k <= 6; k++){
+          var u = k / 6;
+          var x = AX + 42 + u * (AW - 56);
+          var y = amid + shapes[i][0] + shapes[i][1] * Math.sin(u * Math.PI * shapes[i][2]);
+          pts.push([x, y]);
+        }
+        el('polyline', {points:pts.map(function(p){ return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' '),
+                        fill:'none', stroke:BLUE, 'stroke-width':2, 'stroke-linejoin':'round', opacity:.85});
+        pts.forEach(function(p){ el('circle', {cx:p[0], cy:p[1], r:2.6, fill:BLUE}); });
+        mono({x:AX + 8, y:amid + 4, fill:FAINT, 'font-size':10}, 'draw ' + (i + 1));
+      });
+      halo({x:AX + AW - 4, y:AYS[2] + AH + 16, 'text-anchor':'end', fill:FAINT, 'font-size':10},
+           'steps 1 … H →');
+      mono({x:PX + PW / 2, y:PY + PH + 26, 'text-anchor':'middle', fill:BLUE, 'font-size':12.5},
+           'a ~ π_θ(·|o)');
+      halo({x:PX + PW / 2, y:PY + PH + 43, 'text-anchor':'middle', fill:FAINT, 'font-size':10.5},
+           'same o, a new draw each time');
+    }
+    // ---- slide 3: the feasible set, a draw outside it, and its projection --
+    var cs = document.querySelector('svg[data-cset]');
+    if (cs){
+      var h2 = helpers(cs, 'cset'), el2 = h2.el, halo2 = h2.halo, mono2 = h2.mono;
+      var FX = 14, FY = 14, FW = 432, FH = 236;
+      el2('rect', {x:FX, y:FY, width:FW, height:FH, rx:10, fill:RED, opacity:.06});
+      el2('rect', {x:FX, y:FY, width:FW, height:FH, rx:10, fill:'none', stroke:LINE, 'stroke-width':1.2});
+      halo2({x:FX + 12, y:FY + 20, fill:'#a8382a', 'font-size':11, 'font-weight':700,
+             'letter-spacing':'.05em'}, 'OUTSIDE C: VIOLATES THE CONSTRAINT');
+      halo2({x:FX + FW - 12, y:FY + FH - 10, 'text-anchor':'end', fill:FAINT, 'font-size':11},
+            'action space');
+
+      // the feasible set: a rounded blob, as cubic segments so we can find the
+      // nearest boundary point numerically
+      var segs = [[[70,150],[70,70],[190,44],[280,66]],
+                  [[280,66],[350,84],[372,170],[320,212]],
+                  [[320,212],[262,252],[100,240],[70,150]]];
+      function cub(s, t){
+        var u = 1 - t;
+        return [u*u*u*s[0][0] + 3*u*u*t*s[1][0] + 3*u*t*t*s[2][0] + t*t*t*s[3][0],
+                u*u*u*s[0][1] + 3*u*u*t*s[1][1] + 3*u*t*t*s[2][1] + t*t*t*s[3][1]];
+      }
+      var d = 'M' + segs[0][0].join(',');
+      segs.forEach(function(s){ d += ' C' + s[1].join(',') + ' ' + s[2].join(',') + ' ' + s[3].join(','); });
+      el2('path', {d:d + ' Z', fill:'#e9f7ee', stroke:GOOD, 'stroke-width':2});
+      mono2({x:160, y:150, 'text-anchor':'middle', fill:'#12683a', 'font-size':15}, 'C');
+      halo2({x:160, y:170, 'text-anchor':'middle', fill:'#12683a', 'font-size':11.5, 'font-weight':600},
+            'the feasible set');
+
+      var ax = 380, ay = 78, best = null, bd = 1e9;
+      segs.forEach(function(s){
+        for (var i = 0; i <= 200; i++){
+          var p = cub(s, i / 200), dd = Math.hypot(p[0] - ax, p[1] - ay);
+          if (dd < bd){ bd = dd; best = p; }
+        }
+      });
+      var ux = (best[0] - ax) / bd, uy = (best[1] - ay) / bd;
+      h2.arrow(ax + ux * 10, ay + uy * 10, best[0] - ux * 9, best[1] - uy * 9, PURPLE, 2.4);
+      h2.dot(ax, ay, BLUE);
+      mono2({x:ax + 2, y:ay - 14, 'text-anchor':'middle', fill:BLUE, 'font-size':13.5}, 'a');
+      halo2({x:ax + 2, y:ay - 30, 'text-anchor':'middle', fill:SOFT, 'font-size':11}, 'the policy’s draw');
+      h2.dot(best[0], best[1], PURPLE);
+      mono2({x:best[0] - 12, y:best[1] + 26, 'text-anchor':'end', fill:PURPLE, 'font-size':13.5}, 'Π_C(a)');
+      halo2({x:best[0] - 12, y:best[1] + 41, 'text-anchor':'end', fill:SOFT, 'font-size':11},
+            'the nearest feasible action');
+      var mx = (ax + best[0]) / 2, my = (ay + best[1]) / 2;
+      mono2({x:mx + 12, y:my + 8, fill:RED, 'font-size':13}, 'δ');
+      halo2({x:mx + 12, y:my + 23, fill:SOFT, 'font-size':11}, 'how far it moved');
+    }
+
+    // ---- slide 4: the policy's density, and the target with the red part cut
+    var gl = document.querySelector('svg[data-goal]');
+    if (gl){
+      var h3 = helpers(gl, 'goal'), el3 = h3.el, halo3 = h3.halo, mono3 = h3.mono;
+      var GX0 = 40, GX1 = 590, GY = 206, GH = 150, AMIN = -1.6, AMAX = 1.6, BOUND = 0.6;
+      function gx(a){ return GX0 + (a - AMIN) / (AMAX - AMIN) * (GX1 - GX0); }
+      function dens(a){ return Math.exp(-(a - 0.78) * (a - 0.78) / 0.09) + 0.9 * Math.exp(-(a + 0.82) * (a + 0.82) / 0.09); }
+      function gy(a){ return GY - dens(a) * GH; }
+      var full = [], keep = [];
+      for (var i = 0; i <= 160; i++){
+        var a = AMIN + (AMAX - AMIN) * i / 160;
+        var p = [gx(a), gy(a)];
+        full.push(p);
+        if (a <= BOUND) keep.push(p);
+      }
+      function pl(pts){ return pts.map(function(p){ return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' '); }
+
+      // the red region
+      el3('rect', {x:gx(BOUND), y:28, width:GX1 - gx(BOUND) + 10, height:GY - 28, fill:RED, opacity:.07});
+      el3('line', {x1:gx(BOUND), y1:28, x2:gx(BOUND), y2:GY, stroke:RED, 'stroke-width':1.4,
+                   'stroke-dasharray':'5 4'});
+      halo3({x:gx(BOUND) + 8, y:44, fill:'#a8382a', 'font-size':11, 'font-weight':700,
+             'letter-spacing':'.05em'}, 'VIOLATES C');
+
+      // the target: the kept part, filled
+      el3('polygon', {points:pl([[GX0, GY]].concat(keep, [[gx(BOUND), GY]])), fill:BLUE, opacity:.16});
+      el3('polyline', {points:pl(keep), fill:'none', stroke:BLUE, 'stroke-width':3,
+                       'stroke-linejoin':'round', 'stroke-linecap':'round'});
+      // the policy: the whole curve, over the top
+      el3('polyline', {points:pl(full), fill:'none', stroke:INK, 'stroke-width':1.8,
+                       'stroke-dasharray':'2 3', 'stroke-linejoin':'round'});
+      // axis
+      el3('line', {x1:GX0, y1:GY, x2:GX1 + 10, y2:GY, stroke:LINE, 'stroke-width':1.4});
+      halo3({x:(GX0 + GX1) / 2, y:GY + 20, 'text-anchor':'middle', fill:FAINT, 'font-size':12},
+            'action value · one dimension, for illustration');
+      halo3({x:GX0, y:GY + 20, fill:FAINT, 'font-size':11.5}, 'behaviour B');
+      halo3({x:GX1 + 10, y:GY + 20, 'text-anchor':'end', fill:FAINT, 'font-size':11.5}, 'behaviour A');
+      halo3({x:(GX0 + GX1) / 2, y:GY + 38, 'text-anchor':'middle', fill:FAINT, 'font-size':11},
+            'A and B: two ways the demonstrations did the task');
+
+      // labels
+      mono3({x:gx(-0.82), y:gy(-0.82) - 16, 'text-anchor':'middle', fill:INK, 'font-size':12.5},
+            'π_θ(a | o)');
+      halo3({x:gx(-0.82), y:gy(-0.82) - 2, 'text-anchor':'middle', fill:SOFT, 'font-size':11},
+            'dotted: what the policy draws');
+      mono3({x:gx(-0.15), y:gy(-0.15) - 64, 'text-anchor':'middle', fill:BLUE, 'font-size':12.5}, 'p★(a | o)');
+      halo3({x:gx(-0.15), y:gy(-0.15) - 50, 'text-anchor':'middle', fill:DEEP, 'font-size':11, 'font-weight':600},
+            'the target: the same curve, minus the red part');
+      halo3({x:gx(1.05), y:gy(0.78) + 28, 'text-anchor':'middle', fill:'#a8382a', 'font-size':11},
+            'this mass is gone');
+    }
+  })();
+
+  // =========================================================================
+  // The sampler, as a pipeline strip beside the flow-time figure on slides
+  // 7-12. Stacked vertically so it fits the side of a slide at a readable size;
   // the return arrow up the left edge is the renoise. Boxes hold their row
   // from one state to the next, and execute drops one row when the
   // projection stage appears, so the audience sees what was added.
@@ -1220,7 +1620,7 @@ body.notes-on #deck{right:396px;}
             'letter-spacing':'.1em'}, 'ONE SAMPLING PASS');
 
       // ---- the spine, present in every state ------------------------------
-      box(ROW.noise, ['a₀ ~ N(0, I)']);
+      box(ROW.noise, ['ε ~ N(0, I)', 'noise']);
       down(ROW.noise, ROW.flow);
       box(ROW.flow, st === 3 ? ['flow ODE', 'bent at every step'] : ['flow ODE'],
           st === 3 ? RED : null, st === 3 ? '#fdf1ef' : null);
@@ -1304,13 +1704,14 @@ body.notes-on #deck{right:396px;}
 
   // =========================================================================
   // The method, built up on the flow's own time axis. One picture that grows
-  // across slides 4-9: noise on the left becomes an action on the right, the
+  // across slides 7-13: noise on the left becomes an action on the right, the
   // grey lines are the paths draws take through the flow, they gather late
   // into the two behaviours the demonstrations showed, and a band of actions
   // at the top violates the constraint. Every method is then a position on
   // this axis: guidance pushes in the middle, projection edits at the end,
   // rejection restarts at t = 0, CS-Pi goes back partway to t = n.
   //
+  //   0  flow matching   no constraint yet: one training pair as a straight line
   //   1  draw        the policy's draw ends inside the band
   //   2  guidance    pushed mid-flow, against a blurred guess; ends in the gap
   //   3  project     snapped at t = 1 to the boundary: an edit, not a draw
@@ -1361,7 +1762,7 @@ body.notes-on #deck{right:396px;}
     var REJ = [[1.3,1.18,0],[-0.2,1.0,0],[0.8,0.66,0],[1.0,0.83,0],[-1.15,-0.8,1]];
 
     function render(svg){
-      var st = parseInt(svg.dataset.flow, 10) || 1;
+      var st = svg.dataset.flow === '0' ? 0 : (parseInt(svg.dataset.flow, 10) || 1);
       while (svg.firstChild) svg.removeChild(svg.firstChild);
 
       function el(name, attrs, text, parent){
@@ -1419,11 +1820,19 @@ body.notes-on #deck{right:396px;}
       });
 
       // ---- the ground, present in every state -----------------------------
-      el('rect', {x:X0, y:YT, width:X1 - X0 + 46, height:ya(BOUND) - YT, fill:RED, opacity:.07});
-      el('line', {x1:X0, y1:ya(BOUND), x2:X1 + 46, y2:ya(BOUND), stroke:RED,
-                  'stroke-width':1.4, 'stroke-dasharray':'5 4'});
-      halo({x:X0 + 6, y:YT + 15, fill:'#a8382a', 'font-size':11, 'font-weight':700,
-            'letter-spacing':'.05em'}, 'THE RED BAND: ACTIONS UP HERE VIOLATE THE CONSTRAINT C');
+      if (st !== 0){
+        // the constraint is on the finished action, so the band is solid at
+        // t = 1 and fades toward the noise end
+        var gid = 'flowBand' + st;
+        var grad = el('linearGradient', {id:gid, x1:0, y1:0, x2:1, y2:0}, null, defs);
+        el('stop', {offset:0, 'stop-color':RED, 'stop-opacity':.015}, null, grad);
+        el('stop', {offset:1, 'stop-color':RED, 'stop-opacity':.11}, null, grad);
+        el('rect', {x:X0, y:YT, width:X1 - X0 + 46, height:ya(BOUND) - YT, fill:'url(#' + gid + ')'});
+        el('line', {x1:X0, y1:ya(BOUND), x2:X1 + 46, y2:ya(BOUND), stroke:RED,
+                    'stroke-width':1.4, 'stroke-dasharray':'5 4'});
+        halo({x:X0 + 6, y:YT + 15, fill:'#a8382a', 'font-size':11, 'font-weight':700,
+              'letter-spacing':'.05em'}, 'THE RED BAND: AN ACTION (t = 1) UP HERE VIOLATES THE CONSTRAINT C');
+      }
 
       FAN.forEach(function(f){ curve(pathPts(f[0], f[1], 0), '#c9d3e1', 1.5); });
 
@@ -1436,7 +1845,7 @@ body.notes-on #deck{right:396px;}
       }
       el('polygon', {points:poly([[X1 + 8, ya(1.5)]].concat(prof, [[X1 + 8, ya(-1.5)]])),
                      fill:'#c9d3e1', opacity:.5});
-      mono({x:X1 + 12, y:ya(1.42), fill:FAINT, 'font-size':10.5}, 'p_data:');
+      mono({x:X1 + 12, y:ya(1.42), fill:FAINT, 'font-size':10.5}, 'π_θ(a|o):');
       halo({x:X1 + 12, y:ya(1.42) + 13, fill:FAINT, 'font-size':10}, 'where draws');
       halo({x:X1 + 12, y:ya(1.42) + 25, fill:FAINT, 'font-size':10}, 'end up');
 
@@ -1460,12 +1869,31 @@ body.notes-on #deck{right:396px;}
       var draw = pathPts(A0, A1, 0);
       var endX = X1, endY = ya(A1);
 
+      // ---- state 0: flow matching, before any constraint --------------------
+      if (st === 0){
+        var E0 = -1.0, AD = 0.72;            // one training pair: noise sample, demo action
+        var lx0 = tx(0), ly0 = ya(E0), lx1 = tx(1), ly1 = ya(AD);
+        el('line', {x1:lx0, y1:ly0, x2:lx1, y2:ly1, stroke:BLUE, 'stroke-width':2.2,
+                    'stroke-dasharray':'6 5'});
+        var mx = tx(0.5), my = ya(E0 + (AD - E0) * 0.5);
+        var ldx = lx1 - lx0, ldy = ly1 - ly0, LL = Math.hypot(ldx, ldy);
+        arrow(mx, my, mx + ldx / LL * 64, my + ldy / LL * 64, BLUE, false, 2.4);
+        dot(lx0, ly0, BLUE); dot(lx1, ly1, BLUE); dot(mx, my, BLUE, false, 5.5);
+        mono({x:lx0 + 10, y:ly0 + 22, fill:BLUE, 'font-size':12.5}, 'ε · a noise sample');
+        mono({x:lx1 - 12, y:ly1 - 12, 'text-anchor':'end', fill:BLUE, 'font-size':12.5},
+             'a · a demo action');
+        mono({x:mx + 8, y:my + 26, fill:BLUE, 'font-size':12}, 'x_t = (1−t)·ε + t·a');
+        mono({x:mx + 50, y:my - 28, 'text-anchor':'middle', fill:BLUE, 'font-size':12}, 'v = a − ε');
+        caption('train on straight lines; sample by following the learned velocity',
+                'dashed: one training pair and its straight line · grey: draws, which curve and gather late', BLUE);
+      }
+
       // ---- state 1: the draw ----------------------------------------------
       if (st === 1){
         curve(draw, BLUE, 2.6);
         dot(endX, endY, BLUE);
         mono({x:endX - 4, y:endY - 13, 'text-anchor':'end', fill:BLUE, 'font-size':13.5}, 'â');
-        caption('â — the policy’s draw', 'plausible to the policy — and it ends in the red band, so it violates the constraint', BLUE);
+        caption('â — the policy’s draw', 'a draw through the flow, so plausible — and it ends in the red band, violating the constraint', BLUE);
       }
 
       // ---- state 2: guidance ----------------------------------------------
@@ -1644,7 +2072,8 @@ body.notes-on #deck{right:396px;}
     function ease(t){ return t<0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2; }
     function reset(){
       st = { phase:PH.DRAW, t0:performance.now(), iter:1, offset:0, projOffset:0,
-             delta:penetration(0).delta, n:0, denoiseFrom:0 };
+             delta:penetration(0).delta, n:0, denoiseFrom:0,
+             from:null, deltaEval:0 };
       hud();
     }
     function hud(){
@@ -1656,8 +2085,12 @@ body.notes-on #deck{right:396px;}
       stats();
     }
     function stats(){
-      if (elDelta) elDelta.textContent = 'δ = ' + st.delta.toFixed(3);
-      if (elN) elN.textContent = 'n = k/(k+δ) = ' + (st.delta > TAU ? nVal(st.delta).toFixed(2) : '—');
+      // Through the project/renoise beat the bar holds the δ that was measured on
+      // the draw, so the audience can read the n that δ produced while it happens.
+      var frozen = (st.phase===PH.PROJECT || st.phase===PH.RENOISE);
+      var d = frozen ? st.deltaEval : st.delta;
+      if (elDelta) elDelta.textContent = 'δ = ' + d.toFixed(3);
+      if (elN) elN.textContent = 'n = k/(k+δ) = ' + (d > TAU ? nVal(d).toFixed(2) : '—');
     }
 
     var W=0, Hh=0, PADX=26, SCALE=0, OX=0, OY=0, VSPAN=0.42, lastW=-1;
@@ -1708,16 +2141,81 @@ body.notes-on #deck{right:396px;}
       ctx.fillStyle='#14233a'; ctx.beginPath(); ctx.arc(s.x,s.y,5,0,7); ctx.fill();
       ctx.textBaseline='top'; ctx.fillText('start', s.x, s.y+8);
     }
-    function pathPoints(off, denoise){
-      var P=controlPoint(off), amp=(1-denoise)*0.085, pts=[];
-      for (var i=0;i<=NPTS;i++){
-        var t=i/NPTS, b=bezier(t,P), b2=bezier(Math.min(1,t+0.01),P);
-        var dx=b2.x-b.x, dy=b2.y-b.y, L=Math.hypot(dx,dy)||1;
-        var env=Math.sin(Math.PI*t), k=i%NPTS;
-        var j=amp*env*(0.7*nz1[k] + 0.3*nz2[k]);
-        pts.push({x: b.x + (-dy/L)*j, y: b.y + (dx/L)*j});
+    // ---- path algebra ------------------------------------------------------
+    // A path is NPTS+1 points spaced evenly by arc length, so two paths blend
+    // index by index and the flow noise lands evenly along the curve.
+    function resample(raw, N){
+      var cum=[0], i;
+      for (i=1;i<raw.length;i++)
+        cum.push(cum[i-1] + Math.hypot(raw[i].x-raw[i-1].x, raw[i].y-raw[i-1].y));
+      var L=cum[cum.length-1]||1, out=[], j=1;
+      for (i=0;i<=N;i++){
+        var s=L*i/N;
+        while (j<cum.length-1 && cum[j]<s) j++;
+        var a=cum[j-1], b=cum[j], u=(b>a)?(s-a)/(b-a):0;
+        out.push({x: raw[j-1].x + (raw[j].x-raw[j-1].x)*u,
+                  y: raw[j-1].y + (raw[j].y-raw[j-1].y)*u});
       }
-      return pts;
+      return out;
+    }
+    function bezierPts(off){
+      var P=controlPoint(off), raw=[];
+      for (var i=0;i<=2*NPTS;i++) raw.push(bezier(i/(2*NPTS), P));
+      return resample(raw, NPTS);
+    }
+
+    // ---- the projection ----------------------------------------------------
+    // Π_C of a path that cuts through a disc is taut, not a wider bow: it runs
+    // straight until the circle, hugs the safety boundary, and runs straight to
+    // the goal. Tangent in, arc across, tangent out -- the shape a projector
+    // actually returns, and the reason it is nothing like a policy sample.
+    var R_SAFE = O.r + MARGIN, SIDE = -1;         // -1 = wrap above the disc
+    function tangentAngle(P){
+      var dx=P.x-O.x, dy=P.y-O.y, d=Math.hypot(dx,dy);
+      if (d <= R_SAFE) return null;               // inside: no tangent line
+      var phi=Math.atan2(dy,dx), a=Math.acos(R_SAFE/d);
+      var t1=phi+a, t2=phi-a, s1=Math.sin(t1), s2=Math.sin(t2);
+      var th = (SIDE<0) ? (s1<s2?t1:t2) : (s1>s2?t1:t2);
+      return Math.atan2(Math.sin(th), Math.cos(th));   // fold into (-π, π]
+    }
+    function tautPts(){
+      var th1=tangentAngle(S), th2=tangentAngle(G);
+      if (th1===null || th2===null) return bezierPts(OFFSET_FEAS);
+      var raw=[{x:S.x,y:S.y}], ARCN=72, i;
+      for (i=0;i<=ARCN;i++){
+        var th = th1 + (th2-th1)*(i/ARCN);
+        raw.push({x:O.x + R_SAFE*Math.cos(th), y:O.y + R_SAFE*Math.sin(th)});
+      }
+      raw.push({x:G.x,y:G.y});
+      return resample(raw, NPTS);
+    }
+    var TAUT = tautPts();
+
+    function blendPts(a,b,u){
+      var out=[];
+      for (var i=0;i<=NPTS;i++)
+        out.push({x:a[i].x + (b[i].x-a[i].x)*u, y:a[i].y + (b[i].y-a[i].y)*u});
+      return out;
+    }
+    function jitter(base, amp){
+      if (amp<=0) return base;
+      var out=[];
+      for (var i=0;i<=NPTS;i++){
+        var p=base[i], q=base[Math.min(NPTS,i+1)], r=base[Math.max(0,i-1)];
+        var dx=q.x-r.x, dy=q.y-r.y, L=Math.hypot(dx,dy)||1;
+        var env=Math.sin(Math.PI*(i/NPTS)), k=i%NPTS;
+        var j=amp*env*(0.7*nz1[k] + 0.3*nz2[k]);
+        out.push({x:p.x + (-dy/L)*j, y:p.y + (dx/L)*j});
+      }
+      return out;
+    }
+    function violation(pts){
+      var worst=0, idx=NPTS>>1;
+      for (var i=0;i<=NPTS;i++){
+        var v = R_SAFE - Math.hypot(pts[i].x-O.x, pts[i].y-O.y);
+        if (v>worst){ worst=v; idx=i; }
+      }
+      return {delta:worst, idx:idx};
     }
     function strokePath(pts,color,w){
       ctx.strokeStyle=color; ctx.lineWidth=w; ctx.lineJoin='round'; ctx.lineCap='round';
@@ -1725,28 +2223,22 @@ body.notes-on #deck{right:396px;}
       pts.forEach(function(p,i){ var q=px(p); if(i) ctx.lineTo(q.x,q.y); else ctx.moveTo(q.x,q.y); });
       ctx.stroke();
     }
-    function projection(off, opts){
-      var pen=penetration(off); if(!pen.deep) return;
-      var deep=px(pen.deep), R=O.r+MARGIN, dxc=pen.deep.x-O.x;
-      var cN = (Math.abs(dxc)<R)
-        ? {x:pen.deep.x, y:O.y - Math.sqrt(R*R - dxc*dxc)}
-        : {x:O.x + Math.sign(dxc)*R, y:O.y};
-      var c=px(cN);
-      if (pen.delta>TAU){
+    // δ: how far the projection had to move the worst point of the draw.
+    function deltaMark(from, to){
+      var a=px(from), b=px(to);
+      if (Math.hypot(b.x-a.x, b.y-a.y) > 3){
         ctx.strokeStyle='#1d6fd4'; ctx.lineWidth=2; ctx.setLineDash([5,4]);
-        ctx.beginPath(); ctx.moveTo(deep.x,deep.y); ctx.lineTo(c.x,c.y); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle='#c0392b'; ctx.beginPath(); ctx.arc(deep.x,deep.y,4,0,7); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.font=MONO; ctx.textAlign='left'; ctx.textBaseline='middle';
+        ctx.fillStyle='#c0392b'; ctx.fillText('δ', (a.x+b.x)/2+7, (a.y+b.y)/2);
       }
-      ctx.fillStyle='#1d6fd4'; ctx.beginPath(); ctx.arc(c.x,c.y,5,0,7); ctx.fill();
-      ctx.font=MONO; ctx.textAlign='left'; ctx.textBaseline='bottom';
-      if (opts.delta && pen.delta>TAU){
-        ctx.fillStyle='#c0392b'; ctx.fillText('δ', (deep.x+c.x)/2+6, (deep.y+c.y)/2);
-      }
-      ctx.fillStyle='#1d6fd4'; ctx.fillText('c', c.x+8, c.y+2);
-      if (opts.label){
-        ctx.font=SANS; ctx.textAlign='center';
-        ctx.fillText('project  â → c', c.x, Math.min(deep.y,c.y)-12);
-      }
+      ctx.fillStyle='#c0392b'; ctx.beginPath(); ctx.arc(a.x,a.y,4,0,7); ctx.fill();
+    }
+    function labelC(pts, verb){
+      var apex=px(pts[NPTS>>1]);
+      ctx.fillStyle='#1d6fd4'; ctx.textAlign='center'; ctx.textBaseline='bottom';
+      ctx.font=MONO; ctx.fillText('c', apex.x, apex.y-9);
+      if (verb){ ctx.font=SANS; ctx.fillText('project  â → c', apex.x, apex.y-25); }
     }
     function check(){
       var g=px(G); ctx.strokeStyle='#1f9d57'; ctx.lineWidth=4; ctx.lineCap='round';
@@ -1756,14 +2248,16 @@ body.notes-on #deck{right:396px;}
     function advance(){
       switch(st.phase){
         case PH.DRAW:
-          st.phase = (penetration(st.offset).delta <= TAU) ? PH.DONE : PH.EVAL; break;
+          st.phase = (violation(bezierPts(st.offset)).delta <= TAU) ? PH.DONE : PH.EVAL; break;
         case PH.EVAL:
-          st.n = nVal(penetration(st.offset).delta);
+          st.deltaEval = violation(bezierPts(st.offset)).delta;
+          st.n = nVal(st.deltaEval);
           st.projOffset = st.offset + (OFFSET_FEAS - st.offset)*GAIN;
           st.phase = PH.PROJECT; break;
         case PH.PROJECT: st.phase = PH.RENOISE; break;
         case PH.RENOISE:
           st.offset = st.projOffset; st.iter += 1; st.denoiseFrom = st.n;
+          st.from = TAUT;                       // the flow restarts from c
           st.phase = PH.DRAW; break;
         case PH.DONE: reset(); return;
       }
@@ -1775,18 +2269,39 @@ body.notes-on #deck{right:396px;}
       if (canvas.clientWidth !== lastW) { lastW = canvas.clientWidth; layout(); }
       var prog = Math.min(1, (now - st.t0) / DUR[st.phase]);
       ctx.clearRect(0,0,W,Hh);
-      var off = st.offset, denoise = 1, barT = 1;
-      if (st.phase===PH.DRAW){ denoise = st.denoiseFrom + (1-st.denoiseFrom)*prog; barT = denoise; }
-      else if (st.phase===PH.PROJECT){ off = st.offset + (OFFSET_FEAS-st.offset)*ease(prog); }
-      else if (st.phase===PH.RENOISE){ off = OFFSET_FEAS; denoise = 1 - prog*(1-st.n); barT = st.n + (1-st.n)*(1-prog); }
+
+      var sample = bezierPts(st.offset);        // the clean draw of this iteration
+      var base = sample, denoise = 1, barT = 1, ghost = null, e = ease(prog);
+
+      if (st.phase===PH.DRAW){
+        denoise = st.denoiseFrom + (1-st.denoiseFrom)*prog; barT = denoise;
+        // after the first loop the flow starts at the renoised c and pulls it
+        // back onto the data, so the draw begins on c and ends on a sample.
+        if (st.from) base = blendPts(st.from, sample, e);
+      } else if (st.phase===PH.PROJECT){
+        ghost = sample;                          // where the draw was
+        base = blendPts(sample, TAUT, e);        // sliding onto the boundary
+      } else if (st.phase===PH.RENOISE){
+        base = TAUT; denoise = 1 - prog*(1-st.n); barT = st.n + (1-st.n)*(1-prog);
+      }
+      var pts = jitter(base, (1-denoise)*0.085);
+
       noiseBar(barT); scene();
-      var feasible = penetration(off).delta <= TAU;
-      strokePath(pathPoints(off,denoise), (st.phase===PH.DONE || feasible) ? '#1f9d57' : '#1d6fd4', 3.2);
-      if (st.phase===PH.EVAL) projection(off,{delta:true});
-      else if (st.phase===PH.PROJECT) projection(off,{delta:true,label:true});
-      else if (st.phase===PH.RENOISE) projection(off,{});
-      else if (st.phase===PH.DONE) check();
-      st.delta = penetration(off).delta;
+      if (ghost) strokePath(ghost, 'rgba(20,35,58,.16)', 2.2);
+      var onC = (st.phase===PH.PROJECT || st.phase===PH.RENOISE);
+      var feas = (st.phase===PH.DONE) || (!onC && violation(sample).delta <= TAU);
+      strokePath(pts, feas ? '#1f9d57' : '#1d6fd4', 3.2);
+
+      if (st.phase===PH.EVAL){
+        var g0 = violation(sample); deltaMark(sample[g0.idx], TAUT[g0.idx]);
+      } else if (st.phase===PH.PROJECT){
+        var g1 = violation(sample); deltaMark(sample[g1.idx], pts[g1.idx]);
+        labelC(pts, true);
+      } else if (st.phase===PH.RENOISE){
+        labelC(base, false);
+      } else if (st.phase===PH.DONE){ check(); }
+
+      st.delta = violation(pts).delta;
       if (st.phase !== PH.DONE) stats();
       if (prog >= 1) advance();
     }
