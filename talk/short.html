@@ -2203,7 +2203,7 @@ body.notes-on #deck{right:396px;}
         var cut = moved[i] ? i-1 : i;
         if (cut > cuts[cuts.length-1]) cuts.push(cut);
       }
-      cuts.push(DENSE);
+      if (DENSE > cuts[cuts.length-1]) cuts.push(DENSE);
       var segs=[], total=0;
       for (j=0;j<cuts.length-1;j++){
         var part=raw.slice(cuts[j], cuts[j+1]+1), L=0;
