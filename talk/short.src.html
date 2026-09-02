@@ -6,10 +6,11 @@
 /* ============================================================================
    CS-Pi lab talk, 20-minute cut.
    Budget: ~6 min setup, ~4 min the two attempts that fail, ~4 min the turn
-   and the method, ~8 min results, ~2 min wrap -- 24.0 min over 27 slides.
+   and the method, ~8.5 min results, ~2 min wrap -- 24.5 min over 28 slides.
    That does NOT fit a 20-minute slot; the deck holds everything and the README
-   carries the cut list (slide 16, then 23, then 7, in that order). Results open
-   with the shelf board built one method at a time, slides 17-20. Every slide is
+   carries the cut list (slide 16, then 24, then 7, in that order). Results open
+   with the shelf board built one method at a time, slides 17-20, then slide 21
+   shows what the flow is actually sampling from. Every slide is
    tier 1 -- one path.
    The long 45-minute deck (deck.src.html) keeps the tables, the taxonomy and
    the backup material this cut deliberately drops.
@@ -276,6 +277,7 @@ ul.pts.defs li{font-size:15px;line-height:1.4;}
 .prop .pn .sym{color:var(--blue-deep);font-size:17px;}
 .prop .pd{font-size:14px;color:var(--ink-soft);line-height:1.4;margin-top:3px;min-height:2.8em;}
 .fmfig{width:100%;height:auto;display:block;}
+.bimodal{width:100%;height:auto;display:block;flex:1;min-height:0;}
 .tiles.rows{grid-auto-flow:row;grid-template-columns:1fr;align-content:center;}
 
 .strips{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:18px;}
@@ -368,8 +370,8 @@ body.notes-on #deck{right:396px;}
       things people will otherwise assume you did.</p>
     <p><b>Budget for the whole talk:</b> ~6 min setup (the policy, the collisions, the constraint,
       the problem in two halves, the goal, the two properties, flow matching), ~4 min why the obvious
-      fixes fail, ~4 min the method, ~8 min results, ~2 min wrap — 24 min as it stands, so come
-      with your cuts chosen (the README lists them: slide 16, then 23, then 7). If you are starting
+      fixes fail, ~4 min the method, ~8.5 min results, ~2 min wrap — 24.5 min as it stands, so come
+      with your cuts chosen (the README lists them: slide 16, then 24, then 7). If you are starting
       the turn at about ten minutes you are on time.</p>
   </div>
 </section>
@@ -1075,7 +1077,40 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 21 · 2D SETUP ================================= -->
+<!-- ===================== 21 · WHAT THE FLOW SAMPLES ==================== -->
+<section class="slide" data-act="IV · Does it work" data-title="What the flow is sampling from" data-min="0.5" data-tier="1">
+  <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>2D avoidance · the distribution behind the numbers</span></p>
+  <h2>The flow turns one Gaussian into the policy's <em>two</em> behaviours</h2>
+  <div class="figwrap">
+    <svg data-bimodal data-src="{{M:assets/2d_bimodal_vertical.png}}" class="bimodal"
+         viewBox="0 0 980 470" role="img"
+         aria-label="A Gaussian cloud on the left, many curved lines carrying it rightward, and the policy's action distribution on the right with two separate modes stacked vertically; the upper mode is circled in red dashes."></svg>
+  </div>
+  <p class="tnote">Every line is one draw: noise in, an action out. The policy's distribution has
+    <b>two modes</b>, because the demonstrations showed two ways to do the task — and the flow will
+    happily sample either. <b>The constraint rules out the circled one.</b> Nothing inside the flow
+    knows that, which is the entire problem this talk is about.</p>
+  <div class="notes">
+    <div class="timing">~30 s · the picture the next three slides are measured against</div>
+    <p>Say what a flow model is once, in a sentence, using the picture: <strong>it learns to carry a
+      Gaussian onto the distribution the demonstrations came from.</strong> Left is where every draw
+      starts, right is where they end up, and the lines are the k ODE steps in between.</p>
+    <p><strong>Then the point of the slide: the right-hand side has two lumps, not one.</strong> The
+      demonstrators went around the obstacle two different ways, the policy kept both, and each draw
+      commits to one of them. This is the multimodality that makes the problem hard — an average of
+      the two modes is not a third way of doing the task, it is a collision.</p>
+    <p class="say">"The policy is not a function. Ask it twice and you get two different answers, and
+      both of them are correct."</p>
+    <p>Point at the red circle last. <strong>That mode is the one the constraint forbids.</strong>
+      Everything in the next three slides is about what a method does when its draw lands in there:
+      guidance bends the flow away from both, projection shoves the endpoint to the rim, rejection
+      throws the draw out and starts again, and we renoise it back and let the flow re-run.</p>
+    <div class="qa">"Is this a real figure?" — yes, it is the 2D avoidance panel from the paper,
+      turned 90° so the two modes stack; the cloud on the left and the connecting lines are drawn.</div>
+  </div>
+</section>
+
+<!-- ===================== 22 · 2D SETUP ================================= -->
 <section class="slide" data-act="IV · Does it work" data-title="2D: what the right answer looks like" data-min="0.5" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>2D diagnostic · setup</span></p>
   <h2>First, what does the right answer even look like?</h2>
@@ -1105,7 +1140,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 22 · 2D MONEY SHOT =========================== -->
+<!-- ===================== 23 · 2D MONEY SHOT =========================== -->
 <section class="slide" data-act="IV · Does it work" data-title="2D: feasible is easy, feasible and on-data is not" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>2D diagnostic · both are 100% feasible</span></p>
   <h2>Both of these satisfy the constraint perfectly</h2>
@@ -1141,7 +1176,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 23 · SHELF ==================================== -->
+<!-- ===================== 24 · SHELF ==================================== -->
 <section class="slide" data-act="IV · Does it work" data-title="Shelf: when the obstacle is on the route" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>7-DoF Franka · 150 tasks · obstacles added at deployment</span></p>
   <h2>In simulation, where the obstacle blocks the demonstrated route</h2>
@@ -1177,7 +1212,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 24 · 3D-ORIENT =============================== -->
+<!-- ===================== 25 · 3D-ORIENT =============================== -->
 <section class="slide" data-act="IV · Does it work" data-title="3D-Orient: a cost, not a constraint" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>7-DoF reach · orientation held throughout · same loop, new operator</span></p>
   <h2>Swap the projection and it enforces something else entirely</h2>
@@ -1212,7 +1247,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 25 · HARDWARE ================================= -->
+<!-- ===================== 26 · HARDWARE ================================= -->
 <section class="slide" data-act="IV · Does it work" data-title="Hardware: zero-shot on a Franka" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>π₀.₅ · no finetuning · ZED 2 perception · 2 layouts · 20 trials per method</span></p>
   <h2>And it survives real perception</h2>
@@ -1258,7 +1293,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 26 · LIMITATIONS ============================= -->
+<!-- ===================== 27 · LIMITATIONS ============================= -->
 <section class="slide" data-act="V · Wrap" data-title="What it doesn't do" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">V · Wrap</span><span class="rule"></span><span>Say these before the audience does</span></p>
   <h2>Three things it doesn't do</h2>
@@ -1294,7 +1329,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 27 · TAKEAWAY ================================ -->
+<!-- ===================== 28 · TAKEAWAY ================================ -->
 <section class="slide statement" data-act="V · Wrap" data-title="Takeaway" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">V · Wrap</span><span class="rule"></span><span>Takeaway</span></p>
   <blockquote>The projection is a cheap, clean, gradient-free feasibility signal.
@@ -1937,6 +1972,118 @@ body.notes-on #deck{right:396px;}
     [].forEach.call(svgs, render);
   })();
 
+
+
+  // =========================================================================
+  // What a flow model is, in one picture: a single Gaussian on the left, the
+  // policy's two-moded action distribution on the right, and the flow drawn as
+  // the lines that carry one into the other. The right-hand cloud is a real
+  // figure (assets/2d_bimodal_vertical.png, the paper's 2D panel turned 90
+  // degrees so the two modes stack), not something redrawn here.
+  //
+  // The cloud and the lines come from a seeded generator, so the picture is
+  // identical on every reload and between the local and embedded builds --
+  // a figure that reshuffles itself mid-talk is worse than no figure.
+  // =========================================================================
+  (function(){
+    var svgs = document.querySelectorAll('svg[data-bimodal]');
+    if (!svgs.length) return;
+
+    var SVGNS = 'http://www.w3.org/2000/svg';
+    var FAINT = '#8595ab', SOFT = '#4a5a72', INK = '#14233a';
+
+    // geometry: the Gaussian, the image, and the two modes inside the image.
+    // MODE_HI/MODE_LO are where the blobs actually sit in the PNG, measured as
+    // a fraction of its height -- re-measure if the asset is regenerated.
+    var GX = 118, GY = 214, GSD = 40, GCLIP = 76;
+    var IX = 812, IY = 26, IH = 374, IW = Math.round(IH * 321 / 900);
+    var MODE_HI = 0.172, MODE_LO = 0.778;
+
+    function seeded(seed){
+      return function(){ seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+                         return seed / 0x7fffffff; };
+    }
+
+    function render(svg){
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      var rnd = seeded(20260902);
+      // sum of 12 uniforms minus 6 is standard-normal enough for a point cloud
+      function gauss(){
+        var s = 0; for (var i = 0; i < 12; i++) s += rnd();
+        return s - 6;
+      }
+      function el(name, attrs, text, parent){
+        var n = document.createElementNS(SVGNS, name);
+        for (var k in attrs) n.setAttribute(k, attrs[k]);
+        if (text != null) n.textContent = text;
+        (parent || svg).appendChild(n);
+        return n;
+      }
+      function label(x, y, txt, fill, size, mono, weight, halo){
+        var a = {x:x, y:y, 'text-anchor':'middle', fill:fill,
+                 'font-family':mono ? '"JetBrains Mono", monospace'
+                                    : 'Inter, sans-serif',
+                 'font-size':size, 'font-weight':weight || 600};
+        if (halo){ a.stroke = '#fff'; a['stroke-width'] = 4;
+                   a['paint-order'] = 'stroke'; a['stroke-linejoin'] = 'round'; }
+        el('text', a, txt);
+      }
+
+      var yHi = IY + MODE_HI * IH, yLo = IY + MODE_LO * IH;
+      var endX = IX - 10;
+
+      // ---- the flow, drawn first so the clouds sit on top ------------------
+      // Each line leaves the Gaussian and commits to one mode. They are drawn
+      // before the dots so a line never covers the noise it came from.
+      var N = 26;
+      for (var i = 0; i < N; i++){
+        var sx = GX + gauss() * GSD * 0.55, sy = GY + gauss() * GSD * 0.62;
+        var hi = (i % 2 === 0);
+        var ey = (hi ? yHi : yLo) + gauss() * 17;
+        var c1x = GX + 250, c2x = endX - 250;
+        el('path', {d:'M' + sx.toFixed(1) + ',' + sy.toFixed(1) +
+                       ' C' + c1x + ',' + sy.toFixed(1) +
+                       ' ' + c2x + ',' + ey.toFixed(1) +
+                       ' ' + endX + ',' + ey.toFixed(1),
+                    fill:'none', stroke:hi ? '#c3d3ea' : '#cdd7e4',
+                    'stroke-width':1.5, 'stroke-linecap':'round',
+                    opacity:0.9});
+      }
+
+      // ---- the Gaussian at t = 0 -------------------------------------------
+      el('circle', {cx:GX, cy:GY, r:GCLIP + 8, fill:'#f2f6fb'});
+      for (var j = 0; j < 200; j++){
+        var dx = gauss() * GSD, dy = gauss() * GSD;
+        if (dx * dx + dy * dy > GCLIP * GCLIP) continue;
+        el('circle', {cx:(GX + dx).toFixed(1), cy:(GY + dy).toFixed(1), r:2.6,
+                      fill:'#5b6b82', opacity:0.55});
+      }
+
+      // ---- the policy's distribution at t = 1 ------------------------------
+      el('image', {x:IX, y:IY, width:IW, height:IH,
+                   href:svg.dataset.src, 'preserveAspectRatio':'xMidYMid meet'});
+
+      // ---- labels -----------------------------------------------------------
+      label(GX, GY + GCLIP + 34, 'ε ~ N(0, I)', INK, 16, true, 700);
+      label(GX, GY + GCLIP + 54, 'noise · t = 0', FAINT, 12.5, false, 500);
+      var pi = el('text', {x:IX + IW / 2, y:IY + IH + 26, 'text-anchor':'middle',
+                           fill:INK, 'font-family':'"JetBrains Mono", monospace',
+                           'font-size':16, 'font-weight':700}, 'π');
+      el('tspan', {dy:4, 'font-size':11}, 'θ', pi);
+      el('tspan', {dy:-4, 'font-size':16}, '(a | o)', pi);
+      label(IX + IW / 2, IY + IH + 46, 'the policy · t = 1', FAINT, 12.5, false, 500);
+
+      var mid = (GX + GCLIP + endX) / 2;
+      label(mid, 40, 'THE FLOW', FAINT, 11.5, true, 700);
+      label(mid, 62, 'k steps of an ODE, learned from demonstrations', SOFT, 13.5, false, 500);
+
+      // the two behaviours, named where they land
+      label(endX - 66, yHi + 5, 'behaviour A', SOFT, 13.5, false, 700, true);
+      label(endX - 66, yLo + 5, 'behaviour B', SOFT, 13.5, false, 700, true);
+    }
+
+    [].forEach.call(svgs, render);
+  })();
 
   // =========================================================================
   // The shelf board, built one method at a time. Every state draws the same

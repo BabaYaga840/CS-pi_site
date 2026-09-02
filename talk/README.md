@@ -8,7 +8,7 @@ lengths.**
 
 | Deck | Source | Present from | For |
 |------|--------|--------------|-----|
-| **20-minute cut** | `short.src.html` | `talk/short.html` | A conference or group slot. 27 slides, one path, one growing table. |
+| **20-minute cut** | `short.src.html` | `talk/short.html` | A conference or group slot. 28 slides, one path, one growing table. |
 | **45-minute lab talk** | `deck.src.html` | `talk/index.html` | A full lab meeting, and the backup material you answer questions from. 50 slides, three selectable lengths. |
 
 The short deck is not a subset of the long one. It opens for a mixed audience
@@ -45,10 +45,10 @@ ceiling. These are the ones to present from.
 | The setup: policy, collisions, constraint, the problem in two halves, goal, two properties, flow matching | 1–9 | ~6 min |
 | Two attempts that fail, and rejection | 10–13 | ~4 min |
 | The turn and the method | 14–16 | ~4 min |
-| Does it work: the shelf board, then 2D, shelf rollouts, 3D-Orient, hardware | 17–25 | ~8 min |
-| Wrap | 26–27 | ~2 min |
+| Does it work: the shelf board, what the flow samples, 2D, shelf rollouts, 3D-Orient, hardware | 17–26 | ~8.5 min |
+| Wrap | 27–28 | ~2 min |
 
-**24 min total — this deck no longer fits a 20-minute slot as it stands, and
+**24.5 min total — this deck no longer fits a 20-minute slot as it stands, and
 you have to cut into it.** Everything is here so the choice is yours rather than
 mine; nothing below has been removed for you.
 
@@ -57,21 +57,21 @@ The cuts, in the order worth making them:
 | Cut | Saves | Why it is the cheapest thing to lose |
 |-----|-------|--------------------------------------|
 | Slide 16, the live animation | 1.0 | Already the standing cut; the loop is fully explained by 14–15. |
-| Slide 23, the shelf rollout GIFs | 1.5 | Slides 17–20 are now the shelf result, with numbers. Keep the GIFs only if you would rather argue from footage than from the board. |
+| Slide 24, the shelf rollout GIFs | 1.5 | Slides 17–20 are now the shelf result, with numbers. Keep the GIFs only if you would rather argue from footage than from the board. |
 | Slide 7, the goal as a density | 0.5 | Slide 6 already ends on `a ~ π_θ(·&#124;o) s.t. C(a) = 0`; slide 7 rewrites it as p★. |
 
-That is 21.0. For the last minute, either drop the 2D pair (slides 21–22, 2.0,
-landing at 19.0 — but you lose the one place the audience *sees* the
+That is 21.5. For the last minute and a half, either drop the 2D pair (slides
+22–23, 2.0, landing at 19.5 — but you lose the one place the audience *sees* the
 distributions rather than reading a logL column), or take 0.5 off each of slides
-11 and 14. **If you are starting "THE TURN" (slide 14) at about ten minutes, you
+11, 14 and 20. **If you are starting "THE TURN" (slide 14) at about ten minutes, you
 are on time.** The rail shows the running budget, and it counts every slide, not
 the cut list.
 
 Two places the deck now says the same thing twice, both deliberate and both
-yours to resolve: slide 22's "feasible is easy" is the thesis slide 17 opens
-with, and slide 23 is a second pass at the shelf. Act I is 6 of the 24 minutes —
-a deliberate bet for a mixed audience, and the other place to look if you are
-over.
+yours to resolve: slide 23's "feasible is easy" is the thesis slide 17 opens
+with, and slide 24 is a second pass at the shelf. Act I is 6 of the 24.5
+minutes — a deliberate bet for a mixed audience, and the other place to look if
+you are over.
 
 ## Keys
 
@@ -170,6 +170,17 @@ pip install Pillow
   C. Slide 6 makes the argument that there is no task-success function, so
   likelihood under π_θ is the definition of doing the task, and ends on
   `a ~ π_θ(· | o) subject to C(a) = 0`. No SVG — both slides are plain HTML.
+- **What the flow samples** (20-minute cut) — slide 21, `<svg data-bimodal>`.
+  A Gaussian cloud and the connecting flow lines are generated from a seeded
+  LCG, so the picture is byte-identical on every reload and between the local
+  and embedded builds; the right-hand distribution is a real asset,
+  `assets/2d_bimodal_vertical.png`, referenced through the SVG's `data-src` and
+  drawn with `<image>`. That asset is the paper's 2D panel rotated 90° clockwise
+  (`Image.Transpose.ROTATE_270`), white margins trimmed, upscaled to 900 px
+  tall — clockwise so the red-circled mode lands at the top, where the rest of
+  the deck puts the region that violates C. `MODE_HI`/`MODE_LO` are where the
+  two blobs sit as a fraction of the asset's height, and the flow lines aim at
+  them: **re-measure both if you regenerate the image.**
 - **The shelf board** (20-minute cut) — `<div data-shelf="N">` on slides 17–20,
   rendered by the `SHELF`/`STEP` arrays in the script. Every state draws the same
   table: the unguided prior is always present (logL only means something against
@@ -230,7 +241,7 @@ pip install Pillow
   `assets/hardware/cspi_success_0.jpg` (layout 1, before the arm moves) and
   slide 3 the annotated unguided filmstrips, so hardware footage appears on five
   slides in all.
-- **The hardware clips** (the two properties on slide 8, results on slide 25) play the
+- **The hardware clips** (the two properties on slide 8, results on slide 26) play the
   colour-graded versions in `assets/hardware/graded/`, not the raw
   `assets/hardware/*.mp4`. Regenerate with `python3 tools/grade_hardware_clips.py`
   (needs numpy, Pillow, opencv-python-headless, imageio-ffmpeg, torch,
@@ -244,7 +255,7 @@ pip install Pillow
   | Layout | Obstacles tinted | Clips |
   |--------|-------------------|-------|
   | 1 (slide 8) | cups and bowl | `cspi_success_0`, `project_fail` |
-  | 2 (slide 25) | the two canisters | `gradient_guidance`, `trust_fail` |
+  | 2 (slide 26) | the two canisters | `gradient_guidance`, `trust_fail` |
 
   To change the look, edit the constants at the top of the script: `SAT_FG`
   (foreground saturation), `BG_SAT` / `BG_WASH` / `BG_BLUR` (background
