@@ -26,6 +26,7 @@ layout 1, the two canisters in layout 2.
     python3 tools/grade_hardware_clips.py              # all four clips
     python3 tools/grade_hardware_clips.py --preview    # contact sheets only, to tools/.preview/
     python3 tools/grade_hardware_clips.py cspi_success_0
+    python3 tools/grade_hardware_clips.py --force      # recompute masks (else tools/.cache is reused)
 
 Needs numpy, Pillow, opencv-python-headless, imageio-ffmpeg, torch, transformers
 (the two models download on first run: CIDAS/clipseg-rd64-refined and
@@ -44,6 +45,8 @@ warnings.filterwarnings("ignore")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "assets", "hardware")
 DST = os.path.join(SRC, "graded")
+CACHE = os.path.join(ROOT, "tools", ".cache")     # per-frame masks, so a new look renders in seconds
+FORCE = False
 W, H = 720, 406
 
 # ---- per-clip geometry, in first-frame pixels --------------------------------
@@ -73,10 +76,12 @@ CLIPS = {
 TABLE_TARGET = 236.0   # the table top is white-balanced and lifted to this grey
 MAX_GAIN = 1.28
 CONTRAST = 1.08
-SAT_FG = 1.55          # foreground saturation
-BG_SAT = 0.35          # background keeps this much saturation ...
-BG_WASH = 0.50         # ... is blended this far toward white ...
-BG_BLUR = 2.2          # ... and softened
+SAT_FG = 1.45          # foreground saturation
+BG_SAT = 0.45          # background keeps this much saturation ...
+BG_WASH = 0.42         # ... and is blended this far toward white
+BG_BLUR = 0.0          # optional softening of the background (0 = off)
+HALO = 17              # the arm is lit by a soft spotlight this much wider than its mask ...
+HALO_BLUR = 9          # ... with this feather, so mask ragged edges never show
 TINT = np.array([225.0, 45.0, 45.0], np.float32)
 TINT_T = 0.42          # obstacle blend toward TINT
 EDGE_T = 0.85          # ... and a thin outline in the same colour
@@ -474,8 +479,18 @@ def frame_masks(f, im, cmap, M, ybox, k, cfg, seg):
     edge = blur(edge, 1.2)
     obst = feather(obst)
 
-    fg = np.maximum.reduce([robot, apple, plate])
-    return np.clip(fg, 0, 1), np.clip(obst, 0, 1), np.clip(edge, 0, 1)
+    return dict(robot=np.clip(robot, 0, 1), apple=np.clip(apple, 0, 1), plate=np.clip(plate, 0, 1),
+                obst=np.clip(obst, 0, 1), edge=np.clip(edge, 0, 1))
+
+
+def compose_alpha(parts, prev=None):
+    """Foreground alpha from the cached parts: a soft halo around the arm, tight
+    feathered masks for the apple and plate, and a short temporal blend."""
+    halo = blur(dil(parts["robot"], HALO), HALO_BLUR)
+    fg = np.maximum.reduce([halo, feather(parts["apple"]), feather(parts["plate"])])
+    if prev is not None:
+        fg = np.maximum(fg, 0.6 * prev)
+    return np.clip(fg, 0, 1)
 
 
 # ---- colour ------------------------------------------------------------------------------
@@ -492,7 +507,9 @@ def grade(f, gain):
 
 def wash(x):
     y = saturate(x, BG_SAT) * (1 - BG_WASH) + 255.0 * BG_WASH
-    return np.asarray(Image.fromarray(y.astype(np.uint8)).filter(ImageFilter.GaussianBlur(BG_BLUR)), np.float32)
+    if BG_BLUR > 0:
+        y = cv2.GaussianBlur(y, (0, 0), BG_BLUR)
+    return y.astype(np.float32)
 
 
 def table_gain(frames):
@@ -545,7 +562,8 @@ def process(name, seg, preview_dir=None):
         sheet = Image.new("RGB", (W * 3 // 2, H * len(idx) // 2))
         for i, kk in enumerate(idx):
             f = frames[kk].astype(np.float32)
-            fg, obst, edge = frame_masks(f, ims[i], cmaps[i], Ms[idx[i]], ybox[idx[i]], k, cfg, seg)
+            parts = frame_masks(f, ims[i], cmaps[i], Ms[idx[i]], ybox[idx[i]], k, cfg, seg)
+            fg, obst, edge = compose_alpha(parts), parts["obst"], parts["edge"]
             out = render(f, fg, obst, edge, gain)
             am = np.stack([fg, fg * (1 - obst), fg * (1 - obst)], -1)  # obstacles show red
             am[..., 0] = np.maximum(am[..., 0], obst)
@@ -558,6 +576,15 @@ def process(name, seg, preview_dir=None):
         return
 
     os.makedirs(DST, exist_ok=True)
+    os.makedirs(CACHE, exist_ok=True)
+    cache = os.path.join(CACHE, name + ".masks.npz")
+    cached = None
+    if os.path.exists(cache) and not FORCE:
+        z = np.load(cache)
+        if int(z["n"]) == len(frames):
+            cached = {kk: z[kk] for kk in ("robot", "apple", "plate", "obst", "edge")}
+            print(f"  {name}: masks from cache {os.path.relpath(cache, ROOT)}", file=sys.stderr)
+    store = {kk: np.zeros((len(frames), H, W), np.uint8) for kk in ("robot", "apple", "plate", "obst", "edge")}
     dst = os.path.join(DST, name + ".mp4")
     wr = iio.write_frames(dst, (W, H), fps=meta["fps"], codec="libx264", quality=None,
                           output_params=["-crf", "21", "-preset", "slow", "-pix_fmt", "yuv420p",
@@ -568,25 +595,31 @@ def process(name, seg, preview_dir=None):
     for s in range(0, len(frames), B):
         chunk = frames[s: s + B]
         ims = [Image.fromarray(f) for f in chunk]
-        cmaps = seg.clipseg(ims)
+        cmaps = seg.clipseg(ims) if cached is None else None
         for i, f in enumerate(chunk):
             j = s + i
-            fg, obst, edge = frame_masks(f.astype(np.float32), ims[i], cmaps[i], Ms[j], ybox[j], k, cfg, seg)
-            fg = feather(fg)
-            if prev is not None:            # a two-frame blend takes the flicker out
-                fg = np.maximum(fg, 0.6 * prev)
+            if cached is None:
+                parts = frame_masks(f.astype(np.float32), ims[i], cmaps[i], Ms[j], ybox[j], k, cfg, seg)
+                for kk, v in parts.items():
+                    store[kk][j] = (v * 255).astype(np.uint8)
+            else:
+                parts = {kk: cached[kk][j].astype(np.float32) / 255 for kk in cached}
+            fg = compose_alpha(parts, prev)
             prev = fg
-            wr.send(render(f.astype(np.float32), fg, obst, edge, gain))
+            wr.send(render(f.astype(np.float32), fg, parts["obst"], parts["edge"], gain))
         if s % (B * 25) == 0:
             print(f"  {name}: {s}/{len(frames)}", file=sys.stderr)
     wr.close()
+    if cached is None:
+        np.savez_compressed(cache, n=len(frames), **store)
     print(f"wrote {os.path.relpath(dst, ROOT)}  {os.path.getsize(dst) // 1024} KB", file=sys.stderr)
 
 
 if __name__ == "__main__":
     args = sys.argv[1:]
     preview = "--preview" in args
+    FORCE = "--force" in args
     names = [a for a in args if not a.startswith("--")] or list(CLIPS)
-    seg = Seg()
+    seg = Seg() if (preview or FORCE or any(not os.path.exists(os.path.join(CACHE, n + ".masks.npz")) for n in names)) else None
     for n in names:
         process(n, seg, preview_dir=os.path.join(ROOT, "tools", ".preview") if preview else None)

@@ -29,3 +29,5 @@ talk/.cache/
 !assets/hardware/graded/*.mp4
 # scratch contact sheets from tools/grade_hardware_clips.py --preview
 tools/.preview/
+tools/.cache/
+!assets/hardware/color_graded/*.mp4
