@@ -2085,6 +2085,13 @@ body.notes-on #deck{right:396px;}
     // The last one clears the rim with room to spare so feasible reads at a
     // glance rather than as a graze.
     var SCHEDULE = [0, 0.50, 1.25];
+    // Scale of the prior: the noise the flow starts from at t = 0, and so the
+    // noise a renoise to depth n puts back, which is (1-n) of it. Sized so the
+    // first renoise -- the deep one, n = 0.55, because δ was large -- actually
+    // reaches the band the next draw comes back in. Too small and the wrap
+    // survives the renoise intact, which makes the re-run look like a repair
+    // of c rather than a fresh draw that happens to start near it.
+    var SIGMA = 0.16;
     for (var i2=0;i2<NPTS;i2++){ nz1.push(Math.random()*2-1); nz2.push(Math.random()*2-1); }
 
     var PH = {DRAW:'draw', EVAL:'eval', PROJECT:'project', RENOISE:'renoise', DONE:'done'};
@@ -2344,7 +2351,7 @@ body.notes-on #deck{right:396px;}
       } else if (st.phase===PH.RENOISE && st.C){
         base = st.C; denoise = 1 - prog*(1-st.n); barT = st.n + (1-st.n)*(1-prog);
       }
-      var pts = jitter(base, (1-denoise)*0.085);
+      var pts = jitter(base, (1-denoise)*SIGMA);
 
       noiseBar(barT); scene();
       if (ghost) strokePath(ghost, 'rgba(20,35,58,.16)', 2.2);
