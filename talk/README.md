@@ -182,9 +182,13 @@ pip install Pillow
   two blobs sit as a fraction of the asset's height, and the flow lines aim at
   them: **re-measure both if you regenerate the image.**
 - **The projection maths** (20-minute cut) — slide 12 carries the two lines
-  `â ~ π_θ(·|o)` and `c = Π_C(â) so that C(c) = 0` in `.projeq`, a two-column
-  grid so both equations start at the same x (centring each line on its own
-  staggers them, because "draw" and "project" differ in width). These replaced
+  `â ~ π_θ(·|o)` and `c = Π_C(â) = argmin over C(a)=0 of ‖a − â‖` in `.projeq`,
+  a two-column grid so both equations start at the same x (centring each line on
+  its own staggers them, because "draw" and "project" differ in width). The
+  under-set condition is `.argmin`, an inline-flex column; its
+  `vertical-align:-.15em` was measured, not guessed — the default baseline of a
+  column flex container sits 4.4px high against 30px text, so if you change the
+  font size, re-measure it. These replaced
   the `draw â → project → execute c` chip strip, which said the same thing the
   pipeline strip beside it already draws; `.recipe` is still used on five other
   slides, so the class stays.

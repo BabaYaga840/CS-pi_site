@@ -288,6 +288,9 @@ ul.pts.defs li{font-size:15px;line-height:1.4;}
   color:var(--ink-faint);letter-spacing:.02em;text-align:right;}
 .projeq .p2{color:var(--purple);}
 .projeq sub{font-size:.6em;}
+.projeq .argmin{display:inline-flex;flex-direction:column;align-items:center;
+  line-height:1.02;vertical-align:-.15em;margin:0 4px;}
+.projeq .argmin .cond{font-size:.44em;letter-spacing:0;padding-top:2px;}
 .col .eqfoot{margin:8px 0 0;font-size:15px;line-height:1.45;color:var(--ink-soft);}
 .prop{flex:none;}
 .prop .pn{font-family:var(--mono);font-weight:700;font-size:14.5px;color:var(--ink);}
@@ -791,7 +794,7 @@ body.notes-on #deck{right:396px;}
            aria-label="Projection moves the finished draw straight down to the boundary of the band at t = 1. The point c is feasible, but no path through the flow ends there."></svg>
     <div class="projeq">
       <span class="lab">draw</span><span>â ~ π<sub>θ</sub>(· | o)</span>
-      <span class="lab">project</span><span class="p2">c = Π<sub>C</sub>(â) &nbsp;<span class="lab">so that</span>&nbsp; C(c) = 0</span>
+      <span class="lab">project</span><span class="p2">c = Π<sub>C</sub>(â) = <span class="argmin"><span>arg min</span><span class="cond">C(a) = 0</span></span> ‖a − â‖</span>
     </div>
     <div class="split" style="flex:none;margin-top:6px">
       <div class="callout good">Feasible by construction, no gradient, closed form for boxes, spheres,
@@ -807,9 +810,11 @@ body.notes-on #deck{right:396px;}
     <div class="timing">~1 min · be generous — the turn has nowhere to come from otherwise</div>
     <p><strong>Do not trash projection.</strong> It is the strongest baseline in the paper, and
       the entire idea of the method is that it is <em>almost right</em>.</p>
-    <p><strong>Read the two lines top to bottom</strong> — draw from the policy, then project that
-      draw onto the set where C is zero. That is the entire method, and it takes two lines because
-      it really is that small. Then walk the arrow: the flow finishes, the draw is in the band, and
+    <p><strong>Read the two lines top to bottom</strong> — draw from the policy, then take the
+      <em>nearest</em> action that satisfies the constraint. Read the second line out loud as it is
+      written: "c is the closest point to our draw among all the actions where C is zero." That
+      word, closest, is the whole of projection, and it is also the whole of what is wrong with it —
+      nothing in that line asks whether the policy would ever produce c. Then walk the arrow: the flow finishes, the draw is in the band, and
       we move it the shortest distance that makes it feasible. That distance is δ, and the point we reach is c. Both are
       free, and neither needs a gradient.</p>
     <p>Then the defect, in exactly these words: <strong>c is chosen for proximity, not for
