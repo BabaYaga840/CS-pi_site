@@ -46,10 +46,11 @@ ceiling. These are the ones to present from.
 | Does it work | 15–19 | ~5.5 min |
 | Wrap | 20–21 | ~2 min |
 
-20 min total, so cut slide 14 (the live animation, 1 min) if the slot is tight.
-**If you are past "THE TURN" (slide 12) at nine minutes, you are on time.** The
-rail shows the running budget. Slide 14 and slide 20's middle bullet are the
-two safe things to cut live.
+20 min total, which leaves no slack in a 20-minute slot: **cut slide 14 (the
+live animation, 1 min) by default** and keep it for a longer slot or for
+questions. **If you are starting "THE TURN" (slide 12) at about eight and a
+half minutes, you are on time.** The rail shows the running budget. Slide 14
+and slide 20's middle bullet are the two safe things to cut live.
 
 ## Keys
 
@@ -142,7 +143,9 @@ pip install Pillow
 - **The pipeline strip** (20-minute cut) — `<svg data-pipe="N">` beside each
   figure on slides 8–13: the sampler as stacked boxes, one state per slide
   (untouched, guidance, projection, rejection with its restart arrow back to
-  noise, the renoise return into the flow, the loop repeated). Execute drops a
+  noise, the renoise return into the flow, the loop repeated). The states in
+  use are 1, 3, 4, 8, 6, 7 in that order — 2 and 5 were retired, and rejection
+  was added last as 8 — so the numbers are labels, not a sequence. Execute drops a
   row when a fix-up stage appears.
 - **The flow-time figure** (20-minute cut) — `<svg data-flow="N">`, one state
   per slide 7–13. Noise on the left becomes an action on the right along the
@@ -174,6 +177,10 @@ pip install Pillow
   and wall-clock figures (`assets/fig_2d_distributions.png`,
   `assets/fig_wallclock.png`) were extracted from the rebuttal PDF at its
   embedded resolution — re-export from the originals if you have them.
+- **The hardware stills** — slides 2 and 4 use the poster frame
+  `assets/hardware/cspi_success_0.jpg` (layout 1, before the arm moves) and
+  slide 3 the annotated unguided filmstrips, so hardware footage appears on five
+  slides in all.
 - **The hardware clips** (the two properties on slide 6, results on slide 19) play the
   colour-graded versions in `assets/hardware/graded/`, not the raw
   `assets/hardware/*.mp4`. Regenerate with `python3 tools/grade_hardware_clips.py`
