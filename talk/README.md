@@ -8,7 +8,7 @@ lengths.**
 
 | Deck | Source | Present from | For |
 |------|--------|--------------|-----|
-| **20-minute cut** | `short.src.html` | `talk/short.html` | A conference or group slot. 23 slides, one path, no tables. |
+| **20-minute cut** | `short.src.html` | `talk/short.html` | A conference or group slot. 27 slides, one path, one growing table. |
 | **45-minute lab talk** | `deck.src.html` | `talk/index.html` | A full lab meeting, and the backup material you answer questions from. 50 slides, three selectable lengths. |
 
 The short deck is not a subset of the long one. It opens for a mixed audience
@@ -45,21 +45,33 @@ ceiling. These are the ones to present from.
 | The setup: policy, collisions, constraint, the problem in two halves, goal, two properties, flow matching | 1–9 | ~6 min |
 | Two attempts that fail, and rejection | 10–13 | ~4 min |
 | The turn and the method | 14–16 | ~4 min |
-| Does it work | 17–21 | ~5.5 min |
-| Wrap | 22–23 | ~2 min |
+| Does it work: the shelf board, then 2D, shelf rollouts, 3D-Orient, hardware | 17–25 | ~8 min |
+| Wrap | 26–27 | ~2 min |
 
-21.5 min total, so this deck is deliberately over a 20-minute slot and you cut
-into it. **Cut slide 16 (the live animation, 1 min) by default** — that lands it
-at 20.5. To get to a hard 20.0, also cut slide 7 (the goal as a density), which
-restates the line slide 6 ends on; keep slide 7 and drop something in act IV
-instead if you would rather have the equation. **If you are starting "THE TURN"
-(slide 14) at about ten minutes, you are on time.** The rail shows the running
-budget. Slide 16 and slide 22's middle bullet are the two safe things to cut
-live.
+**24 min total — this deck no longer fits a 20-minute slot as it stands, and
+you have to cut into it.** Everything is here so the choice is yours rather than
+mine; nothing below has been removed for you.
 
-Act I is now 6 of the 21.5 minutes. That is a deliberate bet for a mixed
-audience — the two problem-statement slides (5 and 6) are what let the method
-act assume nothing — but it is the first place to look if you are over.
+The cuts, in the order worth making them:
+
+| Cut | Saves | Why it is the cheapest thing to lose |
+|-----|-------|--------------------------------------|
+| Slide 16, the live animation | 1.0 | Already the standing cut; the loop is fully explained by 14–15. |
+| Slide 23, the shelf rollout GIFs | 1.5 | Slides 17–20 are now the shelf result, with numbers. Keep the GIFs only if you would rather argue from footage than from the board. |
+| Slide 7, the goal as a density | 0.5 | Slide 6 already ends on `a ~ π_θ(·&#124;o) s.t. C(a) = 0`; slide 7 rewrites it as p★. |
+
+That is 21.0. For the last minute, either drop the 2D pair (slides 21–22, 2.0,
+landing at 19.0 — but you lose the one place the audience *sees* the
+distributions rather than reading a logL column), or take 0.5 off each of slides
+11 and 14. **If you are starting "THE TURN" (slide 14) at about ten minutes, you
+are on time.** The rail shows the running budget, and it counts every slide, not
+the cut list.
+
+Two places the deck now says the same thing twice, both deliberate and both
+yours to resolve: slide 22's "feasible is easy" is the thesis slide 17 opens
+with, and slide 23 is a second pass at the shelf. Act I is 6 of the 24 minutes —
+a deliberate bet for a mixed audience, and the other place to look if you are
+over.
 
 ## Keys
 
@@ -158,6 +170,18 @@ pip install Pillow
   C. Slide 6 makes the argument that there is no task-success function, so
   likelihood under π_θ is the definition of doing the task, and ends on
   `a ~ π_θ(· | o) subject to C(a) = 0`. No SVG — both slides are plain HTML.
+- **The shelf board** (20-minute cut) — `<div data-shelf="N">` on slides 17–20,
+  rendered by the `SHELF`/`STEP` arrays in the script. Every state draws the same
+  table: the unguided prior is always present (logL only means something against
+  its 15.0, goal reach only against its 72.0), methods the story has not reached
+  are absent, earlier ones grey out, and exactly one cell carries the amber
+  `.spot` box — the number that slide is about. Reveal order and spotlight:
+  guidance → collision 0.0, rejection → NFE 8676, projection → logL 11.2,
+  CS-Pi → safe-SR 73.3. **The numbers are copied from `js/data.js`
+  (`RESULTS.shelf`); if that file changes, change these too** — there is no
+  import, and a scripted check against it lives only in the session that wrote
+  it. Trust Sampling is deliberately off the board to keep it to four rows; its
+  numbers are in the slide 20 notes for questions.
 - **The pipeline strip** (20-minute cut) — `<svg data-pipe="N">` beside each
   figure on slides 10–15: the sampler as stacked boxes, one state per slide
   (untouched, guidance, projection, rejection with its restart arrow back to
@@ -199,7 +223,7 @@ pip install Pillow
   `assets/hardware/cspi_success_0.jpg` (layout 1, before the arm moves) and
   slide 3 the annotated unguided filmstrips, so hardware footage appears on five
   slides in all.
-- **The hardware clips** (the two properties on slide 8, results on slide 21) play the
+- **The hardware clips** (the two properties on slide 8, results on slide 25) play the
   colour-graded versions in `assets/hardware/graded/`, not the raw
   `assets/hardware/*.mp4`. Regenerate with `python3 tools/grade_hardware_clips.py`
   (needs numpy, Pillow, opencv-python-headless, imageio-ffmpeg, torch,
@@ -213,7 +237,7 @@ pip install Pillow
   | Layout | Obstacles tinted | Clips |
   |--------|-------------------|-------|
   | 1 (slide 8) | cups and bowl | `cspi_success_0`, `project_fail` |
-  | 2 (slide 21) | the two canisters | `gradient_guidance`, `trust_fail` |
+  | 2 (slide 25) | the two canisters | `gradient_guidance`, `trust_fail` |
 
   To change the look, edit the constants at the top of the script: `SAT_FG`
   (foreground saturation), `BG_SAT` / `BG_WASH` / `BG_BLUR` (background

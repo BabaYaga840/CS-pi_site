@@ -12,9 +12,11 @@
 /* ============================================================================
    CS-Pi lab talk, 20-minute cut.
    Budget: ~6 min setup, ~4 min the two attempts that fail, ~4 min the turn
-   and the method, ~5.5 min results, ~2 min wrap -- 21.5 min over 23 slides.
-   That is over a 20-minute slot on purpose: slide 16 (the live loop) is the
-   standing cut, which lands it at 20.5. Every slide is tier 1 -- one path.
+   and the method, ~8 min results, ~2 min wrap -- 24.0 min over 27 slides.
+   That does NOT fit a 20-minute slot; the deck holds everything and the README
+   carries the cut list (slide 16, then 23, then 7, in that order). Results open
+   with the shelf board built one method at a time, slides 17-20. Every slide is
+   tier 1 -- one path.
    The long 45-minute deck (deck.src.html) keeps the tables, the taxonomy and
    the backup material this cut deliberately drops.
    Single committed light theme: every figure, rollout GIF and hardware clip in
@@ -155,6 +157,12 @@ table.res tr.ours td:first-child{font-weight:700;}
 table.res td.best{font-weight:700;}
 table.res .dim{color:var(--ink-faint);}
 table.res .flag{color:var(--bad);font-weight:700;}
+table.res tr.refrow td,table.res tr.past td{color:var(--ink-faint);}
+table.res tr.live td{font-weight:600;}
+table.res td.spot{
+  font-weight:800;color:#7a5310;background:var(--amber-soft);
+  box-shadow:inset 0 0 0 1.5px var(--amber);
+}
 .swatch{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:8px;}
 .tnote{font-size:13.5px;color:var(--ink-soft);margin:10px 0 0;flex:none;line-height:1.45;}
 
@@ -362,8 +370,9 @@ body.notes-on #deck{right:396px;}
       things people will otherwise assume you did.</p>
     <p><b>Budget for the whole talk:</b> ~6 min setup (the policy, the collisions, the constraint,
       the problem in two halves, the goal, the two properties, flow matching), ~4 min why the obvious
-      fixes fail, ~4 min the method, ~5.5 min results, ~2 min wrap. If you are starting the turn at
-      about ten minutes you are on time.</p>
+      fixes fail, ~4 min the method, ~8 min results, ~2 min wrap — 24 min as it stands, so come
+      with your cuts chosen (the README lists them: slide 16, then 23, then 7). If you are starting
+      the turn at about ten minutes you are on time.</p>
   </div>
 </section>
 
@@ -952,7 +961,113 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 17 · 2D SETUP ================================= -->
+<!-- ===================== 17 · BOARD 1 · GUIDANCE ======================== -->
+<section class="slide" data-act="IV · Does it work" data-title="Satisfying the constraint is the easy half" data-min="0.5" data-tier="1">
+  <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>Shelf · 150 tasks · one method at a time</span></p>
+  <h2>Satisfying the constraint is the <em>easy</em> half</h2>
+  <div data-shelf="1"></div>
+  <p class="tnote"><b>Gradient guidance drives collisions to 0.0%</b> — a perfect constraint record, for
+    free, at the same 240 NFE as doing nothing. And goal reach falls from the prior's 72.0% to 28.0%.
+    The arm stops hitting the shelf by stopping doing the task.</p>
+  <div class="notes">
+    <div class="timing">~30 s · one row, one number — do not read the whole board</div>
+    <p>Point at <strong>one cell: collision 0.0%</strong>. Say that if constraint satisfaction were the
+      objective, we would be finished — this is a perfect score, and it costs nothing.</p>
+    <p>Then move one column left. <strong>Goal reach 28.0%, down from the prior's 72.0%.</strong> The
+      constraint was satisfied by destroying the behaviour. This is the whole reason the talk has a
+      second axis: a method that only reports collision rate would call this a win.</p>
+    <p class="say">"Zero collisions. And it stopped doing the task. Those are the same number."</p>
+    <p>The prior row stays up all four slides on purpose — logL only means something against the
+      prior's own 15.0, and goal reach only means something against its 72.0.</p>
+    <div class="qa">"Is guidance just badly tuned?" — this is the best α on the sweep by safe-SR.
+      Turning it down recovers the task and loses the constraint; the long deck has the frontier.</div>
+  </div>
+</section>
+
+<!-- ===================== 18 · BOARD 2 · REJECTION ======================= -->
+<section class="slide" data-act="IV · Does it work" data-title="Rejection stays on the data, and cannot be afforded" data-min="0.5" data-tier="1">
+  <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>Shelf · 150 tasks · one method at a time</span></p>
+  <h2>Rejection keeps the policy honest — at a price nobody pays</h2>
+  <div data-shelf="2"></div>
+  <p class="tnote"><b>8,676 NFE — 36× the unmodified policy.</b> Rejection is the one baseline that stays
+    on the data (logL 14.2, against the prior's 15.0), because every accepted sample is a real draw. But
+    the budget runs out before a feasible one arrives: 40.7% of rollouts still collide, at 36× the compute.</p>
+  <div class="notes">
+    <div class="timing">~30 s · the NFE column is the whole slide</div>
+    <p><strong>Spotlight the NFE cell and let the number do the work.</strong> 8,676 against 240. Say
+      the mechanism in one line: the accept rate is the prior's own mass on the feasible set, so as
+      the constraint tightens the expected number of redraws blows up.</p>
+    <p>Be fair to it, because the fairness sets up CS-Pi: <strong>rejection has the second-best logL on
+      the board</strong>, 14.2. It never leaves the data manifold, because it only ever executes real
+      draws. That is exactly the property we want — it is the cost that is impossible.</p>
+    <p class="say">"Rejection has the right idea and the wrong bill. Thirty-six times the compute, and
+      it still collides in four rollouts out of ten."</p>
+    <p>The 40.7% collision is not a tuning failure: with B = 100 the sampler gives up and falls back,
+      so the hard tasks are exactly the ones it fails.</p>
+  </div>
+</section>
+
+<!-- ===================== 19 · BOARD 3 · PROJECTION ====================== -->
+<section class="slide" data-act="IV · Does it work" data-title="Projection works, and the likelihood pays for it" data-min="0.5" data-tier="1">
+  <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>Shelf · 150 tasks · one method at a time</span></p>
+  <h2>Projection satisfies the constraint — and walks off the data</h2>
+  <div data-shelf="3"></div>
+  <p class="tnote">On this task projection is genuinely good: <b>4.0% collision, 62.0% safe-SR, at 240 NFE.</b>
+    The bill is in the logL column — <b>11.2, against the prior's 15.0</b>. These are feasible actions the
+    policy would not have drawn, and the hardware clip from act I is what that looks like on a real arm.</p>
+  <div class="notes">
+    <div class="timing">~30 s · concede the win first, then spotlight logL</div>
+    <p><strong>Concede the win, and mean it.</strong> Projection nearly doubles the prior's safe-SR,
+      cuts collisions to 4.0%, and costs nothing — 240 NFE, the same as one draw. On the shelf it is a
+      strong baseline and an audience should see that we know it.</p>
+    <p>Then the spotlight cell: <strong>logL 11.2.</strong> Say what it measures — how likely the
+      policy thinks its own executed actions were — and that the prior's own samples score 15.0. This
+      is the lowest logL on the board apart from guidance.</p>
+    <p class="say">"It is feasible, it is free, and it is not something the policy would ever have
+      done. We already watched that fail on the arm."</p>
+    <p>Tie it back to the act I clip: that was projection, feasible at every step, never completing
+      the task. This row is the same failure with 150 tasks behind it.</p>
+    <div class="qa">"4.0% collision beats CS-Pi's 6.7% — isn't projection safer?" — yes on that column,
+      and it is worth saying before someone else does. Next slide.</div>
+  </div>
+</section>
+
+<!-- ===================== 20 · BOARD 4 · CS-PI =========================== -->
+<section class="slide" data-act="IV · Does it work" data-title="CS-Pi: likely actions that are also safe" data-min="1" data-tier="1">
+  <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>Shelf · 150 tasks · the whole board</span></p>
+  <h2>CS-Pi samples actions that are <em>likely</em> and <em>safe</em></h2>
+  <div data-shelf="4"></div>
+  <p class="tnote"><b>73.3% safe-SR — the only method on the board past 70%</b> — with goal reach 78.7%,
+    above the unmodified prior's 72.0%, and <b>logL 18.0, above the prior's own 15.0</b>, for a 19%
+    compute surcharge (285 NFE). Collision is 6.7%, higher than projection's 4.0%: we do not win that
+    column, and we do not need to.</p>
+  <div class="notes">
+    <div class="timing">~1 min · the payoff slide — land safe-SR, then be honest about collision</div>
+    <p><strong>Safe-SR is the column that matters</strong>, because it is the only one that requires
+      both halves at once: the rollout reached the goal <em>and</em> never collided. 73.3% is the only
+      number past 70 on the board. Every other method wins a column and loses the task.</p>
+    <p><strong>Then logL 18.0</strong>, and do not rush it, because it looks like a typo. It is above
+      the prior's own 15.0. Conditioning on feasibility does not just avoid the bad region — it
+      concentrates the draws in parts of the policy's distribution the prior itself likes. We are not
+      dragging samples off the manifold; we are picking better ones from on it.</p>
+    <p class="say">"Every other row buys one property with the other. This row is the same policy,
+      sampled differently."</p>
+    <p><strong>Say the collision number before anyone asks.</strong> 6.7% against projection's 4.0% and
+      guidance's 0.0%. We are not the safest method on this board and we do not claim to be — the two
+      that beat us there reach the goal 66% and 28% of the time. If you need a hard guarantee, the
+      terminal projection gives it, and it fires on 15.7% of chunks.</p>
+    <p>Compute, in one line if asked: 285 vs 240 NFE, a 19% surcharge — about one extra draw on
+      average, against rejection's 8,676.</p>
+    <div class="qa">"Where is Trust Sampling?" — off the board to keep it to four rows; it is in the
+      paper and the long deck. Its numbers do not change the story: 27.3% safe-SR, 28.0% goal reach,
+      0.7% collision, logL 10.5, and 1,242 NFE — guidance's trade at five times the compute.</div>
+    <div class="qa">"Why is logL above the prior?" — the prior's 15.0 is its unconditional mean over
+      all its draws, including the 82% that collide. Restricted to feasible actions, the mean rises.
+      It is a real effect, not a scaling artefact, and the 2D board shows the same ordering.</div>
+  </div>
+</section>
+
+<!-- ===================== 21 · 2D SETUP ================================= -->
 <section class="slide" data-act="IV · Does it work" data-title="2D: what the right answer looks like" data-min="0.5" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>2D diagnostic · setup</span></p>
   <h2>First, what does the right answer even look like?</h2>
@@ -982,7 +1097,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 18 · 2D MONEY SHOT =========================== -->
+<!-- ===================== 22 · 2D MONEY SHOT =========================== -->
 <section class="slide" data-act="IV · Does it work" data-title="2D: feasible is easy, feasible and on-data is not" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>2D diagnostic · both are 100% feasible</span></p>
   <h2>Both of these satisfy the constraint perfectly</h2>
@@ -1018,7 +1133,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 19 · SHELF ==================================== -->
+<!-- ===================== 23 · SHELF ==================================== -->
 <section class="slide" data-act="IV · Does it work" data-title="Shelf: when the obstacle is on the route" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>7-DoF Franka · 150 tasks · obstacles added at deployment</span></p>
   <h2>In simulation, where the obstacle blocks the demonstrated route</h2>
@@ -1054,7 +1169,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 20 · 3D-ORIENT =============================== -->
+<!-- ===================== 24 · 3D-ORIENT =============================== -->
 <section class="slide" data-act="IV · Does it work" data-title="3D-Orient: a cost, not a constraint" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>7-DoF reach · orientation held throughout · same loop, new operator</span></p>
   <h2>Swap the projection and it enforces something else entirely</h2>
@@ -1089,7 +1204,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 21 · HARDWARE ================================= -->
+<!-- ===================== 25 · HARDWARE ================================= -->
 <section class="slide" data-act="IV · Does it work" data-title="Hardware: zero-shot on a Franka" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>π₀.₅ · no finetuning · ZED 2 perception · 2 layouts · 20 trials per method</span></p>
   <h2>And it survives real perception</h2>
@@ -1135,7 +1250,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 22 · LIMITATIONS ============================= -->
+<!-- ===================== 26 · LIMITATIONS ============================= -->
 <section class="slide" data-act="V · Wrap" data-title="What it doesn't do" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">V · Wrap</span><span class="rule"></span><span>Say these before the audience does</span></p>
   <h2>Three things it doesn't do</h2>
@@ -1171,7 +1286,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 23 · TAKEAWAY ================================ -->
+<!-- ===================== 27 · TAKEAWAY ================================ -->
 <section class="slide statement" data-act="V · Wrap" data-title="Takeaway" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">V · Wrap</span><span class="rule"></span><span>Takeaway</span></p>
   <blockquote>The projection is a cheap, clean, gradient-free feasibility signal.
@@ -1812,6 +1927,60 @@ body.notes-on #deck{right:396px;}
     }
 
     [].forEach.call(svgs, render);
+  })();
+
+
+  // =========================================================================
+  // The shelf board, built one method at a time. Every state draws the same
+  // table; only the methods the story has reached are present, the newest is
+  // live and the earlier ones fade back, and exactly one cell is spotlit --
+  // the number that slide is actually about -- so the room reads a cell, not
+  // a grid.
+  //
+  //   1  gradient guidance   collision 0.0  -- and the task is gone
+  //   2  rejection           NFE 8676       -- the right idea, unaffordable
+  //   3  projection          logL 11.2      -- feasible, off the data
+  //   4  CS-Pi               safe-SR 73.3   -- with logL 18.0
+  //
+  // Numbers are the paper's shelf table, copied from js/data.js RESULTS.shelf.
+  // The prior row is present in every state because logL only means anything
+  // against its 15.0, and goal reach only against its 72.0.
+  // =========================================================================
+  (function(){
+    var hosts = document.querySelectorAll('[data-shelf]');
+    if (!hosts.length) return;
+
+    var COLS = ['Method', 'Safe-SR&nbsp;%&nbsp;↑', 'Goal reach&nbsp;%&nbsp;↑',
+                'Collision&nbsp;%&nbsp;↓', 'logL&nbsp;↑', 'NFE&nbsp;↓'];
+    var PRIOR = {name:'Unguided (prior)', c:['3.3', '72.0', '82.0', '15.0', '240']};
+    var STEP = [
+      {name:'Gradient guidance',   c:['28.0', '28.0', '0.0',  '10.2', '240'],  focus:2},
+      {name:'Rejection (B = 100)', c:['33.3', '67.3', '40.7', '14.2', '8676'], focus:4},
+      {name:'Projection',          c:['62.0', '66.0', '4.0',  '11.2', '240'],  focus:3},
+      {name:'CS-Pi (ours)',        c:['73.3', '78.7', '6.7',  '18.0', '285'],  focus:0,
+       ours:true}
+    ];
+
+    function row(r, cls, focus){
+      var h = '<td>' + r.name + '</td>';
+      for (var i = 0; i < r.c.length; i++)
+        h += '<td' + (i === focus ? ' class="spot"' : '') + '>' + r.c[i] + '</td>';
+      return '<tr' + (cls ? ' class="' + cls + '"' : '') + '>' + h + '</tr>';
+    }
+
+    [].forEach.call(hosts, function(host){
+      var st = parseInt(host.dataset.shelf, 10) || 1;
+      var h = '<div class="tablewrap"><table class="res"><thead><tr>';
+      COLS.forEach(function(c){ h += '<th>' + c + '</th>'; });
+      h += '</tr></thead><tbody>' + row(PRIOR, 'refrow', -1);
+      for (var i = 0; i < st; i++){
+        var live = (i === st - 1);
+        h += row(STEP[i],
+                 (STEP[i].ours ? 'ours ' : '') + (live ? 'live' : 'past'),
+                 live ? STEP[i].focus : -1);
+      }
+      host.innerHTML = h + '</tbody></table></div>';
+    });
   })();
 
   // =========================================================================
