@@ -12,6 +12,12 @@ screen-record without a browser. This drives the shipped animation directly:
 Because step 2 executes the deck's own code, the GIF cannot drift from what the
 slide does -- rebuild the deck, re-run this, and the GIF matches again.
 
+The one thing the GIF adds is a caption band under the canvas. The slide has a
+presenter to say what each beat means; the GIF travels alone, so it carries the
+narration -- above all the point that pass 2 starts from a smaller projection
+error and so puts back less noise. Captions are built from the numbers the
+animation itself reports, so they cannot contradict the picture.
+
     python3 tools/render_loop_gif.py                  # -> assets/cspi_loop.gif
     python3 tools/render_loop_gif.py --frame 136      # one PNG, to eyeball
 
@@ -34,16 +40,18 @@ OUTGIF = os.path.join(ROOT, "assets", "cspi_loop.gif")
 
 # One full period of the loop. Keep STEP an exact divisor of it, or the GIF
 # will not join back to its first frame.
-LOOP_MS = 15900
+LOOP_MS = 23700
 STEP_MS = 30
 S = 3                                    # supersample factor
-FINAL = (1350, 580)                      # 1.5x the 900x387 CSS layout
 CW, CH = 900, 330                        # canvas size the animation lays out for
 BAR_H, FOOT_H = 30, 27                   # the vizbar and vizfoot around it
+CAP_H = 46                               # the caption band this script adds
 PADX = 13
+FINAL = (1350, 650)                      # 1.5x the 900x433 layout
 
 PANEL, LINE, SLIDE = (245, 248, 252), (226, 232, 242), (255, 255, 255)
 BLUEDP, INKSOFT = (15, 63, 134), (74, 90, 114)
+CAP_INK, CAP_DELTA, CAP_N = (32, 48, 74), (192, 57, 43), (29, 111, 212)
 LEGEND = [((29, 111, 212), "draw / project"),
           ((31, 157, 87), "feasible · goal"),
           ((224, 83, 61), "obstacle (unseen at training)")]
@@ -54,6 +62,71 @@ RECIPE = "draw → project → renoise to n = k/(k+δ) → re-run"
 # delta and check the labels need, and Menlo stands in for the mono.
 MENLO = "/System/Library/Fonts/Menlo.ttc"
 SANS = "/System/Library/Fonts/LucidaGrande.ttc"
+CAP_PX = 17                              # caption size, in CSS pixels
+
+
+def num(text):
+    """'δ = 0.135' / 'n = k/(k+δ) = 0.55' -> the number on the end, or None."""
+    tail = (text or "").rsplit("=", 1)[-1].strip()
+    try:
+        float(tail)
+        return tail
+    except ValueError:
+        return None
+
+
+def measured(frames):
+    """Per pass, the delta and n the animation actually reported.
+
+    The bar freezes both across eval/project/renoise, which is exactly the
+    stretch the caption talks over, so read them from there.
+    """
+    out = {}
+    for fr in frames:
+        h = fr["hud"]
+        if not any(k in h["stage"] for k in ("violation", "project", "renoise")):
+            continue
+        d, n = num(h["delta"]), num(h["n"])
+        if d and n:
+            out.setdefault(h["iter"], (d, n))
+    return out
+
+
+def caption(hud, seen):
+    """Rich-text runs for this frame: (text, colour, bold).
+
+    Everything quoted comes from the animation's own readouts, so the caption
+    cannot drift from the picture the way hand-written narration would.
+    """
+    stage, it = hud["stage"], hud["iter"]
+    talking = any(k in stage for k in ("violation", "project", "renoise"))
+    if talking and it in seen:
+        d, n = seen[it]
+        if it == "iter 1":
+            return [("pass 1 — projection error ", CAP_INK, False),
+                    ("δ = " + d, CAP_DELTA, True),
+                    (" is large, so renoise deep to ", CAP_INK, False),
+                    ("n = " + n, CAP_N, True),
+                    (": a lot of noise goes back", CAP_INK, False)]
+        prev = seen.get("iter 1", (None, None))[0]
+        return [("pass 2 — projection error ", CAP_INK, False),
+                ("δ = " + d, CAP_DELTA, True),
+                ((", down from %s, " % prev) if prev else ", smaller, ", CAP_INK, False),
+                ("so renoise only to ", CAP_INK, False),
+                ("n = " + n, CAP_N, True),
+                (": less noise goes back", CAP_INK, False)]
+    if "feasible" in stage:
+        return [("δ = 0 — feasible, and it is an ordinary draw from the policy",
+                 CAP_INK, False)]
+    if "draw" in stage:
+        if it == "iter 1":
+            return [("the flow draws a sample — it runs straight through the obstacle",
+                     CAP_INK, False)]
+        if it == "iter 2":
+            return [("re-run from the renoised chunk — a new sample, closer but not clear",
+                     CAP_INK, False)]
+        return [("re-run again — this draw clears the obstacle", CAP_INK, False)]
+    return []
 
 
 # --------------------------------------------------------------------------
@@ -204,7 +277,7 @@ def capture(deck_path, work):
 # --------------------------------------------------------------------------
 from PIL import Image, ImageDraw, ImageFont            # noqa: E402
 
-W, H = CW, BAR_H + CH + FOOT_H
+W, H = CW, BAR_H + CH + CAP_H + FOOT_H
 _fc = {}
 
 
@@ -369,13 +442,16 @@ def draw_canvas(im, dr, ops, oy):
                                         e[0] + w / 2, e[1] + w / 2], fill=col)
 
 
-def render(fr):
+def render(fr, seen):
     im = Image.new("RGBA", (W * S, H * S), SLIDE + (255,))
     dr = ImageDraw.Draw(im, "RGBA")
     dr.rounded_rectangle([0, 0, W * S - 1, H * S - 1], radius=10 * S,
                          fill=PANEL + (255,), outline=LINE + (255,), width=S)
     dr.line([(0, BAR_H * S), (W * S, BAR_H * S)], fill=LINE + (255,), width=S)
-    dr.line([(0, (BAR_H + CH) * S), (W * S, (BAR_H + CH) * S)], fill=LINE + (255,), width=S)
+    cap_top, foot_top = (BAR_H + CH) * S, (BAR_H + CH + CAP_H) * S
+    dr.rectangle([S, cap_top, W * S - S, foot_top], fill=SLIDE + (255,))
+    dr.line([(0, cap_top), (W * S, cap_top)], fill=LINE + (255,), width=S)
+    dr.line([(0, foot_top), (W * S, foot_top)], fill=LINE + (255,), width=S)
 
     hud = fr["hud"]
     fm, fmb = font("mono", 11.5 * S), font("mono", 11.5 * S, True)
@@ -388,8 +464,19 @@ def render(fr):
 
     draw_canvas(im, dr, fr["ops"], BAR_H * S)
 
+    # the caption: centred, and measured run by run so the emphasis can be
+    # coloured without the line drifting off centre
+    runs = caption(fr["hud"], seen)
+    if runs:
+        fonts = [font("sans", CAP_PX * S, bold) for _, _, bold in runs]
+        wide = sum(dr.textlength(t, font=f) for (t, _, _), f in zip(runs, fonts))
+        x, cy = (W * S - wide) / 2, cap_top + CAP_H * S / 2
+        for (t, col, _), f in zip(runs, fonts):
+            dr.text((x, cy), t, font=f, fill=col + (255,), anchor="lm")
+            x += dr.textlength(t, font=f)
+
     fs = font("sans", 11 * S)
-    fy = (BAR_H + CH) * S + FOOT_H * S / 2
+    fy = foot_top + FOOT_H * S / 2
     x = PADX * S
     for col, txt in LEGEND:
         r = 4 * S
@@ -444,16 +531,17 @@ def main():
         print("reading %s" % os.path.relpath(args.deck, ROOT))
         frames = capture(args.deck, work)
 
+        seen = measured(frames)
         if args.frame is not None:
             png = os.path.splitext(args.out)[0] + "-frame%d.png" % args.frame
-            render(frames[args.frame]).save(png)
+            render(frames[args.frame], seen).save(png)
             print("wrote %s (t=%dms)" % (png, frames[args.frame]["t"]))
             return
 
         fdir = os.path.join(work, "frames")
         os.makedirs(fdir)
         for i, fr in enumerate(frames):
-            render(fr).save(os.path.join(fdir, "%04d.png" % i))
+            render(fr, seen).save(os.path.join(fdir, "%04d.png" % i))
         print("  rasterised %d frames at %dx%d" % (len(frames), FINAL[0], FINAL[1]))
 
         encode(fdir, args.out)

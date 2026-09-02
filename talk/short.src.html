@@ -2188,7 +2188,7 @@ body.notes-on #deck{right:396px;}
     // The two beats worth dwelling on are the ones the method is made of:
     // renoise puts the noise back, draw is the flow re-running from that depth.
     // Both run roughly twice as long as the bookkeeping around them.
-    var DUR = {draw:2400, eval:700, project:1100, renoise:1700, done:1700};
+    var DUR = {draw:4000, eval:700, project:1100, renoise:3200, done:1700};
     var st;
     function nVal(d){ return K/(K + d*6.0); }
     function ease(t){ return t<0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2; }
