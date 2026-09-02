@@ -1683,11 +1683,12 @@ body.notes-on #deck{right:396px;}
       }
 
       if (st >= 4 && st <= 7){
+        // the projection is purple wherever it appears, including inside the
+        // CS-Pi loop: it is the same operation there, just not the thing we run
         down(ROW.action, ROW.fix, PURPLE);
-        var fixTone = st >= 6 ? BLUE : PURPLE;
         box(ROW.fix, st === 4 ? ['project onto C', 'nearest feasible c']
                               : ['project onto C', 'to get c and δ'],
-            fixTone, st >= 6 ? '#eaf2fd' : '#f4efff');
+            PURPLE, '#f4efff');
       }
 
       if (st === 4){
