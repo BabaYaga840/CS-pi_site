@@ -11,9 +11,10 @@
 <style>
 /* ============================================================================
    CS-Pi lab talk, 20-minute cut.
-   Budget: ~4.5 min setup, ~4 min the two attempts that fail, ~4 min the turn
-   and the method, ~5.5 min results, ~2 min wrap -- 20.0 min over 21 slides.
-   Every slide is tier 1 -- there is one path.
+   Budget: ~6 min setup, ~4 min the two attempts that fail, ~4 min the turn
+   and the method, ~5.5 min results, ~2 min wrap -- 21.5 min over 23 slides.
+   That is over a 20-minute slot on purpose: slide 16 (the live loop) is the
+   standing cut, which lands it at 20.5. Every slide is tier 1 -- one path.
    The long 45-minute deck (deck.src.html) keeps the tables, the taxonomy and
    the backup material this cut deliberately drops.
    Single committed light theme: every figure, rollout GIF and hardware clip in
@@ -81,6 +82,7 @@ h2{
   letter-spacing:-.012em;margin:0 0 8px;text-wrap:balance;color:var(--ink);flex:none;
 }
 h2 em{font-style:italic;color:var(--blue-deep);}
+h2 .later{color:var(--ink-faint);}
 h3.sub{
   font-family:var(--sans);font-weight:700;font-size:14px;letter-spacing:.04em;
   text-transform:uppercase;color:var(--ink-faint);margin:0 0 8px;flex:none;
@@ -358,9 +360,10 @@ body.notes-on #deck{right:396px;}
     <p>One sentence of framing before you advance: <strong>"This is a sampling method. The policy
       is frozen, and we never take a gradient of the constraint."</strong> That rules out the two
       things people will otherwise assume you did.</p>
-    <p><b>Budget for the whole talk:</b> ~4.5 min setup (the policy, the collisions, the constraint,
-      the goal, the two properties, flow matching), ~4 min why the obvious fixes fail, ~4 min the method,
-      ~5.5 min results, ~2 min wrap. If you are starting the turn at about eight and a half minutes you are on time.</p>
+    <p><b>Budget for the whole talk:</b> ~6 min setup (the policy, the collisions, the constraint,
+      the problem in two halves, the goal, the two properties, flow matching), ~4 min why the obvious
+      fixes fail, ~4 min the method, ~5.5 min results, ~2 min wrap. If you are starting the turn at
+      about ten minutes you are on time.</p>
   </div>
 </section>
 
@@ -466,7 +469,89 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 5 · THE GOAL ================================== -->
+<!-- ===================== 5 · PROBLEM · HALF ONE ========================= -->
+<section class="slide" data-act="I · The setup" data-title="The problem, half one: satisfy the constraint" data-min="0.5" data-tier="1">
+  <p class="kicker"><span class="act">I · The setup</span><span class="rule"></span><span>The problem · half one</span></p>
+  <h2>Policies which <em>satisfy test-time defined constraints</em> <span class="later">while also completing the task</span></h2>
+  <div class="split wide-l">
+    <div class="col center">
+      <p class="bigeq">C(a) = 0</p>
+      <p class="eqfoot" style="margin-top:4px">the constraint is <strong>satisfied</strong></p>
+      <p class="bigeq" style="font-size:18.5px;color:var(--ink-soft);margin-top:20px">C : 𝒜 → ℝ<sub>≥0</sub><span style="color:var(--line-firm)">&nbsp; &nbsp;|&nbsp; &nbsp;</span>C(a) = 0 ⟺ a ∈ C</p>
+      <p class="eqfoot" style="margin-top:4px">how far a is from allowed, and the feasible set that its zeros define</p>
+    </div>
+    <div class="col center">
+      <ul class="pts defs">
+        <li><strong>Test time, not training time.</strong> C is handed to us after the policy is
+          frozen, and no demonstration ever saw it.</li>
+        <li>We only ever <strong>evaluate</strong> C. We never take <span class="cs">∇C</span>.</li>
+      </ul>
+      <p class="chips"><span class="step red hot">obstacles</span><span class="step">joint limits</span><span class="step">workspace bounds</span><span class="step">a required pose</span></p>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~30 s · one line of maths — say it and move on</div>
+    <p>Read it out loud and do not elaborate: <strong>"C is a function of an action, and it is zero
+      exactly when that action is allowed."</strong> That is the entire definition. The concrete
+      examples are the chips on the right, and the previous slide already showed the obstacle boxes
+      coming off a depth camera.</p>
+    <p>Two things to plant here, because both carry weight later. <strong>C arrives after the policy
+      is frozen</strong> — so no amount of training data helps, and retraining is not on the table.
+      And <strong>we only evaluate C, never differentiate it</strong> — that single restriction is
+      what rules out the guidance family two slides from now, so it is worth the extra five seconds.</p>
+    <p class="say">"Zero means allowed. That is all C is."</p>
+    <div class="qa">"Why equality to zero rather than an inequality?" — C is a non-negative violation
+      measure, so C(a) = 0 is the feasible case and C(a) &gt; 0 says how badly a misses. The setting
+      where you want C small rather than zero is a cost, not a constraint; that is the 3D-Orient task
+      at the end.</div>
+  </div>
+</section>
+
+<!-- ===================== 6 · PROBLEM · HALF TWO ========================= -->
+<section class="slide" data-act="I · The setup" data-title="The problem, half two: and still do the task" data-min="1" data-tier="1">
+  <p class="kicker"><span class="act">I · The setup</span><span class="rule"></span><span>The problem · half two</span></p>
+  <h2>Policies which <em>satisfy test-time defined constraints</em> <em>while also completing the task</em></h2>
+  <div class="split">
+    <div class="col center">
+      <p class="eqfoot" style="margin:0 0 10px">There is no task-success function to write down —
+        no reward, no goal predicate, no classifier.</p>
+      <p class="bigeq">π<sub>θ</sub>(a | o)&nbsp; high</p>
+      <p class="eqfoot" style="margin-top:4px">The policy is the only model of the task we have. An
+        action it is <strong>likely</strong> to draw is an action that does the task the way the
+        demonstrations did.</p>
+    </div>
+    <div class="col center">
+      <p class="bigeq" style="color:var(--blue-deep)">a ~ π<sub>θ</sub>(· | o)<br><span style="font-size:20px;color:var(--ink-soft)">subject to</span><br>C(a) = 0</p>
+      <p class="eqfoot" style="margin-top:6px">Both halves in one line: <strong>draw from the policy,
+        keep only what satisfies C.</strong></p>
+      <div class="callout" style="margin-top:8px">Which is why <b>plausibility is a requirement, not a
+        preference</b>. Task competence is inherited from π<sub>θ</sub>: the moment we execute an
+        action the policy would never have drawn, we have no reason left to believe it does the task.</div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="timing">~1 min · the half nobody in the room has thought about</div>
+    <p><strong>This is the slide that defines the talk.</strong> Everyone arrives already agreeing
+      that the arm should not hit things. Almost nobody arrives with a definition of "completes the
+      task" — and the point of this slide is that we do not have one either, and do not need one.</p>
+    <p>Say it plainly: <strong>there is no reward, no task-success classifier, no goal predicate.</strong>
+      The policy was trained on demonstrations of the task being done, so the policy's own density is
+      our working definition of doing the task. High density under π<sub>θ</sub> means "the sort of
+      action the demonstrations contained".</p>
+    <p class="say">"We never write down what success means. The policy already did that for us — we
+      just have to stay inside it."</p>
+    <p>Then put up the one-line statement and let it sit for a beat. Point out that it is a
+      <strong>sampling</strong> problem, not an optimisation problem: nothing in that line says
+      "find the best a", and every method in the next act is a different way of drawing from it.</p>
+    <p>Hand off forward: the next slide writes exactly this statement as a density, which is the
+      object the rest of the talk is trying to sample.</p>
+    <div class="qa">"Isn't likelihood under π just a proxy for task success?" — yes, and it is the only
+      one available without task-specific engineering. It is also the proxy the entire imitation
+      learning stack already runs on, so accepting it costs us nothing we had.</div>
+  </div>
+</section>
+
+<!-- ===================== 7 · THE GOAL ================================== -->
 <section class="slide" data-act="I · The setup" data-title="The goal: sample from the policy, subject to C" data-min="0.5" data-tier="1">
   <p class="kicker"><span class="act">I · The setup</span><span class="rule"></span><span>The problem, in one line</span></p>
   <h2>Sample from the policy — but only actions that satisfy the constraint</h2>
@@ -499,7 +584,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 6 · FEASIBLE AND PLAUSIBLE ==================== -->
+<!-- ===================== 8 · FEASIBLE AND PLAUSIBLE ==================== -->
 <section class="slide" data-act="I · The setup" data-title="Two properties: feasible and plausible" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">I · The setup</span><span class="rule"></span><span>Two properties · the same arm, policy and scene as before</span></p>
   <h2>Two things we want from every executed action</h2>
@@ -554,7 +639,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 7 · FLOW MATCHING ============================= -->
+<!-- ===================== 9 · FLOW MATCHING ============================= -->
 <section class="slide" data-act="I · The setup" data-title="Flow matching, just enough" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">I · The setup</span><span class="rule"></span><span>Background · flow matching, just enough to follow the method</span></p>
   <h2>Flow matching: noise on the left becomes an action on the right</h2>
@@ -594,7 +679,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 8 · THE FLOW, UNTOUCHED ======================= -->
+<!-- ===================== 10 · THE FLOW, UNTOUCHED ======================= -->
 <section class="slide" data-act="II · Two attempts" data-title="The flow, untouched" data-min="0.5" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span>The same picture, with the constraint on it</span></p>
   <h2>Put the constraint on the picture. The flow does not know it is there.</h2>
@@ -624,7 +709,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 9 · ATTEMPT 1 · GUIDANCE ====================== -->
+<!-- ===================== 11 · ATTEMPT 1 · GUIDANCE ====================== -->
 <section class="slide" data-act="II · Two attempts" data-title="Attempt 1: push in the middle" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span style="color:var(--red)">Attempt 1 · gradient guidance</span></p>
   <h2>Why pushing the velocity mid-flow goes wrong</h2>
@@ -667,7 +752,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 10 · ATTEMPT 2 · PROJECTION ==================== -->
+<!-- ===================== 12 · ATTEMPT 2 · PROJECTION ==================== -->
 <section class="slide" data-act="II · Two attempts" data-title="Attempt 2: fix the answer at the end" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span style="color:var(--purple)">Attempt 2 · projection</span></p>
   <h2>Let the flow finish, then snap the answer onto C</h2>
@@ -703,7 +788,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 11 · REJECTION ================================= -->
+<!-- ===================== 13 · REJECTION ================================= -->
 <section class="slide" data-act="II · Two attempts" data-title="Or: throw it away and redraw" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span style="color:var(--slate)">The honest fix · rejection sampling</span></p>
   <h2>Or throw the draw away and start again from noise</h2>
@@ -737,7 +822,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 12 · THE TURN · ONE PASS ======================= -->
+<!-- ===================== 14 · THE TURN · ONE PASS ======================= -->
 <section class="slide" data-act="III · The idea" data-title="THE TURN: bias the redraw toward c" data-min="2" data-tier="1">
   <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span style="color:var(--blue)">CS-Pi · one pass</span></p>
   <h2>Don't execute c. Don't discard it. Redraw, biased toward it.</h2>
@@ -784,7 +869,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 13 · ITERATE, AND k =========================== -->
+<!-- ===================== 15 · ITERATE, AND k =========================== -->
 <section class="slide" data-act="III · The idea" data-title="Repeat until δ is zero" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span style="color:var(--blue)">CS-Pi · the loop, and k</span></p>
   <h2>Repeat. Each pass goes back less far, and lands closer.</h2>
@@ -827,7 +912,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 14 · LIVE LOOP ================================ -->
+<!-- ===================== 16 · LIVE LOOP ================================ -->
 <section class="slide" data-act="III · The idea" data-title="Live: watch δ go to zero" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span>Live · click the canvas to restart</span></p>
   <h2>Watch δ go to zero</h2>
@@ -867,7 +952,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 15 · 2D SETUP ================================= -->
+<!-- ===================== 17 · 2D SETUP ================================= -->
 <section class="slide" data-act="IV · Does it work" data-title="2D: what the right answer looks like" data-min="0.5" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>2D diagnostic · setup</span></p>
   <h2>First, what does the right answer even look like?</h2>
@@ -897,7 +982,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 16 · 2D MONEY SHOT =========================== -->
+<!-- ===================== 18 · 2D MONEY SHOT =========================== -->
 <section class="slide" data-act="IV · Does it work" data-title="2D: feasible is easy, feasible and on-data is not" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>2D diagnostic · both are 100% feasible</span></p>
   <h2>Both of these satisfy the constraint perfectly</h2>
@@ -933,7 +1018,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 17 · SHELF ==================================== -->
+<!-- ===================== 19 · SHELF ==================================== -->
 <section class="slide" data-act="IV · Does it work" data-title="Shelf: when the obstacle is on the route" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>7-DoF Franka · 150 tasks · obstacles added at deployment</span></p>
   <h2>In simulation, where the obstacle blocks the demonstrated route</h2>
@@ -969,7 +1054,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 18 · 3D-ORIENT =============================== -->
+<!-- ===================== 20 · 3D-ORIENT =============================== -->
 <section class="slide" data-act="IV · Does it work" data-title="3D-Orient: a cost, not a constraint" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>7-DoF reach · orientation held throughout · same loop, new operator</span></p>
   <h2>Swap the projection and it enforces something else entirely</h2>
@@ -1004,7 +1089,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 19 · HARDWARE ================================= -->
+<!-- ===================== 21 · HARDWARE ================================= -->
 <section class="slide" data-act="IV · Does it work" data-title="Hardware: zero-shot on a Franka" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>π₀.₅ · no finetuning · ZED 2 perception · 2 layouts · 20 trials per method</span></p>
   <h2>And it survives real perception</h2>
@@ -1050,7 +1135,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 20 · LIMITATIONS ============================= -->
+<!-- ===================== 22 · LIMITATIONS ============================= -->
 <section class="slide" data-act="V · Wrap" data-title="What it doesn't do" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">V · Wrap</span><span class="rule"></span><span>Say these before the audience does</span></p>
   <h2>Three things it doesn't do</h2>
@@ -1086,7 +1171,7 @@ body.notes-on #deck{right:396px;}
   </div>
 </section>
 
-<!-- ===================== 21 · TAKEAWAY ================================ -->
+<!-- ===================== 23 · TAKEAWAY ================================ -->
 <section class="slide statement" data-act="V · Wrap" data-title="Takeaway" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">V · Wrap</span><span class="rule"></span><span>Takeaway</span></p>
   <blockquote>The projection is a cheap, clean, gradient-free feasibility signal.
@@ -2107,7 +2192,10 @@ body.notes-on #deck{right:396px;}
     for (var i2=0;i2<NPTS;i2++){ nz1.push(Math.random()*2-1); nz2.push(Math.random()*2-1); }
 
     var PH = {DRAW:'draw', EVAL:'eval', PROJECT:'project', RENOISE:'renoise', DONE:'done'};
-    var DUR = {draw:1300, eval:700, project:1100, renoise:850, done:1700};
+    // The two beats worth dwelling on are the ones the method is made of:
+    // renoise puts the noise back, draw is the flow re-running from that depth.
+    // Both run roughly twice as long as the bookkeeping around them.
+    var DUR = {draw:2400, eval:700, project:1100, renoise:1700, done:1700};
     var st;
     function nVal(d){ return K/(K + d*6.0); }
     function ease(t){ return t<0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2; }

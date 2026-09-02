@@ -8,12 +8,14 @@ lengths.**
 
 | Deck | Source | Present from | For |
 |------|--------|--------------|-----|
-| **20-minute cut** | `short.src.html` | `talk/short.html` | A conference or group slot. 21 slides, one path, no tables. |
+| **20-minute cut** | `short.src.html` | `talk/short.html` | A conference or group slot. 23 slides, one path, no tables. |
 | **45-minute lab talk** | `deck.src.html` | `talk/index.html` | A full lab meeting, and the backup material you answer questions from. 50 slides, three selectable lengths. |
 
 The short deck is not a subset of the long one. It opens for a mixed audience
 (vision, robotics, ML): the pretrained flow policy, the unguided policy
-colliding on both hardware layouts, the constraint, the goal as one equation, the two properties we want (feasible and plausible, with the
+colliding on both hardware layouts, the constraint, the problem stated in two
+halves (satisfy C, and still do the task), the goal as one equation, the two
+properties we want (feasible and plausible, with the
 hardware clips as evidence), and a one-slide flow-matching primer — so nothing
 in the method act relies on background the room does not share. It then follows
 the rule that a talk should build rather than display: the approach is **one
@@ -40,17 +42,24 @@ ceiling. These are the ones to present from.
 
 | Section | Slides | Runs |
 |---------|--------|------|
-| The setup: policy, collisions, constraint, goal, two properties, flow matching | 1–7 | ~4.5 min |
-| Two attempts that fail, and rejection | 8–11 | ~4 min |
-| The turn and the method | 12–14 | ~4 min |
-| Does it work | 15–19 | ~5.5 min |
-| Wrap | 20–21 | ~2 min |
+| The setup: policy, collisions, constraint, the problem in two halves, goal, two properties, flow matching | 1–9 | ~6 min |
+| Two attempts that fail, and rejection | 10–13 | ~4 min |
+| The turn and the method | 14–16 | ~4 min |
+| Does it work | 17–21 | ~5.5 min |
+| Wrap | 22–23 | ~2 min |
 
-20 min total, which leaves no slack in a 20-minute slot: **cut slide 14 (the
-live animation, 1 min) by default** and keep it for a longer slot or for
-questions. **If you are starting "THE TURN" (slide 12) at about eight and a
-half minutes, you are on time.** The rail shows the running budget. Slide 14
-and slide 20's middle bullet are the two safe things to cut live.
+21.5 min total, so this deck is deliberately over a 20-minute slot and you cut
+into it. **Cut slide 16 (the live animation, 1 min) by default** — that lands it
+at 20.5. To get to a hard 20.0, also cut slide 7 (the goal as a density), which
+restates the line slide 6 ends on; keep slide 7 and drop something in act IV
+instead if you would rather have the equation. **If you are starting "THE TURN"
+(slide 14) at about ten minutes, you are on time.** The rail shows the running
+budget. Slide 16 and slide 22's middle bullet are the two safe things to cut
+live.
+
+Act I is now 6 of the 21.5 minutes. That is a deliberate bet for a mixed
+audience — the two problem-statement slides (5 and 6) are what let the method
+act assume nothing — but it is the first place to look if you are over.
 
 ## Keys
 
@@ -133,29 +142,38 @@ pip install Pillow
   script: `data-policy` (slide 2: observation in, a different action chunk per
   draw; the photo comes from its `data-src` media token), `data-cset` (slide 4:
   the feasible set, a draw outside it, its projection and δ) and `data-goal`
-  (slide 5: the policy's density with the infeasible part cut away). The
-  flow-matching primer on slide 7 is `data-flow="0"`: the flow-time figure with
+  (slide 7: the policy's density with the infeasible part cut away). The
+  flow-matching primer on slide 9 is `data-flow="0"`: the flow-time figure with
   no red band and one training pair drawn as a straight line. Slide 3 shows the
   unguided policy colliding on both hardware layouts using the annotated
   filmstrips `assets/hw_v1_fail.png` and `assets/hw_v2_fail.png` (the repo has
   no unguided hardware video); each strip is cropped to its five frames with
   `object-fit`, so swapping in a `<video>` of the same run is a one-line change.
+- **The problem statement** (20-minute cut) — slides 5 and 6 build one sentence,
+  "Policies which satisfy test-time defined constraints while also completing the
+  task", across two slides: the headline is the same on both, and the half that is
+  not yet live is greyed with `<span class="later">` (see `h2 .later` in the CSS).
+  Slide 5 defines the constraint function, `C(a) = 0 ⟺ a ∈ C`, which is the bridge
+  between the function notation and the set notation the rest of the deck uses for
+  C. Slide 6 makes the argument that there is no task-success function, so
+  likelihood under π_θ is the definition of doing the task, and ends on
+  `a ~ π_θ(· | o) subject to C(a) = 0`. No SVG — both slides are plain HTML.
 - **The pipeline strip** (20-minute cut) — `<svg data-pipe="N">` beside each
-  figure on slides 8–13: the sampler as stacked boxes, one state per slide
+  figure on slides 10–15: the sampler as stacked boxes, one state per slide
   (untouched, guidance, projection, rejection with its restart arrow back to
   noise, the renoise return into the flow, the loop repeated). The states in
   use are 1, 3, 4, 8, 6, 7 in that order — 2 and 5 were retired, and rejection
   was added last as 8 — so the numbers are labels, not a sequence. Execute drops a
   row when a fix-up stage appears.
 - **The flow-time figure** (20-minute cut) — `<svg data-flow="N">`, one state
-  per slide 7–13. Noise on the left becomes an action on the right along the
+  per slide 9–15. Noise on the left becomes an action on the right along the
   flow's own time axis; the grey lines are draws gathering late into two
   behaviours; a red band at the top violates the constraint. Every method is a
   position on that axis: guidance pushes mid-flow against the flow's blurred
   guess x̂₀ and lands in the gap, projection edits at t = 1, rejection restarts
   at t = 0, CS-Pi takes c back to t = n and re-runs. Each state's explanation
   sits in a caption strip above the plot; inside the plot only short tags, so
-  the paths stay readable. The equation on slide 12 and the k tiles on slide 13
+  the paths stay readable. The equation on slide 14 and the k tiles on slide 15
   are plain HTML. If you change the geometry constants (`A0`, `A1`, `N1`,
   `R1`, …), re-check that the redraws still end where the captions say.
 - **The four-column taxonomy** (45-minute deck) — the `TAXO` array in the deck's script. Act II
@@ -181,7 +199,7 @@ pip install Pillow
   `assets/hardware/cspi_success_0.jpg` (layout 1, before the arm moves) and
   slide 3 the annotated unguided filmstrips, so hardware footage appears on five
   slides in all.
-- **The hardware clips** (the two properties on slide 6, results on slide 19) play the
+- **The hardware clips** (the two properties on slide 8, results on slide 21) play the
   colour-graded versions in `assets/hardware/graded/`, not the raw
   `assets/hardware/*.mp4`. Regenerate with `python3 tools/grade_hardware_clips.py`
   (needs numpy, Pillow, opencv-python-headless, imageio-ffmpeg, torch,
@@ -194,8 +212,8 @@ pip install Pillow
 
   | Layout | Obstacles tinted | Clips |
   |--------|-------------------|-------|
-  | 1 (slide 6) | cups and bowl | `cspi_success_0`, `project_fail` |
-  | 2 (slide 19) | the two canisters | `gradient_guidance`, `trust_fail` |
+  | 1 (slide 8) | cups and bowl | `cspi_success_0`, `project_fail` |
+  | 2 (slide 21) | the two canisters | `gradient_guidance`, `trust_fail` |
 
   To change the look, edit the constants at the top of the script: `SAT_FG`
   (foreground saturation), `BG_SAT` / `BG_WASH` / `BG_BLUR` (background
