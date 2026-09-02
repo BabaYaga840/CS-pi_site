@@ -249,6 +249,7 @@ table.res .flag{color:var(--bad);font-weight:700;}
 .chips .step{border:1px solid var(--line-firm);border-radius:6px;padding:3px 10px;color:var(--ink-soft);background:#fff;}
 .chips .step.red{color:#a8382a;background:#fdf1ef;border-color:#f2cfc8;}
 .chips .step.hot{font-weight:700;border-color:currentColor;}
+.cbox{flex:none;align-self:flex-start;margin:0 0 8px;font-family:var(--mono);font-size:14.5px;font-weight:700;color:var(--ink);border:1.5px solid var(--line-firm);border-radius:8px;padding:6px 13px;background:#fff;}
 .cset{width:100%;height:auto;display:block;flex:none;}
 ul.pts.defs li{font-size:15px;line-height:1.4;}
 .goal{width:100%;height:auto;display:block;}
@@ -429,7 +430,8 @@ body.notes-on #deck{right:396px;}
         <div class="mf-head"><span>pick the apple, place it on the plate — around the stack</span><span class="spacer"></span><span class="pill no">layout 1</span></div>
         <img src="{{M:assets/hardware/cspi_success_0.jpg}}" alt="A Franka arm above a table with an apple, a blue plate, and a stack of cups and a bowl that were never in the demonstrations">
       </div>
-      <p class="chips"><span class="step red hot">here: obstacle boxes from a depth camera</span><span class="step">joint limits</span><span class="step">workspace bounds</span><span class="step">a required end-effector pose</span></p>
+      <p class="cbox">constraint defined during inference</p>
+      <p class="chips"><span class="step red hot">here: obstacles</span><span class="step">joint limits</span><span class="step">workspace bounds</span><span class="step">a required end-effector pose</span></p>
     </div>
     <div class="col">
       <svg data-cset class="cset" viewBox="0 0 460 290" role="img"
@@ -700,11 +702,11 @@ body.notes-on #deck{right:396px;}
   <h2>Or throw the draw away and start again from noise</h2>
   <div class="method">
     <svg data-pipe="8" class="pipe" viewBox="0 0 320 340" role="img"
-         aria-label="The pipeline for rejection sampling: check the draw, discard it if it is in the red band, and restart from noise."></svg>
+         aria-label="The pipeline for rejection sampling: check whether the draw satisfies the constraint; if yes execute it, if no reject it and restart from noise."></svg>
     <div class="mcol">
       <svg data-flow="4" class="geo" viewBox="0 0 700 330" role="img"
            aria-label="Rejection sampling restarts from pure noise again and again; most restarts end back inside the band, and one eventually ends in behaviour B and is accepted."></svg>
-    <p class="recipe"><span class="step">draw</span><span class="arr">→</span><span class="step">in the band?</span><span class="arr">→</span><span class="step hot grey">discard, restart from t = 0</span><span class="arr">→</span><span class="step">…</span></p>
+    <p class="recipe"><span class="step">draw</span><span class="arr">→</span><span class="step">constraint satisfying?</span><span class="arr">→</span><span class="step hot grey">discard, restart from t = 0</span><span class="arr">→</span><span class="step">…</span></p>
     <div class="split" style="flex:none;margin-top:6px">
       <div class="callout good">Every accepted draw is a real draw from the policy, so this is the
         statistically correct answer — the target the rest of the talk is measured against.</div>
@@ -1562,7 +1564,7 @@ body.notes-on #deck{right:396px;}
   //   5  the turn                     keep the projection, cut the execute
   //   6  the loop                     renoise to n and re-run
   //   7  the loop, repeated           until δ ≈ 0, then execute
-  //   8  rejection                    discard and restart from noise
+  //   8  rejection                    constraint satisfying? yes: execute · no: reject, restart
   // =========================================================================
   (function(){
     var svgs = document.querySelectorAll('svg[data-pipe]');
@@ -1634,10 +1636,10 @@ body.notes-on #deck{right:396px;}
       // ---- the spine, present in every state ------------------------------
       box(ROW.noise, ['ε ~ N(0, I)', 'noise']);
       down(ROW.noise, ROW.flow);
-      box(ROW.flow, st === 3 ? ['flow ODE', 'bent at every step'] : ['flow ODE'],
+      box(ROW.flow, st === 3 ? ['flow ODE', 'altered at every step'] : ['flow ODE'],
           st === 3 ? RED : null, st === 3 ? '#fdf1ef' : null);
       down(ROW.flow, ROW.action);
-      box(ROW.action, st === 3 ? ['â', 'bent toward C'] : ['â', 'a policy sample'],
+      box(ROW.action, st === 3 ? ['â', 'altered by gradient'] : ['â', 'a policy sample'],
           st === 3 ? RED : null, st === 3 ? '#fdf1ef' : null);
 
       if (st === 1){
@@ -1653,22 +1655,23 @@ body.notes-on #deck{right:396px;}
         });
         mono({x:BX + BW + 42, y:ROW.flow + 25, fill:RED, 'font-size':11}, '−α ∇C');
         down(ROW.action, execY, RED);
-        box(execY, ['execute', 'a bent sample'], RED, '#fdf1ef');
+        box(execY, ['execute', 'an altered sample'], RED, '#fdf1ef');
       }
 
       if (st === 8){
         // rejection: check, discard, and go all the way back to noise
         down(ROW.action, ROW.fix, SLATE);
-        box(ROW.fix, ['in the red band?', 'yes: discard it'], SLATE, '#eef2f7');
-        down(ROW.fix, ROW.exec);
-        box(ROW.exec, ['execute', 'once one passes']);
+        box(ROW.fix, ['constraint satisfying?', 'no: reject'], SLATE, '#eef2f7');
+        down(ROW.fix, ROW.exec, GOOD);
+        mono({x:CX + 9, y:(ROW.fix + BH + ROW.exec) / 2 + 4, fill:GOOD, 'font-size':10}, 'yes');
+        box(ROW.exec, ['execute'], GOOD, '#e9f7ee');
         var ry0 = ROW.fix + BH / 2, ry1 = ROW.noise + BH / 2, rlx = 30;
         el('path', {d:'M' + BX + ',' + ry0 + ' H' + rlx + ' V' + ry1 + ' H' + (BX - 6),
                     fill:'none', stroke:SLATE, 'stroke-width':2,
                     'stroke-dasharray':'5 4', 'marker-end':MK[SLATE]});
         var rmy = (ry0 + ry1) / 2;
         mono({x:rlx - 8, y:rmy, fill:SLATE, 'font-size':9, 'text-anchor':'middle',
-              transform:'rotate(-90 ' + (rlx - 8) + ' ' + rmy + ')'}, 'restart from noise');
+              transform:'rotate(-90 ' + (rlx - 8) + ' ' + rmy + ')'}, 'no · restart from noise');
       }
 
       if (st >= 4 && st <= 7){
