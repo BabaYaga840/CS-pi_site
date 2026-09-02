@@ -181,6 +181,13 @@ pip install Pillow
   the deck puts the region that violates C. `MODE_HI`/`MODE_LO` are where the
   two blobs sit as a fraction of the asset's height, and the flow lines aim at
   them: **re-measure both if you regenerate the image.**
+- **The projection maths** (20-minute cut) — slide 12 carries the two lines
+  `â ~ π_θ(·|o)` and `c = Π_C(â) so that C(c) = 0` in `.projeq`, a two-column
+  grid so both equations start at the same x (centring each line on its own
+  staggers them, because "draw" and "project" differ in width). These replaced
+  the `draw â → project → execute c` chip strip, which said the same thing the
+  pipeline strip beside it already draws; `.recipe` is still used on five other
+  slides, so the class stays.
 - **The shelf board** (20-minute cut) — `<div data-shelf="N">` on slides 17–20,
   rendered by the `SHELF`/`STEP` arrays in the script. Every state draws the same
   table: the unguided prior is always present (logL only means something against
