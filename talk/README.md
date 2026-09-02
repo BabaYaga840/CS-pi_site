@@ -174,10 +174,17 @@ pip install Pillow
   rendered by the `SHELF`/`STEP` arrays in the script. Every state draws the same
   table: the unguided prior is always present (logL only means something against
   its 15.0, goal reach only against its 72.0), methods the story has not reached
-  are absent, earlier ones grey out, and exactly one cell carries the amber
-  `.spot` box — the number that slide is about. Reveal order and spotlight:
-  guidance → collision 0.0, rejection → NFE 8676, projection → logL 11.2,
-  CS-Pi → safe-SR 73.3. **The numbers are copied from `js/data.js`
+  are absent, and earlier ones grey out. Which cells are boxed is the `MARKS`
+  map, keyed by state. States 1–3 box one cell in amber — the number that slide
+  is about: guidance → goal reach 28.0, rejection → NFE 8676, projection →
+  logL 11.2. State 4 drops the amber and boxes **three pairs**, each pair one
+  colour, so a comparison is read across the board rather than narrated: red
+  goal reach (CS-Pi 78.7 v guidance 28.0), purple logL (18.0 v projection 11.2),
+  green NFE (285 v rejection 8,676). The `.spot-*` rules are scoped through
+  `tbody` because they have to out-specify `tr.past td`, which greys whole rows.
+  **Collision % is deliberately not a column** — it rewards inaction, since a
+  policy that never moves scores 0.0, and safe-SR already requires no collision.
+  The collision numbers stay in the speaker notes, where they get asked about. **The numbers are copied from `js/data.js`
   (`RESULTS.shelf`); if that file changes, change these too** — there is no
   import, and a scripted check against it lives only in the session that wrote
   it. Trust Sampling is deliberately off the board to keep it to four rows; its

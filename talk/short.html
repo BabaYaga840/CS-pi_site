@@ -159,10 +159,15 @@ table.res .dim{color:var(--ink-faint);}
 table.res .flag{color:var(--bad);font-weight:700;}
 table.res tr.refrow td,table.res tr.past td{color:var(--ink-faint);}
 table.res tr.live td{font-weight:600;}
-table.res td.spot{
-  font-weight:800;color:#7a5310;background:var(--amber-soft);
-  box-shadow:inset 0 0 0 1.5px var(--amber);
-}
+table.res tbody td.spot{font-weight:800;}
+table.res tbody td.spot-amber{color:#7a5310;background:var(--amber-soft);
+  box-shadow:inset 0 0 0 1.5px var(--amber);}
+table.res tbody td.spot-red{color:#a8382a;background:#fdf1ef;
+  box-shadow:inset 0 0 0 1.5px var(--red);}
+table.res tbody td.spot-purple{color:#5b21b6;background:#f4efff;
+  box-shadow:inset 0 0 0 1.5px var(--purple);}
+table.res tbody td.spot-green{color:#12683a;background:#e9f7ee;
+  box-shadow:inset 0 0 0 1.5px var(--good);}
 .swatch{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:8px;}
 .tnote{font-size:13.5px;color:var(--ink-soft);margin:10px 0 0;flex:none;line-height:1.45;}
 
@@ -966,16 +971,18 @@ body.notes-on #deck{right:396px;}
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>Shelf · 150 tasks · one method at a time</span></p>
   <h2>Satisfying the constraint is the <em>easy</em> half</h2>
   <div data-shelf="1"></div>
-  <p class="tnote"><b>Gradient guidance drives collisions to 0.0%</b> — a perfect constraint record, for
-    free, at the same 240 NFE as doing nothing. And goal reach falls from the prior's 72.0% to 28.0%.
-    The arm stops hitting the shelf by stopping doing the task.</p>
+  <p class="tnote"><b>Gradient guidance stops the collisions outright</b> — a perfect constraint
+    record, for free, at the same 240 NFE as doing nothing. And <b>goal reach falls from the prior's
+    72.0% to 28.0%</b>. The arm stopped hitting the shelf by stopping doing the task, which is why
+    safe-SR — the column that needs both — never gets past 28.0 either.</p>
   <div class="notes">
     <div class="timing">~30 s · one row, one number — do not read the whole board</div>
-    <p>Point at <strong>one cell: collision 0.0%</strong>. Say that if constraint satisfaction were the
-      objective, we would be finished — this is a perfect score, and it costs nothing.</p>
-    <p>Then move one column left. <strong>Goal reach 28.0%, down from the prior's 72.0%.</strong> The
-      constraint was satisfied by destroying the behaviour. This is the whole reason the talk has a
-      second axis: a method that only reports collision rate would call this a win.</p>
+<p>Say the constraint result out loud, because it is not a column: <strong>guidance collides on
+      0.0% of these tasks, against the unmodified policy's 82%.</strong> If constraint satisfaction
+      were the objective we would be finished — a perfect score, at no extra compute.</p>
+    <p>Then point at the boxed cell. <strong>Goal reach 28.0%, down from the prior's 72.0%.</strong>
+      The constraint was satisfied by destroying the behaviour. This is the whole reason the board
+      has the axes it has: a table with a collision column and nothing else would call this a win.</p>
     <p class="say">"Zero collisions. And it stopped doing the task. Those are the same number."</p>
     <p>The prior row stays up all four slides on purpose — logL only means something against the
       prior's own 15.0, and goal reach only means something against its 72.0.</p>
@@ -990,8 +997,9 @@ body.notes-on #deck{right:396px;}
   <h2>Rejection keeps the policy honest — at a price nobody pays</h2>
   <div data-shelf="2"></div>
   <p class="tnote"><b>8,676 NFE — 36× the unmodified policy.</b> Rejection is the one baseline that stays
-    on the data (logL 14.2, against the prior's 15.0), because every accepted sample is a real draw. But
-    the budget runs out before a feasible one arrives: 40.7% of rollouts still collide, at 36× the compute.</p>
+    on the data (logL 14.2, against the prior's 15.0), because every accepted sample is a real draw. And
+    it still only reaches 33.3% safe-SR: the budget runs out before a feasible draw arrives, on 36× the
+    compute.</p>
   <div class="notes">
     <div class="timing">~30 s · the NFE column is the whole slide</div>
     <p><strong>Spotlight the NFE cell and let the number do the work.</strong> 8,676 against 240. Say
@@ -1002,8 +1010,9 @@ body.notes-on #deck{right:396px;}
       draws. That is exactly the property we want — it is the cost that is impossible.</p>
     <p class="say">"Rejection has the right idea and the wrong bill. Thirty-six times the compute, and
       it still collides in four rollouts out of ten."</p>
-    <p>The 40.7% collision is not a tuning failure: with B = 100 the sampler gives up and falls back,
-      so the hard tasks are exactly the ones it fails.</p>
+    <p>If asked why safe-SR is only 33.3% when it never leaves the data: with B = 100 the sampler
+      gives up and falls back, so it still collides on 40.7% of tasks — the hard ones are exactly the
+      ones the budget cannot buy.</p>
   </div>
 </section>
 
@@ -1012,14 +1021,15 @@ body.notes-on #deck{right:396px;}
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>Shelf · 150 tasks · one method at a time</span></p>
   <h2>Projection satisfies the constraint — and walks off the data</h2>
   <div data-shelf="3"></div>
-  <p class="tnote">On this task projection is genuinely good: <b>4.0% collision, 62.0% safe-SR, at 240 NFE.</b>
-    The bill is in the logL column — <b>11.2, against the prior's 15.0</b>. These are feasible actions the
-    policy would not have drawn, and the hardware clip from act I is what that looks like on a real arm.</p>
+  <p class="tnote">On this task projection is genuinely good: <b>62.0% safe-SR at 240 NFE</b> — nearly
+    nineteen times the prior's 3.3%, for free, and it collides on only 4.0% of tasks. The bill is in the
+    logL column — <b>11.2, against the prior's 15.0</b>. These are feasible actions the policy would not
+    have drawn, and the hardware clip from act I is what that looks like on a real arm.</p>
   <div class="notes">
     <div class="timing">~30 s · concede the win first, then spotlight logL</div>
-    <p><strong>Concede the win, and mean it.</strong> Projection nearly doubles the prior's safe-SR,
-      cuts collisions to 4.0%, and costs nothing — 240 NFE, the same as one draw. On the shelf it is a
-      strong baseline and an audience should see that we know it.</p>
+    <p><strong>Concede the win, and mean it.</strong> Projection takes safe-SR from 3.3% to 62.0%,
+      cuts collisions to 4.0% — say that number, it is not on the board — and costs nothing, 240 NFE,
+      the same as one draw. On the shelf it is a strong baseline and the room should see that we know it.</p>
     <p>Then the spotlight cell: <strong>logL 11.2.</strong> Say what it measures — how likely the
       policy thinks its own executed actions were — and that the prior's own samples score 15.0. This
       is the lowest logL on the board apart from guidance.</p>
@@ -1027,8 +1037,9 @@ body.notes-on #deck{right:396px;}
       done. We already watched that fail on the arm."</p>
     <p>Tie it back to the act I clip: that was projection, feasible at every step, never completing
       the task. This row is the same failure with 150 tasks behind it.</p>
-    <div class="qa">"4.0% collision beats CS-Pi's 6.7% — isn't projection safer?" — yes on that column,
-      and it is worth saying before someone else does. Next slide.</div>
+    <div class="qa">"Isn't projection the safer method?" — on raw collisions, yes: 4.0% against
+      CS-Pi's 6.7%. That is why collision is not a column here — it rewards a method for refusing to
+      act. Safe-SR is the honest version, and there projection is 62.0 to our 73.3. Next slide.</div>
   </div>
 </section>
 
@@ -1037,10 +1048,11 @@ body.notes-on #deck{right:396px;}
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>Shelf · 150 tasks · the whole board</span></p>
   <h2>CS-Pi samples actions that are <em>likely</em> and <em>safe</em></h2>
   <div data-shelf="4"></div>
-  <p class="tnote"><b>73.3% safe-SR — the only method on the board past 70%</b> — with goal reach 78.7%,
-    above the unmodified prior's 72.0%, and <b>logL 18.0, above the prior's own 15.0</b>, for a 19%
-    compute surcharge (285 NFE). Collision is 6.7%, higher than projection's 4.0%: we do not win that
-    column, and we do not need to.</p>
+  <p class="tnote"><b>73.3% safe-SR — the only method on the board past 70%.</b> Each colour is one
+    head-to-head: <span style="color:#a8382a"><b>goal reach 78.7 against guidance's 28.0</b></span>,
+    <span style="color:#5b21b6"><b>logL 18.0 against projection's 11.2</b></span> — and above the
+    prior's own 15.0 — and <span style="color:#12683a"><b>285 NFE against rejection's 8,676</b></span>.
+    Every baseline buys one axis by giving up another. This row is the same policy, sampled differently.</p>
   <div class="notes">
     <div class="timing">~1 min · the payoff slide — land safe-SR, then be honest about collision</div>
     <p><strong>Safe-SR is the column that matters</strong>, because it is the only one that requires
@@ -1052,10 +1064,13 @@ body.notes-on #deck{right:396px;}
       dragging samples off the manifold; we are picking better ones from on it.</p>
     <p class="say">"Every other row buys one property with the other. This row is the same policy,
       sampled differently."</p>
-    <p><strong>Say the collision number before anyone asks.</strong> 6.7% against projection's 4.0% and
-      guidance's 0.0%. We are not the safest method on this board and we do not claim to be — the two
-      that beat us there reach the goal 66% and 28% of the time. If you need a hard guarantee, the
-      terminal projection gives it, and it fires on 15.7% of chunks.</p>
+    <p><strong>Say the collision number before anyone asks, because it is not on the board.</strong>
+      CS-Pi collides on 6.7% of tasks, against projection's 4.0% and guidance's 0.0%. We are not the
+      safest method here and do not claim to be — the two that beat us reach the goal 66% and 28% of
+      the time, and safe-SR is where that shows up. If you need a hard guarantee, the terminal
+      projection gives it, and it fires on 15.7% of chunks.</p>
+    <p>If someone asks why collision is not a column: it rewards inaction. A policy that never moves
+      scores a perfect 0.0. Safe-SR is the same information with the task still attached.</p>
     <p>Compute, in one line if asked: 285 vs 240 NFE, a 19% surcharge — about one extra draw on
       average, against rejection's 8,676.</p>
     <div class="qa">"Where is Trust Sampling?" — off the board to keep it to four rows; it is in the
@@ -1937,10 +1952,15 @@ body.notes-on #deck{right:396px;}
   // the number that slide is actually about -- so the room reads a cell, not
   // a grid.
   //
-  //   1  gradient guidance   collision 0.0  -- and the task is gone
-  //   2  rejection           NFE 8676       -- the right idea, unaffordable
-  //   3  projection          logL 11.2      -- feasible, off the data
-  //   4  CS-Pi               safe-SR 73.3   -- with logL 18.0
+  //   1  gradient guidance   goal reach 28.0 -- the task is gone
+  //   2  rejection           NFE 8676        -- the right idea, unaffordable
+  //   3  projection          logL 11.2       -- feasible, off the data
+  //   4  CS-Pi               three head-to-heads, one colour per axis
+  //
+  // Collision % is deliberately not a column: safe-SR already requires it
+  // (a rollout counts only if it reached the goal AND never collided), and the
+  // board reads as three axes instead of five. The collision numbers are still
+  // in the speaker notes, because they are the first thing asked about.
   //
   // Numbers are the paper's shelf table, copied from js/data.js RESULTS.shelf.
   // The prior row is present in every state because logL only means anything
@@ -1951,34 +1971,52 @@ body.notes-on #deck{right:396px;}
     if (!hosts.length) return;
 
     var COLS = ['Method', 'Safe-SR&nbsp;%&nbsp;↑', 'Goal reach&nbsp;%&nbsp;↑',
-                'Collision&nbsp;%&nbsp;↓', 'logL&nbsp;↑', 'NFE&nbsp;↓'];
-    var PRIOR = {name:'Unguided (prior)', c:['3.3', '72.0', '82.0', '15.0', '240']};
+                'logL&nbsp;↑', 'NFE&nbsp;↓'];
+    var PRIOR = {key:'prior', name:'Unguided (prior)', c:['3.3', '72.0', '15.0', '240']};
     var STEP = [
-      {name:'Gradient guidance',   c:['28.0', '28.0', '0.0',  '10.2', '240'],  focus:2},
-      {name:'Rejection (B = 100)', c:['33.3', '67.3', '40.7', '14.2', '8676'], focus:4},
-      {name:'Projection',          c:['62.0', '66.0', '4.0',  '11.2', '240'],  focus:3},
-      {name:'CS-Pi (ours)',        c:['73.3', '78.7', '6.7',  '18.0', '285'],  focus:0,
+      {key:'guid', name:'Gradient guidance',   c:['28.0', '28.0', '10.2', '240']},
+      {key:'rej',  name:'Rejection (B = 100)', c:['33.3', '67.3', '14.2', '8676']},
+      {key:'proj', name:'Projection',          c:['62.0', '66.0', '11.2', '240']},
+      {key:'cspi', name:'CS-Pi (ours)',        c:['73.3', '78.7', '18.0', '285'],
        ours:true}
     ];
 
-    function row(r, cls, focus){
+    // Column indices into c: 0 safe-SR, 1 goal reach, 2 logL, 3 NFE.
+    // States 1-3 put one amber box on the number that slide is about. The last
+    // state drops the amber and pairs CS-Pi against the baseline that loses on
+    // each axis -- both cells of a pair share a colour, so each comparison is
+    // read straight off the board instead of being narrated.
+    var MARKS = {
+      1: [['guid', 1, 'amber']],
+      2: [['rej',  3, 'amber']],
+      3: [['proj', 2, 'amber']],
+      4: [['guid', 1, 'red'],    ['cspi', 1, 'red'],
+          ['proj', 2, 'purple'], ['cspi', 2, 'purple'],
+          ['rej',  3, 'green'],  ['cspi', 3, 'green']]
+    };
+
+    function row(r, cls, marks){
       var h = '<td>' + r.name + '</td>';
-      for (var i = 0; i < r.c.length; i++)
-        h += '<td' + (i === focus ? ' class="spot"' : '') + '>' + r.c[i] + '</td>';
+      for (var i = 0; i < r.c.length; i++){
+        var tone = null;
+        for (var m = 0; m < marks.length; m++)
+          if (marks[m][0] === r.key && marks[m][1] === i) tone = marks[m][2];
+        h += '<td' + (tone ? ' class="spot spot-' + tone + '"' : '') + '>'
+           + r.c[i] + '</td>';
+      }
       return '<tr' + (cls ? ' class="' + cls + '"' : '') + '>' + h + '</tr>';
     }
 
     [].forEach.call(hosts, function(host){
       var st = parseInt(host.dataset.shelf, 10) || 1;
+      var marks = MARKS[st] || [];
       var h = '<div class="tablewrap"><table class="res"><thead><tr>';
       COLS.forEach(function(c){ h += '<th>' + c + '</th>'; });
-      h += '</tr></thead><tbody>' + row(PRIOR, 'refrow', -1);
-      for (var i = 0; i < st; i++){
-        var live = (i === st - 1);
+      h += '</tr></thead><tbody>' + row(PRIOR, 'refrow', marks);
+      for (var i = 0; i < st; i++)
         h += row(STEP[i],
-                 (STEP[i].ours ? 'ours ' : '') + (live ? 'live' : 'past'),
-                 live ? STEP[i].focus : -1);
-      }
+                 (STEP[i].ours ? 'ours ' : '') + (i === st - 1 ? 'live' : 'past'),
+                 marks);
       host.innerHTML = h + '</tbody></table></div>';
     });
   })();
