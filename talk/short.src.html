@@ -5,8 +5,9 @@
 <style>
 /* ============================================================================
    CS-Pi lab talk, 20-minute cut.
-   Budget: ~3 min problem, ~4 min why the obvious fixes fail, ~6 min method,
-   ~5 min results, ~2 min wrap. Every slide is tier 1 -- there is one path.
+   Budget: ~4.5 min setup, ~4 min the two attempts that fail, ~4 min the turn
+   and the method, ~5.5 min results, ~2 min wrap -- 20.0 min over 21 slides.
+   Every slide is tier 1 -- there is one path.
    The long 45-minute deck (deck.src.html) keeps the tables, the taxonomy and
    the backup material this cut deliberately drops.
    Single committed light theme: every figure, rollout GIF and hardware clip in
@@ -2066,7 +2067,7 @@ body.notes-on #deck{right:396px;}
     function reset(){
       st = { phase:PH.DRAW, t0:performance.now(), iter:1, offset:0, projOffset:0,
              delta:penetration(0).delta, n:0, denoiseFrom:0,
-             from:null, deltaEval:0 };
+             from:null, C:null, deltaEval:0 };
       hud();
     }
     function hud(){
@@ -2158,31 +2159,41 @@ body.notes-on #deck{right:396px;}
     }
 
     // ---- the projection ----------------------------------------------------
-    // Π_C of a path that cuts through a disc is taut, not a wider bow: it runs
-    // straight until the circle, hugs the safety boundary, and runs straight to
-    // the goal. Tangent in, arc across, tangent out -- the shape a projector
-    // actually returns, and the reason it is nothing like a policy sample.
-    var R_SAFE = O.r + MARGIN, SIDE = -1;         // -1 = wrap above the disc
-    function tangentAngle(P){
-      var dx=P.x-O.x, dy=P.y-O.y, d=Math.hypot(dx,dy);
-      if (d <= R_SAFE) return null;               // inside: no tangent line
-      var phi=Math.atan2(dy,dx), a=Math.acos(R_SAFE/d);
-      var t1=phi+a, t2=phi-a, s1=Math.sin(t1), s2=Math.sin(t2);
-      var th = (SIDE<0) ? (s1<s2?t1:t2) : (s1>s2?t1:t2);
-      return Math.atan2(Math.sin(th), Math.cos(th));   // fold into (-π, π]
+    // Π_C waypoint by waypoint: a point already clear of the safety circle does
+    // not move at all, and a point inside it goes to the nearest point of the
+    // rim. So the projected chunk runs straight along the draw until the
+    // circle, wraps it, and runs straight on to the goal -- and the corners
+    // where those pieces meet are exactly why c is feasible but is not
+    // something the policy would ever have drawn.
+    //
+    // Nearest is radial, but the first draw runs through the centre, where the
+    // radial direction is undefined and every rim point is equally near. We
+    // resolve that tie the way the scene already reads -- go over the top --
+    // by lifting each interior point onto the upper rim above it, which is the
+    // limit of the radial map and agrees with it everywhere else.
+    var R_SAFE = O.r + MARGIN, DENSE = 600;
+    function liftPoint(p){
+      var dx=p.x-O.x, dy=p.y-O.y;
+      if (Math.hypot(dx,dy) >= R_SAFE) return p;
+      return {x: p.x, y: O.y - Math.sqrt(Math.max(0, R_SAFE*R_SAFE - dx*dx))};
     }
-    function tautPts(){
-      var th1=tangentAngle(S), th2=tangentAngle(G);
-      if (th1===null || th2===null) return bezierPts(OFFSET_FEAS);
-      var raw=[{x:S.x,y:S.y}], ARCN=72, i;
-      for (i=0;i<=ARCN;i++){
-        var th = th1 + (th2-th1)*(i/ARCN);
-        raw.push({x:O.x + R_SAFE*Math.cos(th), y:O.y + R_SAFE*Math.sin(th)});
-      }
-      raw.push({x:G.x,y:G.y});
+    function projectPath(off){
+      var P=controlPoint(off), raw=[], i;
+      // dense before resampling: the rim is vertical where the draw meets it,
+      // so a coarse sampling would cut the corner off the wrap.
+      for (i=0;i<=DENSE;i++) raw.push(liftPoint(bezier(i/DENSE, P)));
       return resample(raw, NPTS);
     }
-    var TAUT = tautPts();
+    // δ is what the projection had to move: the largest displacement Π_C
+    // applies to any waypoint of the draw, and zero exactly when it is feasible.
+    function displacement(pts){
+      var worst=0, idx=NPTS>>1;
+      for (var i=0;i<=NPTS;i++){
+        var q=liftPoint(pts[i]), d=Math.hypot(q.x-pts[i].x, q.y-pts[i].y);
+        if (d>worst){ worst=d; idx=i; }
+      }
+      return {delta:worst, idx:idx};
+    }
 
     function blendPts(a,b,u){
       var out=[];
@@ -2202,21 +2213,12 @@ body.notes-on #deck{right:396px;}
       }
       return out;
     }
-    function violation(pts){
-      var worst=0, idx=NPTS>>1;
-      for (var i=0;i<=NPTS;i++){
-        var v = R_SAFE - Math.hypot(pts[i].x-O.x, pts[i].y-O.y);
-        if (v>worst){ worst=v; idx=i; }
-      }
-      return {delta:worst, idx:idx};
-    }
     function strokePath(pts,color,w){
       ctx.strokeStyle=color; ctx.lineWidth=w; ctx.lineJoin='round'; ctx.lineCap='round';
       ctx.beginPath();
       pts.forEach(function(p,i){ var q=px(p); if(i) ctx.lineTo(q.x,q.y); else ctx.moveTo(q.x,q.y); });
       ctx.stroke();
     }
-    // δ: how far the projection had to move the worst point of the draw.
     function deltaMark(from, to){
       var a=px(from), b=px(to);
       if (Math.hypot(b.x-a.x, b.y-a.y) > 3){
@@ -2228,10 +2230,12 @@ body.notes-on #deck{right:396px;}
       ctx.fillStyle='#c0392b'; ctx.beginPath(); ctx.arc(a.x,a.y,4,0,7); ctx.fill();
     }
     function labelC(pts, verb){
-      var apex=px(pts[NPTS>>1]);
+      var apex=pts[0], i;
+      for (i=1;i<=NPTS;i++) if (pts[i].y < apex.y) apex = pts[i];
+      var a=px(apex);
       ctx.fillStyle='#1d6fd4'; ctx.textAlign='center'; ctx.textBaseline='bottom';
-      ctx.font=MONO; ctx.fillText('c', apex.x, apex.y-9);
-      if (verb){ ctx.font=SANS; ctx.fillText('project  â → c', apex.x, apex.y-25); }
+      ctx.font=MONO; ctx.fillText('c', a.x, a.y-9);
+      if (verb){ ctx.font=SANS; ctx.fillText('project  â → c', a.x, a.y-25); }
     }
     function check(){
       var g=px(G); ctx.strokeStyle='#1f9d57'; ctx.lineWidth=4; ctx.lineCap='round';
@@ -2241,16 +2245,17 @@ body.notes-on #deck{right:396px;}
     function advance(){
       switch(st.phase){
         case PH.DRAW:
-          st.phase = (violation(bezierPts(st.offset)).delta <= TAU) ? PH.DONE : PH.EVAL; break;
+          st.phase = (displacement(bezierPts(st.offset)).delta <= TAU) ? PH.DONE : PH.EVAL; break;
         case PH.EVAL:
-          st.deltaEval = violation(bezierPts(st.offset)).delta;
+          st.deltaEval = displacement(bezierPts(st.offset)).delta;
           st.n = nVal(st.deltaEval);
+          st.C = projectPath(st.offset);        // the chunk we are projecting to
           st.projOffset = st.offset + (OFFSET_FEAS - st.offset)*GAIN;
           st.phase = PH.PROJECT; break;
         case PH.PROJECT: st.phase = PH.RENOISE; break;
         case PH.RENOISE:
           st.offset = st.projOffset; st.iter += 1; st.denoiseFrom = st.n;
-          st.from = TAUT;                       // the flow restarts from c
+          st.from = st.C;                       // the flow restarts from c
           st.phase = PH.DRAW; break;
         case PH.DONE: reset(); return;
       }
@@ -2269,32 +2274,34 @@ body.notes-on #deck{right:396px;}
       if (st.phase===PH.DRAW){
         denoise = st.denoiseFrom + (1-st.denoiseFrom)*prog; barT = denoise;
         // after the first loop the flow starts at the renoised c and pulls it
-        // back onto the data, so the draw begins on c and ends on a sample.
+        // back onto the data: the draw begins on c and ends on a policy sample.
         if (st.from) base = blendPts(st.from, sample, e);
-      } else if (st.phase===PH.PROJECT){
-        ghost = sample;                          // where the draw was
-        base = blendPts(sample, TAUT, e);        // sliding onto the boundary
-      } else if (st.phase===PH.RENOISE){
-        base = TAUT; denoise = 1 - prog*(1-st.n); barT = st.n + (1-st.n)*(1-prog);
+      } else if (st.phase===PH.PROJECT && st.C){
+        ghost = sample;                         // where the draw was
+        base = blendPts(sample, st.C, e);       // the violating stretch lifts out
+      } else if (st.phase===PH.RENOISE && st.C){
+        base = st.C; denoise = 1 - prog*(1-st.n); barT = st.n + (1-st.n)*(1-prog);
       }
       var pts = jitter(base, (1-denoise)*0.085);
 
       noiseBar(barT); scene();
       if (ghost) strokePath(ghost, 'rgba(20,35,58,.16)', 2.2);
       var onC = (st.phase===PH.PROJECT || st.phase===PH.RENOISE);
-      var feas = (st.phase===PH.DONE) || (!onC && violation(sample).delta <= TAU);
+      var feas = (st.phase===PH.DONE) || (!onC && displacement(sample).delta <= TAU);
       strokePath(pts, feas ? '#1f9d57' : '#1d6fd4', 3.2);
 
-      if (st.phase===PH.EVAL){
-        var g0 = violation(sample); deltaMark(sample[g0.idx], TAUT[g0.idx]);
-      } else if (st.phase===PH.PROJECT){
-        var g1 = violation(sample); deltaMark(sample[g1.idx], pts[g1.idx]);
-        labelC(pts, true);
+      if (st.phase===PH.EVAL || st.phase===PH.PROJECT){
+        // the worst waypoint of the draw, travelling to where Π_C puts it
+        var g = displacement(sample), from = sample[g.idx], to = liftPoint(from);
+        var at = (st.phase===PH.EVAL) ? to
+               : {x: from.x + (to.x-from.x)*e, y: from.y + (to.y-from.y)*e};
+        deltaMark(from, at);
+        if (st.phase===PH.PROJECT) labelC(pts, true);
       } else if (st.phase===PH.RENOISE){
         labelC(base, false);
       } else if (st.phase===PH.DONE){ check(); }
 
-      st.delta = violation(pts).delta;
+      st.delta = displacement(pts).delta;
       if (st.phase !== PH.DONE) stats();
       if (prog >= 1) advance();
     }
