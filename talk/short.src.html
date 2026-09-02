@@ -1621,7 +1621,8 @@ body.notes-on #deck{right:396px;}
       // display:none slide, where its markers do not render at all.
       var defs = el('defs', {});
       var MK = {};
-      [['g', '#c2ccda'], [BLUE, BLUE], [RED, RED], [PURPLE, PURPLE], [SLATE, SLATE]].forEach(function(p, i){
+      [['g', '#c2ccda'], [BLUE, BLUE], [RED, RED], [PURPLE, PURPLE], [SLATE, SLATE],
+       [GOOD, GOOD]].forEach(function(p, i){
         var id = 'pipeArrow' + st + '_' + i;
         var m = el('marker', {id:id, viewBox:'0 0 8 8', refX:7, refY:4,
                               markerWidth:5, markerHeight:5, orient:'auto'}, null, defs);
@@ -1702,13 +1703,16 @@ body.notes-on #deck{right:396px;}
       if (st === 6 || st === 7){
         down(ROW.fix, ROW.exec, BLUE);
         box(ROW.exec, ['execute', 'a policy sample'], GOOD, '#e9f7ee');
-        // back into the flow, partway down -- not back to noise
+        // back into the flow, partway down -- not back to noise. On the turn
+        // slide this is GOOD, the same green as rejection's accepted branch,
+        // so the redraw reads as the path that ends in a real policy sample.
+        var reTone = st === 6 ? GOOD : BLUE;
         var y0 = ROW.fix + BH / 2, y1 = ROW.flow + BH * 0.7, lx = 30;
         el('path', {d:'M' + BX + ',' + y0 + ' H' + lx + ' V' + y1 + ' H' + (BX - 6),
-                    fill:'none', stroke:BLUE, 'stroke-width':2,
-                    'stroke-dasharray':'5 4', 'marker-end':MK[BLUE]});
+                    fill:'none', stroke:reTone, 'stroke-width':2,
+                    'stroke-dasharray':'5 4', 'marker-end':MK[reTone]});
         var my2 = (y0 + y1) / 2;
-        mono({x:lx - 8, y:my2, fill:BLUE, 'font-size':9, 'text-anchor':'middle',
+        mono({x:lx - 8, y:my2, fill:reTone, 'font-size':9, 'text-anchor':'middle',
               transform:'rotate(-90 ' + (lx - 8) + ' ' + my2 + ')'},
              st === 6 ? 'renoise to n = k/(k+δ)' : 'renoise · until δ ≈ 0');
       }
