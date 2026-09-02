@@ -206,7 +206,23 @@ pip install Pillow
   `tbody` because they have to out-specify `tr.past td`, which greys whole rows.
   **Collision % is deliberately not a column** — it rewards inaction, since a
   policy that never moves scores 0.0, and safe-SR already requires no collision.
-  The collision numbers stay in the speaker notes, where they get asked about. **The numbers are copied from `js/data.js`
+  The collision numbers stay in the speaker notes, where they get asked about.
+
+  **Two different sources feed this table.** Safe-SR, goal reach and logL come
+  from `js/data.js` (`RESULTS.shelf`). The last column is *measured wall-clock*,
+  read off the shelf panel of `assets/fig_wallclock.png` — 423 / 1,555 / 2,138 /
+  4,234 ms — not NFE. That figure's own success labels (3 / 28 / 27 / 62 / 73)
+  match the safe-SR column exactly, which is how we know it is the same set of
+  runs. **Rejection was not in that timing run**, so its cell is an em dash;
+  its 8,676 NFE is in the slide 18 notes instead. Do not convert NFE to
+  milliseconds — the per-call overhead differs by method, which is precisely why
+  the figure was measured rather than derived.
+
+  Switching to wall-clock changes the compute story, so the slide 20 highlights
+  changed with it: there is no green pair any more. Rejection has no time to
+  pair against, and among the methods that *were* timed CS-Pi is the dearest —
+  2× projection, 10× the prior — so a colour reading as a win would lie. CS-Pi's
+  4,234 ms carries a lone amber box and the caption calls it the price. **The numbers are copied from `js/data.js`
   (`RESULTS.shelf`); if that file changes, change these too** — there is no
   import, and a scripted check against it lives only in the session that wrote
   it. Trust Sampling is deliberately off the board to keep it to four rows; its

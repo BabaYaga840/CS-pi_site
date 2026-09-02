@@ -1019,15 +1019,20 @@ body.notes-on #deck{right:396px;}
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>Shelf · 150 tasks · one method at a time</span></p>
   <h2>Rejection keeps the policy honest — at a price nobody pays</h2>
   <div data-shelf="2"></div>
-  <p class="tnote"><b>8,676 NFE — 36× the unmodified policy.</b> Rejection is the one baseline that stays
-    on the data (logL 14.2, against the prior's 15.0), because every accepted sample is a real draw. And
-    it still only reaches 33.3% safe-SR: the budget runs out before a feasible draw arrives, on 36× the
-    compute.</p>
+  <p class="tnote">Rejection is the one baseline that stays on the data — <b>logL 14.2</b>, against the
+    prior's 15.0 — because every accepted sample is a real draw. It buys that with <b>8,676 model calls,
+    36× the unmodified policy</b>, and it <b>still only reaches 33.3% safe-SR</b>: the budget runs out
+    before a feasible draw arrives. It was not in the timing run, so it has no wall-clock here; at 36×
+    the calls it is not close to affordable either way.</p>
   <div class="notes">
     <div class="timing">~30 s · the NFE column is the whole slide</div>
-    <p><strong>Spotlight the NFE cell and let the number do the work.</strong> 8,676 against 240. Say
-      the mechanism in one line: the accept rate is the prior's own mass on the feasible set, so as
-      the constraint tightens the expected number of redraws blows up.</p>
+    <p><strong>Say the compute number even though it is not a column: 8,676 model calls against the
+      policy's 240.</strong> Then the mechanism in one line: the accept rate is the prior's own mass on
+      the feasible set, so as the constraint tightens the expected number of redraws blows up. The
+      boxed cell is safe-SR — 33.3% — which is what all that compute actually bought.</p>
+    <p>If you are asked why rejection has no millisecond figure: it was not included in the rebuttal's
+      wall-clock run. Do not convert its NFE into a time on the fly — the per-call overhead differs by
+      method, which is the whole reason that figure was measured rather than derived.</p>
     <p>Be fair to it, because the fairness sets up CS-Pi: <strong>rejection has the second-best logL on
       the board</strong>, 14.2. It never leaves the data manifold, because it only ever executes real
       draws. That is exactly the property we want — it is the cost that is impossible.</p>
@@ -1071,11 +1076,12 @@ body.notes-on #deck{right:396px;}
   <p class="kicker"><span class="act">IV · Does it work</span><span class="rule"></span><span>Shelf · 150 tasks · the whole board</span></p>
   <h2>CS-Pi samples actions that are <em>likely</em> and <em>safe</em></h2>
   <div data-shelf="4"></div>
-  <p class="tnote"><b>73.3% safe-SR — the only method on the board past 70%.</b> Each colour is one
-    head-to-head: <span style="color:#a8382a"><b>goal reach 78.7 against guidance's 28.0</b></span>,
-    <span style="color:#5b21b6"><b>logL 18.0 against projection's 11.2</b></span> — and above the
-    prior's own 15.0 — and <span style="color:#12683a"><b>285 NFE against rejection's 8,676</b></span>.
-    Every baseline buys one axis by giving up another. This row is the same policy, sampled differently.</p>
+  <p class="tnote"><b>73.3% safe-SR — the only method on the board past 70%.</b> Two head-to-heads:
+    <span style="color:#a8382a"><b>goal reach 78.7 against guidance's 28.0</b></span> and
+    <span style="color:#5b21b6"><b>logL 18.0 against projection's 11.2</b></span>, above even the prior's
+    own 15.0. The boxed <b>4,234 ms</b> is the price, and we say it plainly: <b>2× projection, 10× the
+    unmodified policy.</b> Every baseline buys one axis by giving up another; we buy both and pay for
+    them in seconds.</p>
   <div class="notes">
     <div class="timing">~1 min · the payoff slide — land safe-SR, then be honest about collision</div>
     <p><strong>Safe-SR is the column that matters</strong>, because it is the only one that requires
@@ -1094,8 +1100,12 @@ body.notes-on #deck{right:396px;}
       projection gives it, and it fires on 15.7% of chunks.</p>
     <p>If someone asks why collision is not a column: it rewards inaction. A policy that never moves
       scores a perfect 0.0. Safe-SR is the same information with the task still attached.</p>
-    <p>Compute, in one line if asked: 285 vs 240 NFE, a 19% surcharge — about one extra draw on
-      average, against rejection's 8,676.</p>
+    <p><strong>Do not oversell the compute.</strong> In model calls the surcharge is 19% — 285 against
+      240, about one extra draw. In measured wall-clock it is <strong>4,234 ms against the policy's 423
+      and projection's 2,138</strong>, because the projection operator and the extra partial re-run cost
+      real time that NFE does not count. Both numbers are honest; the second is the one a practitioner
+      feels, and it is the one on the board. Four seconds a rollout is fine for a shelf task and would
+      not be fine at 30 Hz.</p>
     <div class="qa">"Where is Trust Sampling?" — off the board to keep it to four rows; it is in the
       paper and the long deck. Its numbers do not change the story: 27.3% safe-SR, 28.0% goal reach,
       0.7% collision, logL 10.5, and 1,242 NFE — guidance's trade at five times the compute.</div>
@@ -2121,9 +2131,16 @@ body.notes-on #deck{right:396px;}
   // a grid.
   //
   //   1  gradient guidance   goal reach 28.0 -- the task is gone
-  //   2  rejection           NFE 8676        -- the right idea, unaffordable
+  //   2  rejection           safe-SR 33.3    -- the right idea, unaffordable
   //   3  projection          logL 11.2       -- feasible, off the data
-  //   4  CS-Pi               three head-to-heads, one colour per axis
+  //   4  CS-Pi               two head-to-heads won, and the compute price
+  //
+  // The last column is measured wall-clock from the rebuttal figure
+  // (assets/fig_wallclock.png, shelf panel), NOT NFE. Its success labels --
+  // 3 / 28 / 27 / 62 / 73 -- match the safe-SR column exactly, which is how we
+  // know it is the same set of runs. Rejection was not in that timing run, so
+  // its cell is an em dash: do not derive one from its 8,676 NFE, the constant
+  // is not the same across methods. Rejection's NFE lives in the slide notes.
   //
   // Collision % is deliberately not a column: safe-SR already requires it
   // (a rollout counts only if it reached the goal AND never collided), and the
@@ -2139,13 +2156,13 @@ body.notes-on #deck{right:396px;}
     if (!hosts.length) return;
 
     var COLS = ['Method', 'Safe-SR&nbsp;%&nbsp;↑', 'Goal reach&nbsp;%&nbsp;↑',
-                'logL&nbsp;↑', 'NFE&nbsp;↓'];
-    var PRIOR = {key:'prior', name:'Unguided (prior)', c:['3.3', '72.0', '15.0', '240']};
+                'logL&nbsp;↑', 'ms / rollout&nbsp;↓'];
+    var PRIOR = {key:'prior', name:'Unguided (prior)', c:['3.3', '72.0', '15.0', '423']};
     var STEP = [
-      {key:'guid', name:'Gradient guidance',   c:['28.0', '28.0', '10.2', '240']},
-      {key:'rej',  name:'Rejection (B = 100)', c:['33.3', '67.3', '14.2', '8676']},
-      {key:'proj', name:'Projection',          c:['62.0', '66.0', '11.2', '240']},
-      {key:'cspi', name:'CS-Pi (ours)',        c:['73.3', '78.7', '18.0', '285'],
+      {key:'guid', name:'Gradient guidance',   c:['28.0', '28.0', '10.2', '1,555']},
+      {key:'rej',  name:'Rejection (B = 100)', c:['33.3', '67.3', '14.2', '—']},
+      {key:'proj', name:'Projection',          c:['62.0', '66.0', '11.2', '2,138']},
+      {key:'cspi', name:'CS-Pi (ours)',        c:['73.3', '78.7', '18.0', '4,234'],
        ours:true}
     ];
 
@@ -2156,11 +2173,14 @@ body.notes-on #deck{right:396px;}
     // read straight off the board instead of being narrated.
     var MARKS = {
       1: [['guid', 1, 'amber']],
-      2: [['rej',  3, 'amber']],
+      2: [['rej',  0, 'amber']],
       3: [['proj', 2, 'amber']],
+      // no green pair on the compute column any more: rejection has no measured
+      // time to pair against, and on wall-clock CS-Pi is the dearer of the two
+      // methods that are timed, so a colour that reads as a win would lie.
       4: [['guid', 1, 'red'],    ['cspi', 1, 'red'],
           ['proj', 2, 'purple'], ['cspi', 2, 'purple'],
-          ['rej',  3, 'green'],  ['cspi', 3, 'green']]
+          ['cspi', 3, 'amber']]
     };
 
     function row(r, cls, marks){
