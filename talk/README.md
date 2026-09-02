@@ -40,7 +40,7 @@ ceiling. These are the ones to present from.
 
 | Section | Slides | Runs |
 |---------|--------|------|
-| The setup: policy, collisions, constraint, goal, two properties, flow matching | 1–7 | ~5 min |
+| The setup: policy, collisions, constraint, goal, two properties, flow matching | 1–7 | ~4.5 min |
 | Two attempts that fail, and rejection | 8–11 | ~4 min |
 | The turn and the method | 12–14 | ~4 min |
 | Does it work | 15–19 | ~5.5 min |
