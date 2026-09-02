@@ -3011,7 +3011,8 @@ body.notes-on #deck{right:396px;}
     function ease(t){ return t<0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2; }
     function reset(){
       st = { phase:PH.DRAW, t0:performance.now(), iter:1, offset:0, projOffset:0,
-             delta:penetration(0).delta, n:0, denoiseFrom:0 };
+             delta:penetration(0).delta, n:0, denoiseFrom:0,
+             from:null, C:null, deltaEval:0 };
       hud();
     }
     function hud(){
@@ -3023,8 +3024,12 @@ body.notes-on #deck{right:396px;}
       stats();
     }
     function stats(){
-      if (elDelta) elDelta.textContent = 'δ = ' + st.delta.toFixed(3);
-      if (elN) elN.textContent = 'n = k/(k+δ) = ' + (st.delta > TAU ? nVal(st.delta).toFixed(2) : '—');
+      // Through the project/renoise beat the bar holds the δ that was measured on
+      // the draw, so the audience can read the n that δ produced while it happens.
+      var frozen = (st.phase===PH.PROJECT || st.phase===PH.RENOISE);
+      var d = frozen ? st.deltaEval : st.delta;
+      if (elDelta) elDelta.textContent = 'δ = ' + d.toFixed(3);
+      if (elN) elN.textContent = 'n = k/(k+δ) = ' + (d > TAU ? nVal(d).toFixed(2) : '—');
     }
 
     var W=0, Hh=0, PADX=26, SCALE=0, OX=0, OY=0, VSPAN=0.42, lastW=-1;
@@ -3075,16 +3080,117 @@ body.notes-on #deck{right:396px;}
       ctx.fillStyle='#14233a'; ctx.beginPath(); ctx.arc(s.x,s.y,5,0,7); ctx.fill();
       ctx.textBaseline='top'; ctx.fillText('start', s.x, s.y+8);
     }
-    function pathPoints(off, denoise){
-      var P=controlPoint(off), amp=(1-denoise)*0.085, pts=[];
-      for (var i=0;i<=NPTS;i++){
-        var t=i/NPTS, b=bezier(t,P), b2=bezier(Math.min(1,t+0.01),P);
-        var dx=b2.x-b.x, dy=b2.y-b.y, L=Math.hypot(dx,dy)||1;
-        var env=Math.sin(Math.PI*t), k=i%NPTS;
-        var j=amp*env*(0.7*nz1[k] + 0.3*nz2[k]);
-        pts.push({x: b.x + (-dy/L)*j, y: b.y + (dx/L)*j});
+    // ---- path algebra ------------------------------------------------------
+    // A path is NPTS+1 points spaced evenly by arc length, so two paths blend
+    // index by index and the flow noise lands evenly along the curve.
+    function resample(raw, N){
+      var cum=[0], i;
+      for (i=1;i<raw.length;i++)
+        cum.push(cum[i-1] + Math.hypot(raw[i].x-raw[i-1].x, raw[i].y-raw[i-1].y));
+      var L=cum[cum.length-1]||1, out=[], j=1;
+      for (i=0;i<=N;i++){
+        var s=L*i/N;
+        while (j<cum.length-1 && cum[j]<s) j++;
+        var a=cum[j-1], b=cum[j], u=(b>a)?(s-a)/(b-a):0;
+        out.push({x: raw[j-1].x + (raw[j].x-raw[j-1].x)*u,
+                  y: raw[j-1].y + (raw[j].y-raw[j-1].y)*u});
       }
-      return pts;
+      return out;
+    }
+    function bezierPts(off){
+      var P=controlPoint(off), raw=[];
+      for (var i=0;i<=2*NPTS;i++) raw.push(bezier(i/(2*NPTS), P));
+      return resample(raw, NPTS);
+    }
+
+    // ---- the projection ----------------------------------------------------
+    // Π_C waypoint by waypoint: a point already clear of the safety circle does
+    // not move at all, and a point inside it goes to the nearest point of the
+    // rim. So the projected chunk runs straight along the draw until the
+    // circle, wraps it, and runs straight on to the goal -- and the corners
+    // where those pieces meet are exactly why c is feasible but is not
+    // something the policy would ever have drawn.
+    //
+    // Nearest is radial, but the first draw runs through the centre, where the
+    // radial direction is undefined and every rim point is equally near. We
+    // resolve that tie the way the scene already reads -- go over the top --
+    // by lifting each interior point onto the upper rim above it, which is the
+    // limit of the radial map and agrees with it everywhere else.
+    var R_SAFE = O.r + MARGIN, DENSE = 600;
+    function liftPoint(p){
+      var dx=p.x-O.x, dy=p.y-O.y;
+      if (Math.hypot(dx,dy) >= R_SAFE) return p;
+      return {x: p.x, y: O.y - Math.sqrt(Math.max(0, R_SAFE*R_SAFE - dx*dx))};
+    }
+    function projectPath(off){
+      var P=controlPoint(off), raw=[], moved=[], i, j;
+      // dense before resampling: the rim runs vertical where the draw meets it,
+      // so a coarse sampling would cut the corner off the wrap.
+      for (i=0;i<=DENSE;i++){
+        var p=bezier(i/DENSE, P), q=liftPoint(p);
+        raw.push(q); moved.push(q!==p);
+      }
+      // The two points where the draw meets the rim are corners, and a corner
+      // is the whole tell that c is not a policy sample -- so resample the
+      // straight runs and the wrap separately and keep the joins exact.
+      var cuts=[0];
+      for (i=1;i<=DENSE;i++) if (moved[i]!==moved[i-1]){
+        // the corner is the sample still on the draw: the one before the path
+        // enters the disc, the one after it leaves. The rim is vertical there,
+        // so taking the lifted sample instead would cut the corner short.
+        var cut = moved[i] ? i-1 : i;
+        if (cut > cuts[cuts.length-1]) cuts.push(cut);
+      }
+      cuts.push(DENSE);
+      var segs=[], total=0;
+      for (j=0;j<cuts.length-1;j++){
+        var part=raw.slice(cuts[j], cuts[j+1]+1), L=0;
+        for (i=1;i<part.length;i++)
+          L += Math.hypot(part[i].x-part[i-1].x, part[i].y-part[i-1].y);
+        segs.push({part:part, L:L}); total += L;
+      }
+      var out=[], used=0, last=segs.length-1;
+      for (j=0;j<segs.length;j++){
+        var n;
+        if (j===last) n = NPTS - used;                       // the remainder
+        else {
+          n = Math.round(NPTS * segs[j].L / (total||1));
+          n = Math.max(1, Math.min(n, NPTS - used - (last-j)));  // leave 1 each
+        }
+        var rs = resample(segs[j].part, n);
+        out = out.concat(j ? rs.slice(1) : rs);
+        used += n;
+      }
+      return out;
+    }
+    // δ is what the projection had to move: the largest displacement Π_C
+    // applies to any waypoint of the draw, and zero exactly when it is feasible.
+    function displacement(pts){
+      var worst=0, idx=NPTS>>1;
+      for (var i=0;i<=NPTS;i++){
+        var q=liftPoint(pts[i]), d=Math.hypot(q.x-pts[i].x, q.y-pts[i].y);
+        if (d>worst){ worst=d; idx=i; }
+      }
+      return {delta:worst, idx:idx};
+    }
+
+    function blendPts(a,b,u){
+      var out=[];
+      for (var i=0;i<=NPTS;i++)
+        out.push({x:a[i].x + (b[i].x-a[i].x)*u, y:a[i].y + (b[i].y-a[i].y)*u});
+      return out;
+    }
+    function jitter(base, amp){
+      if (amp<=0) return base;
+      var out=[];
+      for (var i=0;i<=NPTS;i++){
+        var p=base[i], q=base[Math.min(NPTS,i+1)], r=base[Math.max(0,i-1)];
+        var dx=q.x-r.x, dy=q.y-r.y, L=Math.hypot(dx,dy)||1;
+        var env=Math.sin(Math.PI*(i/NPTS)), k=i%NPTS;
+        var j=amp*env*(0.7*nz1[k] + 0.3*nz2[k]);
+        out.push({x:p.x + (-dy/L)*j, y:p.y + (dx/L)*j});
+      }
+      return out;
     }
     function strokePath(pts,color,w){
       ctx.strokeStyle=color; ctx.lineWidth=w; ctx.lineJoin='round'; ctx.lineCap='round';
@@ -3092,28 +3198,23 @@ body.notes-on #deck{right:396px;}
       pts.forEach(function(p,i){ var q=px(p); if(i) ctx.lineTo(q.x,q.y); else ctx.moveTo(q.x,q.y); });
       ctx.stroke();
     }
-    function projection(off, opts){
-      var pen=penetration(off); if(!pen.deep) return;
-      var deep=px(pen.deep), R=O.r+MARGIN, dxc=pen.deep.x-O.x;
-      var cN = (Math.abs(dxc)<R)
-        ? {x:pen.deep.x, y:O.y - Math.sqrt(R*R - dxc*dxc)}
-        : {x:O.x + Math.sign(dxc)*R, y:O.y};
-      var c=px(cN);
-      if (pen.delta>TAU){
+    function deltaMark(from, to){
+      var a=px(from), b=px(to);
+      if (Math.hypot(b.x-a.x, b.y-a.y) > 3){
         ctx.strokeStyle='#1d6fd4'; ctx.lineWidth=2; ctx.setLineDash([5,4]);
-        ctx.beginPath(); ctx.moveTo(deep.x,deep.y); ctx.lineTo(c.x,c.y); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle='#c0392b'; ctx.beginPath(); ctx.arc(deep.x,deep.y,4,0,7); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.font=MONO; ctx.textAlign='left'; ctx.textBaseline='middle';
+        ctx.fillStyle='#c0392b'; ctx.fillText('δ', (a.x+b.x)/2+7, (a.y+b.y)/2);
       }
-      ctx.fillStyle='#1d6fd4'; ctx.beginPath(); ctx.arc(c.x,c.y,5,0,7); ctx.fill();
-      ctx.font=MONO; ctx.textAlign='left'; ctx.textBaseline='bottom';
-      if (opts.delta && pen.delta>TAU){
-        ctx.fillStyle='#c0392b'; ctx.fillText('δ', (deep.x+c.x)/2+6, (deep.y+c.y)/2);
-      }
-      ctx.fillStyle='#1d6fd4'; ctx.fillText('c', c.x+8, c.y+2);
-      if (opts.label){
-        ctx.font=SANS; ctx.textAlign='center';
-        ctx.fillText('project  â → c', c.x, Math.min(deep.y,c.y)-12);
-      }
+      ctx.fillStyle='#c0392b'; ctx.beginPath(); ctx.arc(a.x,a.y,4,0,7); ctx.fill();
+    }
+    function labelC(pts, verb){
+      var apex=pts[0], i;
+      for (i=1;i<=NPTS;i++) if (pts[i].y < apex.y) apex = pts[i];
+      var a=px(apex);
+      ctx.fillStyle='#1d6fd4'; ctx.textAlign='center'; ctx.textBaseline='bottom';
+      ctx.font=MONO; ctx.fillText('c', a.x, a.y-9);
+      if (verb){ ctx.font=SANS; ctx.fillText('project  â → c', a.x, a.y-25); }
     }
     function check(){
       var g=px(G); ctx.strokeStyle='#1f9d57'; ctx.lineWidth=4; ctx.lineCap='round';
@@ -3123,14 +3224,17 @@ body.notes-on #deck{right:396px;}
     function advance(){
       switch(st.phase){
         case PH.DRAW:
-          st.phase = (penetration(st.offset).delta <= TAU) ? PH.DONE : PH.EVAL; break;
+          st.phase = (displacement(bezierPts(st.offset)).delta <= TAU) ? PH.DONE : PH.EVAL; break;
         case PH.EVAL:
-          st.n = nVal(penetration(st.offset).delta);
+          st.deltaEval = displacement(bezierPts(st.offset)).delta;
+          st.n = nVal(st.deltaEval);
+          st.C = projectPath(st.offset);        // the chunk we are projecting to
           st.projOffset = st.offset + (OFFSET_FEAS - st.offset)*GAIN;
           st.phase = PH.PROJECT; break;
         case PH.PROJECT: st.phase = PH.RENOISE; break;
         case PH.RENOISE:
           st.offset = st.projOffset; st.iter += 1; st.denoiseFrom = st.n;
+          st.from = st.C;                       // the flow restarts from c
           st.phase = PH.DRAW; break;
         case PH.DONE: reset(); return;
       }
@@ -3142,18 +3246,41 @@ body.notes-on #deck{right:396px;}
       if (canvas.clientWidth !== lastW) { lastW = canvas.clientWidth; layout(); }
       var prog = Math.min(1, (now - st.t0) / DUR[st.phase]);
       ctx.clearRect(0,0,W,Hh);
-      var off = st.offset, denoise = 1, barT = 1;
-      if (st.phase===PH.DRAW){ denoise = st.denoiseFrom + (1-st.denoiseFrom)*prog; barT = denoise; }
-      else if (st.phase===PH.PROJECT){ off = st.offset + (OFFSET_FEAS-st.offset)*ease(prog); }
-      else if (st.phase===PH.RENOISE){ off = OFFSET_FEAS; denoise = 1 - prog*(1-st.n); barT = st.n + (1-st.n)*(1-prog); }
+
+      var sample = bezierPts(st.offset);        // the clean draw of this iteration
+      var base = sample, denoise = 1, barT = 1, ghost = null, e = ease(prog);
+
+      if (st.phase===PH.DRAW){
+        denoise = st.denoiseFrom + (1-st.denoiseFrom)*prog; barT = denoise;
+        // after the first loop the flow starts at the renoised c and pulls it
+        // back onto the data: the draw begins on c and ends on a policy sample.
+        if (st.from) base = blendPts(st.from, sample, e);
+      } else if (st.phase===PH.PROJECT && st.C){
+        ghost = sample;                         // where the draw was
+        base = blendPts(sample, st.C, e);       // the violating stretch lifts out
+      } else if (st.phase===PH.RENOISE && st.C){
+        base = st.C; denoise = 1 - prog*(1-st.n); barT = st.n + (1-st.n)*(1-prog);
+      }
+      var pts = jitter(base, (1-denoise)*0.085);
+
       noiseBar(barT); scene();
-      var feasible = penetration(off).delta <= TAU;
-      strokePath(pathPoints(off,denoise), (st.phase===PH.DONE || feasible) ? '#1f9d57' : '#1d6fd4', 3.2);
-      if (st.phase===PH.EVAL) projection(off,{delta:true});
-      else if (st.phase===PH.PROJECT) projection(off,{delta:true,label:true});
-      else if (st.phase===PH.RENOISE) projection(off,{});
-      else if (st.phase===PH.DONE) check();
-      st.delta = penetration(off).delta;
+      if (ghost) strokePath(ghost, 'rgba(20,35,58,.16)', 2.2);
+      var onC = (st.phase===PH.PROJECT || st.phase===PH.RENOISE);
+      var feas = (st.phase===PH.DONE) || (!onC && displacement(sample).delta <= TAU);
+      strokePath(pts, feas ? '#1f9d57' : '#1d6fd4', 3.2);
+
+      if (st.phase===PH.EVAL || st.phase===PH.PROJECT){
+        // the worst waypoint of the draw, travelling to where Π_C puts it
+        var g = displacement(sample), from = sample[g.idx], to = liftPoint(from);
+        var at = (st.phase===PH.EVAL) ? to
+               : {x: from.x + (to.x-from.x)*e, y: from.y + (to.y-from.y)*e};
+        deltaMark(from, at);
+        if (st.phase===PH.PROJECT) labelC(pts, true);
+      } else if (st.phase===PH.RENOISE){
+        labelC(base, false);
+      } else if (st.phase===PH.DONE){ check(); }
+
+      st.delta = displacement(pts).delta;
       if (st.phase !== PH.DONE) stats();
       if (prog >= 1) advance();
     }

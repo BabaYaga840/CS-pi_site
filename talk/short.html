@@ -2185,11 +2185,45 @@ body.notes-on #deck{right:396px;}
       return {x: p.x, y: O.y - Math.sqrt(Math.max(0, R_SAFE*R_SAFE - dx*dx))};
     }
     function projectPath(off){
-      var P=controlPoint(off), raw=[], i;
-      // dense before resampling: the rim is vertical where the draw meets it,
+      var P=controlPoint(off), raw=[], moved=[], i, j;
+      // dense before resampling: the rim runs vertical where the draw meets it,
       // so a coarse sampling would cut the corner off the wrap.
-      for (i=0;i<=DENSE;i++) raw.push(liftPoint(bezier(i/DENSE, P)));
-      return resample(raw, NPTS);
+      for (i=0;i<=DENSE;i++){
+        var p=bezier(i/DENSE, P), q=liftPoint(p);
+        raw.push(q); moved.push(q!==p);
+      }
+      // The two points where the draw meets the rim are corners, and a corner
+      // is the whole tell that c is not a policy sample -- so resample the
+      // straight runs and the wrap separately and keep the joins exact.
+      var cuts=[0];
+      for (i=1;i<=DENSE;i++) if (moved[i]!==moved[i-1]){
+        // the corner is the sample still on the draw: the one before the path
+        // enters the disc, the one after it leaves. The rim is vertical there,
+        // so taking the lifted sample instead would cut the corner short.
+        var cut = moved[i] ? i-1 : i;
+        if (cut > cuts[cuts.length-1]) cuts.push(cut);
+      }
+      cuts.push(DENSE);
+      var segs=[], total=0;
+      for (j=0;j<cuts.length-1;j++){
+        var part=raw.slice(cuts[j], cuts[j+1]+1), L=0;
+        for (i=1;i<part.length;i++)
+          L += Math.hypot(part[i].x-part[i-1].x, part[i].y-part[i-1].y);
+        segs.push({part:part, L:L}); total += L;
+      }
+      var out=[], used=0, last=segs.length-1;
+      for (j=0;j<segs.length;j++){
+        var n;
+        if (j===last) n = NPTS - used;                       // the remainder
+        else {
+          n = Math.round(NPTS * segs[j].L / (total||1));
+          n = Math.max(1, Math.min(n, NPTS - used - (last-j)));  // leave 1 each
+        }
+        var rs = resample(segs[j].part, n);
+        out = out.concat(j ? rs.slice(1) : rs);
+        used += n;
+      }
+      return out;
     }
     // δ is what the projection had to move: the largest displacement Π_C
     // applies to any waypoint of the draw, and zero exactly when it is feasible.
