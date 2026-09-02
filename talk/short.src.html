@@ -203,11 +203,17 @@ table.res .flag{color:var(--bad);font-weight:700;}
 .legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;}
 
 /* ---- flow-time method figure (slides 8-13) ------------------------------- */
-.figrow{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;gap:26px;}
-.figrow .pipe{width:250px;flex:none;height:auto;display:block;}
-.figrow .geo{flex:1;min-width:0;max-width:700px;height:auto;display:block;}
-.figrow.tight .pipe{width:224px;}
-.figrow.tight .geo{max-width:640px;}
+/* The pipeline strip runs the full content height on the left, capped at
+   420px wide; the flow figure, recipe strip and callouts stack on the right. */
+.method{flex:1;min-height:0;display:flex;align-items:stretch;gap:30px;}
+.method .pipe{flex:none;height:100%;width:auto;max-width:420px;display:block;}
+.method .mcol{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:center;}
+.method .mcol .geo{flex:1 1 0;min-height:0;width:100%;max-width:720px;height:auto;display:block;align-self:center;}
+.method .mcol .recipe{margin:4px 0 0;}
+.method .mcol .split,.method .mcol .tiles,.method .mcol .eqrow,.method .mcol .tnote{flex:none;}
+.method .mcol .callout{font-size:16px;padding:11px 15px;}
+.method .mcol .tiles .n{font-size:22px;}
+.method .mcol .tile{padding:12px 14px;}
 .recipe{
   display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;flex:none;
   margin:6px 0 0;font-family:var(--mono);font-size:12px;color:var(--ink-faint);
@@ -583,17 +589,19 @@ body.notes-on #deck{right:396px;}
 <section class="slide" data-act="II · Two attempts" data-title="The flow, untouched" data-min="0.5" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span>The same picture, with the constraint on it</span></p>
   <h2>Put the constraint on the picture. The flow does not know it is there.</h2>
-  <div class="figrow">
+  <div class="method">
     <svg data-pipe="1" class="pipe" viewBox="0 0 320 340" role="img"
          aria-label="The sampling pipeline as a vertical strip: noise, flow ODE, a policy sample, execute."></svg>
-    <svg data-flow="1" class="geo" viewBox="0 0 700 330" role="img"
-         aria-label="A flow policy on its time axis: draws start as noise at t = 0, follow the flow, and end at t = 1 in one of two behaviours. The policy's draw ends inside the band of actions that violate the constraint."></svg>
+    <div class="mcol">
+      <svg data-flow="1" class="geo" viewBox="0 0 700 330" role="img"
+           aria-label="A flow policy on its time axis: draws start as noise at t = 0, follow the flow, and end at t = 1 in one of two behaviours. The policy's draw ends inside the band of actions that violate the constraint."></svg>
+    <p class="recipe"><span class="step hot blue">draw â from the policy</span><span class="arr">→</span><span class="step">execute</span></p>
+    <p class="tnote">The flow from the background slide, with C drawn on it: the red band is the set
+      of actions that violate the constraint. Nothing in the flow knows it exists, so some draws end
+      inside it — like this one. The strip on the left is the same pass as a recipe: noise, flow,
+      a draw, execute. Every method that follows changes one row of it.</p>
+    </div>
   </div>
-  <p class="recipe"><span class="step hot blue">draw â from the policy</span><span class="arr">→</span><span class="step">execute</span></p>
-  <p class="tnote">The flow from the background slide, with C drawn on it: the red band is the set
-    of actions that violate the constraint. Nothing in the flow knows it exists, so some draws end
-    inside it — like this one. The strip on the left is the same pass as a recipe: noise, flow,
-    a draw, execute. Every method that follows changes one row of it.</p>
   <div class="notes">
     <div class="timing">~30 s · add the band to the picture they already know, then move</div>
     <p>The axis was taught on the flow-matching slide, so <strong>do not re-teach it</strong>. Add
@@ -611,21 +619,23 @@ body.notes-on #deck{right:396px;}
 <section class="slide" data-act="II · Two attempts" data-title="Attempt 1: push in the middle" data-min="1.5" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span style="color:var(--red)">Attempt 1 · gradient guidance</span></p>
   <h2>Why pushing the velocity mid-flow goes wrong</h2>
-  <div class="figrow">
+  <div class="method">
     <svg data-pipe="3" class="pipe" viewBox="0 0 320 340" role="img"
          aria-label="The pipeline with a constraint gradient pushed into every step of the flow ODE."></svg>
-    <svg data-flow="2" class="geo" viewBox="0 0 700 330" role="img"
-         aria-label="Guidance pushes the draw downward at every step, using the flow's mid-way guess of its endpoint, which is the average of both behaviours. The guided draw ends in the gap between the behaviours, where no draw of the policy ever ends."></svg>
-  </div>
-  <p class="recipe"><span class="step">draw</span><span class="step hot red">−α ∇C at every step</span><span class="arr">→</span><span class="step">execute</span></p>
-  <div class="split" style="flex:none;margin-top:6px">
-    <div class="callout neg">The gradient needs a finished action to evaluate the constraint on,
-      and mid-flow there isn't one. Guidance uses the flow's <b>current guess</b> of its endpoint
-      — and halfway through, that guess is the average of behaviours A and B, an action that
-      belongs to neither.</div>
-    <div class="callout warn">Pushing that average toward feasibility pushes the draw into the
-      <b>gap</b>: feasible, and nothing the policy ever does. <b>So: leave the velocities alone,
-      and work with a finished draw.</b></div>
+    <div class="mcol">
+      <svg data-flow="2" class="geo" viewBox="0 0 700 330" role="img"
+           aria-label="Guidance pushes the draw downward at every step, using the flow's mid-way guess of its endpoint, which is the average of both behaviours. The guided draw ends in the gap between the behaviours, where no draw of the policy ever ends."></svg>
+    <p class="recipe"><span class="step">draw</span><span class="step hot red">−α ∇C at every step</span><span class="arr">→</span><span class="step">execute</span></p>
+    <div class="split" style="flex:none;margin-top:6px">
+      <div class="callout neg">The gradient needs a finished action to evaluate the constraint on,
+        and mid-flow there isn't one. Guidance uses the flow's <b>current guess</b> of its endpoint
+        — and halfway through, that guess is the average of behaviours A and B, an action that
+        belongs to neither.</div>
+      <div class="callout warn">Pushing that average toward feasibility pushes the draw into the
+        <b>gap</b>: feasible, and nothing the policy ever does. <b>So: leave the velocities alone,
+        and work with a finished draw.</b></div>
+    </div>
+    </div>
   </div>
   <div class="notes">
     <div class="timing">~1.5 min · the weakness here motivates everything after it</div>
@@ -652,20 +662,22 @@ body.notes-on #deck{right:396px;}
 <section class="slide" data-act="II · Two attempts" data-title="Attempt 2: fix the answer at the end" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span style="color:var(--purple)">Attempt 2 · projection</span></p>
   <h2>Let the flow finish, then snap the answer onto C</h2>
-  <div class="figrow">
+  <div class="method">
     <svg data-pipe="4" class="pipe" viewBox="0 0 320 340" role="img"
          aria-label="The pipeline with a projection stage after the draw, and execute moved below it."></svg>
-    <svg data-flow="3" class="geo" viewBox="0 0 700 330" role="img"
-         aria-label="Projection moves the finished draw straight down to the boundary of the band at t = 1. The point c is feasible, but no path through the flow ends there."></svg>
-  </div>
-  <p class="recipe"><span class="step">draw â</span><span class="arr">→</span><span class="step hot purple">project onto C → c, δ</span><span class="arr">→</span><span class="step">execute c</span></p>
-  <div class="split" style="flex:none;margin-top:6px">
-    <div class="callout good">Feasible by construction, no gradient, closed form for boxes, spheres,
-      half-spaces and joint limits — and it hands us δ, how far the draw was from feasible, for
-      free. <b>So: we keep the projection.</b></div>
-    <div class="callout neg">But c is an <b>edit made after the flow</b>, not something the flow
-      produced. It is the nearest feasible point, not a likely one, and executing it means
-      executing an action the policy never learned.</div>
+    <div class="mcol">
+      <svg data-flow="3" class="geo" viewBox="0 0 700 330" role="img"
+           aria-label="Projection moves the finished draw straight down to the boundary of the band at t = 1. The point c is feasible, but no path through the flow ends there."></svg>
+    <p class="recipe"><span class="step">draw â</span><span class="arr">→</span><span class="step hot purple">project onto C → c, δ</span><span class="arr">→</span><span class="step">execute c</span></p>
+    <div class="split" style="flex:none;margin-top:6px">
+      <div class="callout good">Feasible by construction, no gradient, closed form for boxes, spheres,
+        half-spaces and joint limits — and it hands us δ, how far the draw was from feasible, for
+        free. <b>So: we keep the projection.</b></div>
+      <div class="callout neg">But c is an <b>edit made after the flow</b>, not something the flow
+        produced. It is the nearest feasible point, not a likely one, and executing it means
+        executing an action the policy never learned.</div>
+    </div>
+    </div>
   </div>
   <div class="notes">
     <div class="timing">~1 min · be generous — the turn has nowhere to come from otherwise</div>
@@ -686,19 +698,21 @@ body.notes-on #deck{right:396px;}
 <section class="slide" data-act="II · Two attempts" data-title="Or: throw it away and redraw" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">II · Two attempts</span><span class="rule"></span><span style="color:var(--slate)">The honest fix · rejection sampling</span></p>
   <h2>Or throw the draw away and start again from noise</h2>
-  <div class="figrow">
+  <div class="method">
     <svg data-pipe="8" class="pipe" viewBox="0 0 320 340" role="img"
          aria-label="The pipeline for rejection sampling: check the draw, discard it if it is in the red band, and restart from noise."></svg>
-    <svg data-flow="4" class="geo" viewBox="0 0 700 330" role="img"
-         aria-label="Rejection sampling restarts from pure noise again and again; most restarts end back inside the band, and one eventually ends in behaviour B and is accepted."></svg>
-  </div>
-  <p class="recipe"><span class="step">draw</span><span class="arr">→</span><span class="step">in the band?</span><span class="arr">→</span><span class="step hot grey">discard, restart from t = 0</span><span class="arr">→</span><span class="step">…</span></p>
-  <div class="split" style="flex:none;margin-top:6px">
-    <div class="callout good">Every accepted draw is a real draw from the policy, so this is the
-      statistically correct answer — the target the rest of the talk is measured against.</div>
-    <div class="callout neg">But each restart begins from pure noise and <b>remembers nothing</b>
-      about the draw it threw away. Most restarts land back in the red band. On the shelf it costs
-      <b>30× the compute</b>, and it gets worse exactly as the constraint gets tight.</div>
+    <div class="mcol">
+      <svg data-flow="4" class="geo" viewBox="0 0 700 330" role="img"
+           aria-label="Rejection sampling restarts from pure noise again and again; most restarts end back inside the band, and one eventually ends in behaviour B and is accepted."></svg>
+    <p class="recipe"><span class="step">draw</span><span class="arr">→</span><span class="step">in the band?</span><span class="arr">→</span><span class="step hot grey">discard, restart from t = 0</span><span class="arr">→</span><span class="step">…</span></p>
+    <div class="split" style="flex:none;margin-top:6px">
+      <div class="callout good">Every accepted draw is a real draw from the policy, so this is the
+        statistically correct answer — the target the rest of the talk is measured against.</div>
+      <div class="callout neg">But each restart begins from pure noise and <b>remembers nothing</b>
+        about the draw it threw away. Most restarts land back in the red band. On the shelf it costs
+        <b>30× the compute</b>, and it gets worse exactly as the constraint gets tight.</div>
+    </div>
+    </div>
   </div>
   <div class="notes">
     <div class="timing">~1 min · set up the fork, don't resolve it yet</div>
@@ -718,22 +732,24 @@ body.notes-on #deck{right:396px;}
 <section class="slide" data-act="III · The idea" data-title="THE TURN: bias the redraw toward c" data-min="2" data-tier="1">
   <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span style="color:var(--blue)">CS-Pi · one pass</span></p>
   <h2>Don't execute c. Don't discard it. Redraw, biased toward it.</h2>
-  <div class="figrow tight">
+  <div class="method">
     <svg data-pipe="6" class="pipe" viewBox="0 0 320 340" role="img"
          aria-label="The pipeline closed into a loop: project, renoise back into the flow at depth n, re-run, execute a policy sample."></svg>
-    <svg data-flow="5" class="geo" viewBox="0 0 700 330" role="img"
-         aria-label="CS-Pi takes c back along the time axis to t = n, mixing in noise, and lets the flow run again from there. The redraw is a real path through the flow and ends closer to the boundary than the original draw."></svg>
-  </div>
-  <p class="recipe"><span class="step">draw â</span><span class="arr">→</span><span class="step">project → c, δ</span><span class="arr">→</span><span class="step hot blue">renoise c to t = n = k/(k+δ), re-run the flow</span><span class="arr">→</span><span class="step">a′</span></p>
-  <div class="eqrow">
-    <p class="eqmain">a′ &nbsp;∼&nbsp; (1/Z) · <span class="f1">π<sub>θ</sub>(a′ | o)</span> · <span class="f2">exp(−k²‖a′ − c‖² / 2δ²)</span></p>
-    <div class="eqpart f1"><b>the policy's own density</b>The redraw comes out of the flow, so it is
-      a real draw: it can only end where the policy's draws end.</div>
-    <div class="eqpart f2"><b>a Gaussian centred on the projected point</b>Its width is δ/k:
-      δ is how far the projection had to move the draw, k a fixed gain. Starting the flow from
-      c-plus-noise pulls the redraw toward c, and so toward the feasible set.</div>
-    <p class="eqfoot">Going back to t = n = k/(k+δ) and re-running the flow samples exactly this
-      product. One extra forward pass, no constraint gradient, and what comes out is a draw.</p>
+    <div class="mcol">
+      <svg data-flow="5" class="geo" viewBox="0 0 700 330" role="img"
+           aria-label="CS-Pi takes c back along the time axis to t = n, mixing in noise, and lets the flow run again from there. The redraw is a real path through the flow and ends closer to the boundary than the original draw."></svg>
+    <p class="recipe"><span class="step">draw â</span><span class="arr">→</span><span class="step">project → c, δ</span><span class="arr">→</span><span class="step hot blue">renoise c to t = n = k/(k+δ), re-run the flow</span><span class="arr">→</span><span class="step">a′</span></p>
+    <div class="eqrow">
+      <p class="eqmain">a′ &nbsp;∼&nbsp; (1/Z) · <span class="f1">π<sub>θ</sub>(a′ | o)</span> · <span class="f2">exp(−k²‖a′ − c‖² / 2δ²)</span></p>
+      <div class="eqpart f1"><b>the policy's own density</b>The redraw comes out of the flow, so it is
+        a real draw: it can only end where the policy's draws end.</div>
+      <div class="eqpart f2"><b>a Gaussian centred on the projected point</b>Its width is δ/k:
+        δ is how far the projection had to move the draw, k a fixed gain. Starting the flow from
+        c-plus-noise pulls the redraw toward c, and so toward the feasible set.</div>
+      <p class="eqfoot">Going back to t = n = k/(k+δ) and re-running the flow samples exactly this
+        product. One extra forward pass, no constraint gradient, and what comes out is a draw.</p>
+    </div>
+    </div>
   </div>
   <div class="notes">
     <div class="timing">~2 min · the method, in one picture and one line — do not rush the equation</div>
@@ -763,22 +779,24 @@ body.notes-on #deck{right:396px;}
 <section class="slide" data-act="III · The idea" data-title="Repeat until δ is zero" data-min="1" data-tier="1">
   <p class="kicker"><span class="act">III · The idea</span><span class="rule"></span><span style="color:var(--blue)">CS-Pi · the loop, and k</span></p>
   <h2>Repeat. Each pass goes back less far, and lands closer.</h2>
-  <div class="figrow tight">
+  <div class="method">
     <svg data-pipe="7" class="pipe" viewBox="0 0 320 340" role="img"
          aria-label="The pipeline loop, repeated until delta is near zero, then execute."></svg>
-    <svg data-flow="6" class="geo" viewBox="0 0 700 330" role="img"
-         aria-label="Two passes: the first goes back to t = 0.6 and lands closer; the second goes back only to t = 0.8 and lands outside the band. Each pass is a real draw."></svg>
+    <div class="mcol">
+      <svg data-flow="6" class="geo" viewBox="0 0 700 330" role="img"
+           aria-label="Two passes: the first goes back to t = 0.6 and lands closer; the second goes back only to t = 0.8 and lands outside the band. Each pass is a real draw."></svg>
+    <p class="recipe"><span class="step">draw</span><span class="arr">→</span><span class="step purple">project</span><span class="arr">→</span><span class="step blue">renoise, re-run</span><span class="arr">→</span><span class="step purple">project</span><span class="arr">→</span><span class="step blue">renoise, re-run</span><span class="arr">→</span><span class="step hot good">δ = 0 · execute</span></p>
+    <div class="tiles" style="margin-top:8px">
+      <div class="tile"><div class="n">σ<sub>w</sub> = δ / k</div><div class="l">the window width</div><div class="s">the violation you just measured is the search radius; k scales it</div></div>
+      <div class="tile"><div class="n" style="color:var(--amber)">small k</div><div class="l">go back far · reconsider</div><div class="s">the flow can still switch to behaviour B, which a large δ needs — but δ falls slowly</div></div>
+      <div class="tile"><div class="n" style="color:var(--teal)">large k</div><div class="l">go back a little · refine</div><div class="s">the redraw hugs c and δ collapses in a pass or two — but it stays in the behaviour it is in</div></div>
+      <div class="tile ours"><div class="n">k = 20</div><div class="l">one value, four benchmarks</div><div class="s">per-task tuning buys at most 4.3 points</div></div>
+    </div>
+    <p class="tnote">Every pass is a real draw that starts from c-plus-noise, so δ shrinks and
+      n = k/(k+δ) grows pass over pass. Stop when δ is below tolerance, or cap the passes and
+      project the last chunk.</p>
+    </div>
   </div>
-  <p class="recipe"><span class="step">draw</span><span class="arr">→</span><span class="step purple">project</span><span class="arr">→</span><span class="step blue">renoise, re-run</span><span class="arr">→</span><span class="step purple">project</span><span class="arr">→</span><span class="step blue">renoise, re-run</span><span class="arr">→</span><span class="step hot good">δ = 0 · execute</span></p>
-  <div class="tiles" style="margin-top:8px">
-    <div class="tile"><div class="n">σ<sub>w</sub> = δ / k</div><div class="l">the window width</div><div class="s">the violation you just measured is the search radius; k scales it</div></div>
-    <div class="tile"><div class="n" style="color:var(--amber)">small k</div><div class="l">go back far · reconsider</div><div class="s">the flow can still switch to behaviour B, which a large δ needs — but δ falls slowly</div></div>
-    <div class="tile"><div class="n" style="color:var(--teal)">large k</div><div class="l">go back a little · refine</div><div class="s">the redraw hugs c and δ collapses in a pass or two — but it stays in the behaviour it is in</div></div>
-    <div class="tile ours"><div class="n">k = 20</div><div class="l">one value, four benchmarks</div><div class="s">per-task tuning buys at most 4.3 points</div></div>
-  </div>
-  <p class="tnote">Every pass is a real draw that starts from c-plus-noise, so δ shrinks and
-    n = k/(k+δ) grows pass over pass. Stop when δ is below tolerance, or cap the passes and
-    project the last chunk.</p>
   <div class="notes">
     <div class="timing">~1 min · trace the two passes, then explain k</div>
     <p>Trace the picture: pass one goes back to t = 0.6 and lands closer; pass two only needs to go
