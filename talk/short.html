@@ -2081,7 +2081,14 @@ body.notes-on #deck{right:396px;}
     }
     var OFFSET_FEAS = 0;
     for (var o=0; o<=0.6; o+=0.005){ if (penetration(o).delta <= TAU){ OFFSET_FEAS=o; break; } }
-    var GAIN = 0.90, NPTS = 64, nz1 = [], nz2 = [];
+    var NPTS = 64, nz1 = [], nz2 = [];
+    // What the flow draws on each pass, as a multiple of the offset that just
+    // clears the constraint. The second pass has to still cut into the
+    // obstacle: a violation that shrank is the reason to go round again, and a
+    // draw that already looks clear makes the pass after it read as busywork.
+    // The last one clears the rim with room to spare so feasible reads at a
+    // glance rather than as a graze.
+    var SCHEDULE = [0, 0.50, 1.25];
     for (var i2=0;i2<NPTS;i2++){ nz1.push(Math.random()*2-1); nz2.push(Math.random()*2-1); }
 
     var PH = {DRAW:'draw', EVAL:'eval', PROJECT:'project', RENOISE:'renoise', DONE:'done'};
@@ -2309,7 +2316,7 @@ body.notes-on #deck{right:396px;}
           st.deltaEval = displacement(bezierPts(st.offset)).delta;
           st.n = nVal(st.deltaEval);
           st.C = projectPath(st.offset);        // the chunk we are projecting to
-          st.projOffset = st.offset + (OFFSET_FEAS - st.offset)*GAIN;
+          st.projOffset = OFFSET_FEAS * SCHEDULE[Math.min(st.iter, SCHEDULE.length-1)];
           st.phase = PH.PROJECT; break;
         case PH.PROJECT: st.phase = PH.RENOISE; break;
         case PH.RENOISE:
