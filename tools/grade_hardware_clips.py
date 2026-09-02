@@ -466,21 +466,35 @@ def frame_masks(f, im, cmap, M, ybox, k, cfg, seg):
     robot = keep[lab].astype(np.float32)
     robot = np.maximum(robot, feather(base))
 
-    # obstacles
+    return dict(robot=np.clip(robot, 0, 1), apple=np.clip(apple, 0, 1), plate=np.clip(plate, 0, 1))
+
+
+def obstacle_masks(f, M, ybox, k, cfg):
+    """Obstacle tint mask and its outline.  Cheap, so it is recomputed every render
+    (not cached) and can be tuned without re-running the segmenter."""
+    r, g, b, gray, chroma = channels(f)
     if cfg["obstacle"] == "cups":
+        cups = np.zeros((H, W), np.float32)
+        for bx in cfg["cups"]:
+            cups = np.maximum(cups, boxmask(warp_box(bx, M)))
         obst = ((chroma > 40) & (gray > 45)).astype(np.float32) * cups
         obst = drop_small(dil(ero(obst, 3), 9), 300)
     else:
-        # the band is a box, so keep it off the table top around the canisters' feet
+        table = table_auto(f) if cfg.get("moving") else polymask(cfg["table"], M)
+        table_in = ero(table, 13)
+        x0, y0, x1, y1 = can_band(ybox, k)
+        lx0, ly0, lx1, ly1 = ybox
+        core = boxmask((lx0 - 4, 0, lx1 + 4, y1))          # the label's own width
+        band = boxmask((x0, 0, x1, y1))
+        bright = ((gray > 70) | (chroma > 50)).astype(np.float32)
         tablewhite = ((gray > 185) & (chroma < 20)).astype(np.float32) * table_in
-        obst = ((gray > 70) | (chroma > 50)).astype(np.float32) * band * (1 - tablewhite)
+        # inside the label's width keep every bright pixel; in the side margins only
+        # coloured ones (a canister that sticks out), never the table top
+        obst = bright * np.maximum(core, band * (chroma > 30)) * (1 - tablewhite)
         obst = drop_small(ero(dil(dil(ero(obst, 5), 9), 15), 15), 500)
     edge = np.clip(dil(obst, 7) - obst, 0, 1)
     edge = blur(edge, 1.2)
-    obst = feather(obst)
-
-    return dict(robot=np.clip(robot, 0, 1), apple=np.clip(apple, 0, 1), plate=np.clip(plate, 0, 1),
-                obst=np.clip(obst, 0, 1), edge=np.clip(edge, 0, 1))
+    return np.clip(feather(obst), 0, 1), np.clip(edge, 0, 1)
 
 
 def compose_alpha(parts, prev=None):
@@ -563,7 +577,8 @@ def process(name, seg, preview_dir=None):
         for i, kk in enumerate(idx):
             f = frames[kk].astype(np.float32)
             parts = frame_masks(f, ims[i], cmaps[i], Ms[idx[i]], ybox[idx[i]], k, cfg, seg)
-            fg, obst, edge = compose_alpha(parts), parts["obst"], parts["edge"]
+            obst, edge = obstacle_masks(f, Ms[idx[i]], ybox[idx[i]], k, cfg)
+            fg = compose_alpha(parts)
             out = render(f, fg, obst, edge, gain)
             am = np.stack([fg, fg * (1 - obst), fg * (1 - obst)], -1)  # obstacles show red
             am[..., 0] = np.maximum(am[..., 0], obst)
@@ -582,9 +597,9 @@ def process(name, seg, preview_dir=None):
     if os.path.exists(cache) and not FORCE:
         z = np.load(cache)
         if int(z["n"]) == len(frames):
-            cached = {kk: z[kk] for kk in ("robot", "apple", "plate", "obst", "edge")}
+            cached = {kk: z[kk] for kk in ("robot", "apple", "plate")}
             print(f"  {name}: masks from cache {os.path.relpath(cache, ROOT)}", file=sys.stderr)
-    store = {kk: np.zeros((len(frames), H, W), np.uint8) for kk in ("robot", "apple", "plate", "obst", "edge")}
+    store = {kk: np.zeros((len(frames), H, W), np.uint8) for kk in ("robot", "apple", "plate")}
     dst = os.path.join(DST, name + ".mp4")
     wr = iio.write_frames(dst, (W, H), fps=meta["fps"], codec="libx264", quality=None,
                           output_params=["-crf", "21", "-preset", "slow", "-pix_fmt", "yuv420p",
@@ -606,7 +621,8 @@ def process(name, seg, preview_dir=None):
                 parts = {kk: cached[kk][j].astype(np.float32) / 255 for kk in cached}
             fg = compose_alpha(parts, prev)
             prev = fg
-            wr.send(render(f.astype(np.float32), fg, parts["obst"], parts["edge"], gain))
+            obst, edge = obstacle_masks(f.astype(np.float32), Ms[j], ybox[j], k, cfg)
+            wr.send(render(f.astype(np.float32), fg, obst, edge, gain))
         if s % (B * 25) == 0:
             print(f"  {name}: {s}/{len(frames)}", file=sys.stderr)
     wr.close()
