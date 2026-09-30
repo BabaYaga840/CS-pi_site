@@ -25,12 +25,29 @@ def catmull(p, n=40):
     return np.vstack(out)
 
 
-def draw_arrow(img, pts, W=7):
-    s = catmull(pts) * SS
+def smooth(p, frac=0.12, n=400):
+    """Resample evenly by arc length, then Gaussian-smooth with endpoints pinned."""
+    p = catmull(p)
+    d = np.r_[0, np.cumsum(np.hypot(*np.diff(p, axis=0).T))]
+    t = np.linspace(0, d[-1], n)
+    q = np.c_[np.interp(t, d, p[:, 0]), np.interp(t, d, p[:, 1])]
+    sig = frac * n
+    k = np.arange(-int(3 * sig), int(3 * sig) + 1)
+    k = np.exp(-k**2 / (2 * sig**2)); k /= k.sum()
+    m = len(k) // 2
+    # point-reflect about the endpoints so the ends (and tangents) are preserved
+    pad = np.vstack([2 * q[0] - q[1:m+1][::-1], q, 2 * q[-1] - q[-m-1:-1][::-1]])
+    out = np.c_[np.convolve(pad[:, 0], k, "valid"), np.convolve(pad[:, 1], k, "valid")]
+    out[0], out[-1] = q[0], q[-1]
+    return out
+
+
+def draw_arrow(img, pts, W=13):
+    s = smooth(pts) * SS
     W *= SS
     L = np.r_[0, np.cumsum(np.hypot(*np.diff(s, axis=0).T))]
     tot = L[-1]
-    head = min(W * 3.2, tot * 0.4)
+    head = min(W * 2.6, tot * 0.4)
     for i in range(1, len(s)):
         if L[i] > tot - head + 1:
             break
@@ -42,8 +59,8 @@ def draw_arrow(img, pts, W=7):
     q = far[-1] if len(far) else s[0]
     d = (e - q) / (np.hypot(*(e - q)) + 1e-9)
     n = np.array([-d[1], d[0]])
-    tri = np.array([e + d * head * .35, e - d * head * .65 + n * W * 1.7,
-                    e - d * head * .65 - n * W * 1.7]).astype(np.int32)
+    tri = np.array([e + d * head * .35, e - d * head * .65 + n * W * 1.5,
+                    e - d * head * .65 - n * W * 1.5]).astype(np.int32)
     cv2.fillConvexPoly(img, tri, tuple(int(v) for v in B), cv2.LINE_AA)
 
 
