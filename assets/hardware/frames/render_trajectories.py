@@ -68,12 +68,14 @@ def main():
     src = sys.argv[1] if len(sys.argv) > 1 else "waypoints.json"
     out = sys.argv[2] if len(sys.argv) > 2 else "with_trajectories"
     os.makedirs(out, exist_ok=True)
-    for name, pts in json.load(open(src)).items():
+    for name, v in json.load(open(src)).items():
+        # old format: {file: [pts]}; new format: {file: {"image": base, "points": [pts]}}
+        pts, base = (v["points"], v["image"]) if isinstance(v, dict) else (v, name)
         if len(pts) < 2:
             continue
-        im = cv2.imread(name)
+        im = cv2.imread(base)
         big = cv2.resize(im, None, fx=SS, fy=SS, interpolation=cv2.INTER_CUBIC)
-        draw_arrow(big, pts)
+        draw_arrow(big, pts, W=13 * im.shape[1] / 720)
         cv2.imwrite(os.path.join(out, name),
                     cv2.resize(big, (im.shape[1], im.shape[0]), interpolation=cv2.INTER_AREA))
         print("wrote", os.path.join(out, name))
