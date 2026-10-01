@@ -12,16 +12,9 @@ def rgb(r, g, b):
 
 PURPLE, LPURPLE = rgb(120, 0, 170), rgb(205, 170, 235)
 GREEN, LGREEN = rgb(0, 150, 40), rgb(170, 235, 170)
-# gradient stops (start ... current position) by output filename prefix
-SCHEMES = {
-    "2_": [rgb(255, 175, 175), rgb(215, 0, 0)],            # gradient guidance: light red -> red
-    "3_": [LPURPLE, PURPLE],                               # projection: light purple -> purple
-    "7_": [LPURPLE, PURPLE],
-    "6_": [LGREEN, GREEN],                                 # rejection: light green -> green
-    "8_": [PURPLE, LPURPLE, rgb(255, 255, 255), LGREEN, GREEN],  # CS-Pi: purple -> white -> green
-    "9_": [PURPLE, LPURPLE, rgb(255, 255, 255), LGREEN, GREEN],
-    "5_": [PURPLE, LPURPLE, rgb(255, 255, 255), LGREEN, GREEN],
-}
+# gradient stops (start ... current position): light red -> red for every figure
+RED = [rgb(255, 175, 175), rgb(215, 0, 0)]
+SCHEMES = {k: RED for k in ("2_", "3_", "5_", "6_", "7_", "8_", "9_")}
 # figures that get an outline around the arrow
 BORDER = {"3_projection_failure.png": PURPLE, "9_cspi_1_post.png": PURPLE, "9_cspi_2_post.png": PURPLE}
 
