@@ -7,7 +7,7 @@ Long clips are tracked in chunks so memory stays bounded: each chunk is seeded w
 chunk's final per-object masks. The saved mask is split into connected components (objects) so each
 part (robot, canister, apple, ...) is tracked on its own; tiny specks are dropped.
 """
-import os, sys, time
+import os, subprocess, sys, tempfile, time
 import cv2, numpy as np, torch
 from transformers import Sam2VideoModel, Sam2VideoProcessor
 
@@ -21,7 +21,7 @@ JOBS = {
     "cspi_success": ("cspi_success_0.mp4", 18, "5_cspi_mask.png"),
     "rejection": ("rejection.MOV", 0, "6_rejection_base_mask.png"),
 }
-CHUNK = 150
+CHUNK = 100
 MIN_AREA = 0.002       # drop connected components smaller than 0.2% of the frame
 MAX_OBJS = 8
 MODEL = "facebook/sam2.1-hiera-large"
@@ -68,7 +68,35 @@ def track(proc, model, frames, seed_local, seeds, reverse):
     return res
 
 
-def run(key, proc, model):
+def track_subprocess(path, lo, hi, seed_local, seeds, reverse):
+    """Run one chunk in a fresh process (releases all GPU/CPU memory afterwards); returns {local_idx: {obj: mask}}."""
+    with tempfile.TemporaryDirectory(dir=os.environ.get("CLAUDE_JOB_DIR") or None) as d:
+        ids = sorted(seeds)
+        np.savez(os.path.join(d, "in.npz"), path=path, lo=lo, hi=hi, seed_local=seed_local, reverse=reverse,
+                 ids=np.array(ids), masks=np.stack([seeds[i] for i in ids]))
+        subprocess.run([sys.executable, os.path.abspath(__file__), "--chunk", os.path.join(d, "in.npz"), os.path.join(d, "out.npz")],
+                       check=True)
+        z = np.load(os.path.join(d, "out.npz"))
+        H, W = int(z["H"]), int(z["W"])
+        m = np.unpackbits(z["packed"], axis=-1)[..., :W].astype(bool)      # (K, n, H, W)
+        return {int(f): {int(o): m[k, j] for j, o in enumerate(z["ids"])} for k, f in enumerate(z["frames"])}
+
+
+def worker(inp, outp):
+    z = np.load(inp)
+    proc = Sam2VideoProcessor.from_pretrained(MODEL)
+    model = Sam2VideoModel.from_pretrained(MODEL).to(dev).eval()
+    frames = read_frames(str(z["path"]), int(z["lo"]), int(z["hi"]))
+    seeds = {int(i): m for i, m in zip(z["ids"], z["masks"])}
+    res = track(proc, model, frames, int(z["seed_local"]), seeds, bool(z["reverse"]))
+    fr = sorted(res)
+    ids = sorted(seeds)
+    H, W = frames[0].shape[:2]
+    arr = np.stack([np.stack([res[f].get(o, np.zeros((H, W), bool)) for o in ids]) for f in fr])
+    np.savez(outp, frames=np.array(fr), ids=np.array(ids), H=H, W=W, packed=np.packbits(arr, axis=-1))
+
+
+def run(key):
     vfile, seed, mfile = JOBS[key]
     path = os.path.join(VID, vfile)
     cap = cv2.VideoCapture(path)
@@ -85,12 +113,10 @@ def run(key, proc, model):
         cur, cur_seeds = seed, objs
         while (cur < T - 1) if not reverse else (cur > 0):
             lo, hi = (cur, min(T, cur + CHUNK)) if not reverse else (max(0, cur - CHUNK + 1), cur + 1)
-            frames = read_frames(path, lo, hi)
-            hi = lo + len(frames)
-            res = track(proc, model, frames, cur - lo, cur_seeds, reverse)
+            res = track_subprocess(path, lo, hi, cur - lo, cur_seeds, reverse)
             for li, d in res.items():
                 union[lo + li] |= np.any(list(d.values()), axis=0) if d else False
-            end_local = (len(frames) - 1) if not reverse else 0
+            end_local = (hi - lo - 1) if not reverse else 0
             nxt = res.get(end_local, {})
             # objects lost (empty mask) cannot seed the next chunk; keep the previous seeds for those ids
             cur_seeds = {o: nxt[o] if o in nxt and nxt[o].any() else cur_seeds[o] for o in cur_seeds}
@@ -108,8 +134,8 @@ def run(key, proc, model):
 
 
 if __name__ == "__main__":
-    keys = sys.argv[1:] or list(JOBS)
-    proc = Sam2VideoProcessor.from_pretrained(MODEL)
-    model = Sam2VideoModel.from_pretrained(MODEL).to(dev).eval()
-    for k in keys:
-        run(k, proc, model)
+    if sys.argv[1] == "--chunk":
+        worker(sys.argv[2], sys.argv[3])
+    else:
+        for k in (sys.argv[1:] or list(JOBS)):
+            run(k)
