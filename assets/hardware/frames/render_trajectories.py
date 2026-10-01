@@ -6,8 +6,20 @@ import json, sys, os
 import numpy as np, cv2
 
 SS = 4                      # supersampling for anti-aliasing
-A = np.array([175, 175, 255], float)   # light red (BGR)
-B = np.array([0, 0, 215], float)       # red (BGR)
+def rgb(r, g, b):
+    return np.array([b, g, r], float)   # stored as BGR for OpenCV
+
+
+# (start colour, end colour) by output filename prefix; the end colour is the current position
+SCHEMES = {
+    "2_": (rgb(255, 175, 175), rgb(215, 0, 0)),     # gradient guidance: light red -> red
+    "3_": (rgb(205, 170, 235), rgb(120, 0, 170)),   # projection: light purple -> purple
+    "7_": (rgb(205, 170, 235), rgb(120, 0, 170)),
+    "6_": (rgb(170, 235, 170), rgb(0, 150, 40)),    # rejection: light green -> green
+    "8_": (rgb(120, 0, 170), rgb(0, 150, 40)),      # CS-Pi: purple -> green
+    "5_": (rgb(120, 0, 170), rgb(0, 150, 40)),
+}
+A, B = SCHEMES["2_"]
 
 
 def catmull(p, n=40):
@@ -42,7 +54,7 @@ def smooth(p, frac=0.12, n=400):
     return out
 
 
-def draw_arrow(img, pts, W=13):
+def draw_arrow(img, pts, W=13, A=A, B=B):
     s = smooth(pts) * SS
     W *= SS
     L = np.r_[0, np.cumsum(np.hypot(*np.diff(s, axis=0).T))]
@@ -75,7 +87,8 @@ def main():
             continue
         im = cv2.imread(base)
         big = cv2.resize(im, None, fx=SS, fy=SS, interpolation=cv2.INTER_CUBIC)
-        draw_arrow(big, pts, W=13 * im.shape[1] / 720)
+        A_, B_ = next((v for k, v in SCHEMES.items() if name.startswith(k)), (A, B))
+        draw_arrow(big, pts, W=13 * im.shape[1] / 720, A=A_, B=B_)
         cv2.imwrite(os.path.join(out, name),
                     cv2.resize(big, (im.shape[1], im.shape[0]), interpolation=cv2.INTER_AREA))
         print("wrote", os.path.join(out, name))
