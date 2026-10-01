@@ -91,13 +91,14 @@ def draw_arrow(img, pts, W=13, stops=SCHEMES["2_"], border=None, bw=3.0):
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else "waypoints.json"
     out = sys.argv[2] if len(sys.argv) > 2 else "with_trajectories"
+    base_dir = sys.argv[3] if len(sys.argv) > 3 else "."
     os.makedirs(out, exist_ok=True)
     for name, v in json.load(open(src)).items():
         # old format: {file: [pts]}; new format: {file: {"image": base, "points": [pts]}}
         pts, base = (v["points"], v["image"]) if isinstance(v, dict) else (v, name)
         if len(pts) < 2:
             continue
-        im = cv2.imread(base)
+        im = cv2.imread(os.path.join(base_dir, base))
         big = cv2.resize(im, None, fx=SS, fy=SS, interpolation=cv2.INTER_CUBIC)
         stops = next((v for k, v in SCHEMES.items() if name.startswith(k)), SCHEMES["2_"])
         draw_arrow(big, pts, W=20 * im.shape[1] / 720, stops=stops, border=BORDER.get(name),
