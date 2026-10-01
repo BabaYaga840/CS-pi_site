@@ -23,8 +23,8 @@ Click to add waypoints in order (start &rarr; end). Drag to move a point, right-
 const PROJ_REF=[[312.1,124.4],[286.2,157.2],[257.3,185.1],[209.4,193],[163.5,202]];
 // name = output file stem; img = base frame; refs = earlier tasks (or fixed lists) to show; share = task whose first point is reused
 const TASKS=[
- {name:"7_projection_before",img:"7_projection_before.png",title:"Projection: before projection (project_fail, 1.5 s)",
-  note:"Faded arrow = the projection-failure trajectory you already drew (on the 3.33 s frame, same camera). Draw the pre-projection trajectory so it is consistent with it.",
+ {name:"7_projection_before",img:"7_projection_before_3s.png",title:"Projection: before projection (project_fail, 3.0 s)",
+  note:"Faded arrow = the projection-failure trajectory you already drew (drawn on the 3.33 s frame, same camera). Draw the pre-projection trajectory so it is consistent with it.",
   fixed:[{label:"after projection",pts:PROJ_REF}]},
  {name:"6_rejection_1",img:"6_rejection_base.png",title:"Rejection sampling 1/3 (rejection.MOV, first frame)"},
  {name:"6_rejection_2",img:"6_rejection_base.png",title:"Rejection sampling 2/3",share:"6_rejection_1",refs:["6_rejection_1"],
