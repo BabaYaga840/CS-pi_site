@@ -1,0 +1,82 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Trajectory sketcher 3</title>
+<style>
+body{margin:0;font:14px system-ui,sans-serif;background:#1e1e1e;color:#eee}
+#bar{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#2b2b2b;flex-wrap:wrap}
+button{padding:6px 12px;border:0;border-radius:4px;background:#444;color:#eee;cursor:pointer}
+button:hover{background:#666} button.primary{background:#c0392b}
+#wrap{padding:12px;text-align:center}
+canvas{max-width:100%;max-height:82vh;height:auto;cursor:crosshair;border:1px solid #555}
+#help{padding:0 12px 12px;color:#aaa}
+</style></head><body>
+<div id="bar">
+  <button id="prev">&larr; Prev</button><b id="title"></b><button id="next">Next &rarr;</button>
+  <button id="undo">Undo point (Z)</button><button id="clear">Clear this one</button>
+  <label><input type="checkbox" id="ghost" checked> show reference trajectories</label>
+  <button class="primary" id="export">Export waypoints JSON</button>
+</div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="help"><span id="note"></span><br>
+Click to add waypoints in order (start &rarr; end). Drag to move a point, right-click a point to delete it. Faded arrows are reference trajectories; the shared start point (white ring) is locked to the first trajectory. Progress autosaves in this browser; Export downloads <code>waypoints_post.json</code>.</div>
+<script>
+// Pre-projection CS-Pi trajectories you already drew (on this same frame).
+const PRE1=[[399.9, 191.1], [347, 198], [301.2, 214.9], [262.3, 262.7], [244.3, 327.4], [237.3, 368.2]];
+const PRE2=[[399.9, 191.1], [361, 231.9], [322.1, 254.7], [296.2, 287.6], [270.2, 334.4], [249.3, 374.2]];
+const TASKS=[
+ {name:"9_cspi_1_post",img:"8_cspi_base.png",title:"CS-Pi 1, after projection (trust_fail, 2 s)",
+  note:"Faded arrows = your two pre-projection trajectories (1 and 2). Draw the post-projection trajectory for CS-Pi 1.",
+  fixed:[{label:"pre 1",pts:PRE1},{label:"pre 2",pts:PRE2}]},
+ {name:"9_cspi_2_post",img:"8_cspi_base.png",title:"CS-Pi 2, after projection",share:"9_cspi_1_post",refs:["9_cspi_1_post"],
+  note:"Starts at the same point as post-projection 1. Faded arrows = the two pre-projection trajectories plus post-projection 1.",
+  fixed:[{label:"pre 1",pts:PRE1},{label:"pre 2",pts:PRE2}]}];
+const KEY="cspi_waypoints_post_v1";
+let data={};try{data=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){}
+let cur=0,drag=-1;
+const imgs={};TASKS.forEach(t=>{if(!imgs[t.img]){const i=new Image();i.src=t.img;i.onload=draw;imgs[t.img]=i}});
+const cv=document.getElementById("c"),ctx=cv.getContext("2d"),T=()=>TASKS[cur];
+const byName=n=>TASKS.find(t=>t.name==n);
+const raw=n=>data[n]||(data[n]=[]);
+function pts(n){const t=byName(n),p=raw(n);
+  if(t.share){const l=raw(t.share);if(l.length){if(p.length)p[0]=l[0].slice();else p.push(l[0].slice())}}return p}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}};
+const A=[255,175,175],B=[215,0,0],mix=t=>A.map((a,i)=>Math.round(a+(B[i]-a)*t));
+function spline(p,n=24){if(p.length<2)return p.slice();const out=[],P=[p[0],...p,p[p.length-1]];
+  for(let i=1;i<P.length-2;i++)for(let k=0;k<n;k++){const t=k/n,t2=t*t,t3=t2*t;
+    out.push([0,1].map(d=>0.5*((2*P[i][d])+(-P[i-1][d]+P[i+1][d])*t+(2*P[i-1][d]-5*P[i][d]+4*P[i+1][d]-P[i+2][d])*t2+(-P[i-1][d]+3*P[i][d]-3*P[i+1][d]+P[i+2][d])*t3)))}
+  out.push(p[p.length-1]);return out}
+function arrow(p,W,alpha){const s=spline(p);if(s.length<2)return;ctx.globalAlpha=alpha;
+  const L=[0];for(let i=1;i<s.length;i++)L.push(L[i-1]+Math.hypot(s[i][0]-s[i-1][0],s[i][1]-s[i-1][1]));
+  const tot=L[L.length-1],head=Math.min(W*2.6,tot*.4);ctx.lineCap="round";ctx.lineJoin="round";
+  for(let i=1;i<s.length;i++){if(L[i]>tot-head+1)break;ctx.strokeStyle=`rgb(${mix(L[i]/tot)})`;ctx.lineWidth=W;ctx.beginPath();ctx.moveTo(...s[i-1]);ctx.lineTo(...s[i]);ctx.stroke()}
+  const e=s[s.length-1];let q=e;for(let i=s.length-1;i>=0;i--){if(Math.hypot(e[0]-s[i][0],e[1]-s[i][1])>head*.6){q=s[i];break}}
+  const a=Math.atan2(e[1]-q[1],e[0]-q[0]),hw=W*1.5,c=Math.cos(a),n=Math.sin(a);
+  ctx.fillStyle=`rgb(${B})`;ctx.beginPath();ctx.moveTo(e[0]+c*head*.35,e[1]+n*head*.35);
+  ctx.lineTo(e[0]-c*head*.65-n*hw,e[1]-n*head*.65+c*hw);ctx.lineTo(e[0]-c*head*.65+n*hw,e[1]-n*head*.65-c*hw);ctx.fill();ctx.globalAlpha=1}
+function dot(q,r,fill,alpha=1){ctx.globalAlpha=alpha;ctx.fillStyle=fill;ctx.strokeStyle="#000";ctx.lineWidth=r/3;ctx.beginPath();ctx.arc(q[0],q[1],r,0,7);ctx.fill();ctx.stroke();ctx.globalAlpha=1}
+function draw(){const t=T(),im=imgs[t.img];if(!im.complete||!im.naturalWidth)return;
+  cv.width=im.naturalWidth;cv.height=im.naturalHeight;ctx.drawImage(im,0,0);const sc=cv.width/720;
+  document.getElementById("title").textContent=`${cur+1}/${TASKS.length}  ${t.title}`;
+  document.getElementById("note").textContent=t.note||"";
+  if(ghost.checked){
+    (t.fixed||[]).forEach(f=>{arrow(f.pts,9*sc,.55);f.pts.forEach(q=>dot(q,3*sc,"#9cf",.8))});
+    (t.refs||[]).forEach(n=>{const p=pts(n);arrow(p,9*sc,.5);p.forEach(q=>dot(q,3*sc,"#9cf",.8))})}
+  const p=pts(t.name);arrow(p,13*sc,1);
+  p.forEach((q,i)=>{if(i==0&&t.share){ctx.strokeStyle="#fff";ctx.lineWidth=2*sc;ctx.beginPath();ctx.arc(q[0],q[1],9*sc,0,7);ctx.stroke()}
+    dot(q,4.5*sc,i==0?"#fff":"#ffd400")})}
+const pos=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]};
+const hit=m=>{const sc=cv.width/720;return pts(T().name).findIndex(q=>Math.hypot(q[0]-m[0],q[1]-m[1])<10*sc)};
+const locked=i=>i==0&&T().share;
+cv.onmousedown=e=>{if(e.button)return;const m=pos(e),h=hit(m),p=pts(T().name);
+  if(h>=0){drag=locked(h)?-1:h}else{p.push(m);drag=p.length-1}save();draw()};
+cv.onmousemove=e=>{if(drag<0)return;pts(T().name)[drag]=pos(e);draw()};
+window.onmouseup=()=>{if(drag>=0){drag=-1;save()}};
+cv.oncontextmenu=e=>{e.preventDefault();const h=hit(pos(e));if(h>=0&&!locked(h)){pts(T().name).splice(h,1);save();draw()}};
+const go=d=>{cur=(cur+d+TASKS.length)%TASKS.length;draw()};
+prev.onclick=()=>go(-1);next.onclick=()=>go(1);
+undo.onclick=()=>{const p=pts(T().name);if(p.length>(T().share?1:0))p.pop();save();draw()};
+clear.onclick=()=>{data[T().name]=[];save();draw()};ghost.onchange=draw;
+onkeydown=e=>{if(e.key=="z")undo.onclick();if(e.key=="ArrowRight")go(1);if(e.key=="ArrowLeft")go(-1)};
+export_=document.getElementById("export");
+export_.onclick=()=>{const out={};TASKS.forEach(t=>{const p=pts(t.name);out[t.name+".png"]={image:t.img,points:p.map(q=>q.map(v=>Math.round(v*10)/10))}});
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(out,null,1)],{type:"application/json"}));a.download="waypoints_post.json";a.click()};
+</script></body></html>

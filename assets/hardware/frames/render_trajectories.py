@@ -19,10 +19,11 @@ SCHEMES = {
     "7_": [LPURPLE, PURPLE],
     "6_": [LGREEN, GREEN],                                 # rejection: light green -> green
     "8_": [PURPLE, LPURPLE, rgb(255, 255, 255), LGREEN, GREEN],  # CS-Pi: purple -> white -> green
+    "9_": [PURPLE, LPURPLE, rgb(255, 255, 255), LGREEN, GREEN],
     "5_": [PURPLE, LPURPLE, rgb(255, 255, 255), LGREEN, GREEN],
 }
 # figures that get an outline around the arrow
-BORDER = {"3_projection_failure.png": PURPLE, "8_cspi_1.png": PURPLE, "8_cspi_2.png": PURPLE}
+BORDER = {"3_projection_failure.png": PURPLE, "9_cspi_1_post.png": PURPLE, "9_cspi_2_post.png": PURPLE}
 
 
 def grad(stops, t):
