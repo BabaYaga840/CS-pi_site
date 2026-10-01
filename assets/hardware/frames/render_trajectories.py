@@ -102,10 +102,11 @@ def arrow_layer(shape, pts, **kw):
     return np.clip(color, 0, 255), alpha
 
 
-def render_transparent(im, mask, pts, **kw):
+def render_transparent(im, mask, pts, bg_alpha=0.0, **kw):
     """Source frame with everything outside `mask` transparent, arrows on top, as BGRA uint8."""
     h, w = im.shape[:2]
     a_b = cv2.GaussianBlur(mask.astype(np.float32), (0, 0), 0.8)
+    a_b = a_b + (1 - a_b) * bg_alpha      # removed area stays faintly visible at bg_alpha opacity
     c_a, a_a = arrow_layer((h, w), pts, **kw)
     a_o = a_a + a_b * (1 - a_a)
     rgb = (c_a * a_a[..., None] + im.astype(np.float32) * (a_b * (1 - a_a))[..., None]) / np.maximum(a_o[..., None], 1e-4)
@@ -117,6 +118,7 @@ def main():
     out = sys.argv[2] if len(sys.argv) > 2 else "with_trajectories"
     base_dir = sys.argv[3] if len(sys.argv) > 3 else "."
     transparent = len(sys.argv) > 4 and sys.argv[4] == "transparent"
+    bg_alpha = float(sys.argv[5]) if len(sys.argv) > 5 else 0.0
     os.makedirs(out, exist_ok=True)
     for name, v in json.load(open(src)).items():
         # old format: {file: [pts]}; new format: {file: {"image": base, "points": [pts]}}
@@ -128,7 +130,7 @@ def main():
         kw = dict(W=20 * im.shape[1] / 720, stops=stops, border=BORDER.get(name), bw=10.0 * im.shape[1] / 720)
         if transparent:         # mask comes from masks/<base stem>_mask.png; source pixels from the original frame
             mask = cv2.imread(os.path.join("masks", os.path.splitext(base)[0] + "_mask.png"), 0) > 127
-            res = render_transparent(cv2.imread(base), mask, pts, **kw)
+            res = render_transparent(cv2.imread(base), mask, pts, bg_alpha=bg_alpha, **kw)
         else:
             big = cv2.resize(im, None, fx=SS, fy=SS, interpolation=cv2.INTER_CUBIC)
             draw_arrow(big, pts, **kw)
