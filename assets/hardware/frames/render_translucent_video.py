@@ -12,13 +12,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from propagate_masks import JOBS
 
-BG_ALPHA = 0.3
+BG_ALPHA = 0.45
 OUT = os.path.join(HERE, "..", "videos_translucent")
 
 
 def render(key):
     vfile = JOBS[key][0]
-    z = np.load(os.path.join(HERE, "video_masks", key + ".npz"))
+    f = os.path.join(HERE, "video_masks", key + "_stable.npz")      # prefer the temporally stabilised masks
+    z = np.load(f if os.path.exists(f) else os.path.join(HERE, "video_masks", key + ".npz"))
     masks = np.unpackbits(z["packed"], axis=-1)[..., :int(z["shape"][2])].astype(bool)
     cap = cv2.VideoCapture(os.path.join(HERE, "..", vfile))
     fps = cap.get(cv2.CAP_PROP_FPS)
