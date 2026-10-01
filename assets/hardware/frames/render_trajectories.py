@@ -10,16 +10,25 @@ def rgb(r, g, b):
     return np.array([b, g, r], float)   # stored as BGR for OpenCV
 
 
-# (start colour, end colour) by output filename prefix; the end colour is the current position
+PURPLE, LPURPLE = rgb(120, 0, 170), rgb(205, 170, 235)
+GREEN, LGREEN = rgb(0, 150, 40), rgb(170, 235, 170)
+# gradient stops (start ... current position) by output filename prefix
 SCHEMES = {
-    "2_": (rgb(255, 175, 175), rgb(215, 0, 0)),     # gradient guidance: light red -> red
-    "3_": (rgb(205, 170, 235), rgb(120, 0, 170)),   # projection: light purple -> purple
-    "7_": (rgb(205, 170, 235), rgb(120, 0, 170)),
-    "6_": (rgb(170, 235, 170), rgb(0, 150, 40)),    # rejection: light green -> green
-    "8_": (rgb(120, 0, 170), rgb(0, 150, 40)),      # CS-Pi: purple -> green
-    "5_": (rgb(120, 0, 170), rgb(0, 150, 40)),
+    "2_": [rgb(255, 175, 175), rgb(215, 0, 0)],            # gradient guidance: light red -> red
+    "3_": [LPURPLE, PURPLE],                               # projection: light purple -> purple
+    "7_": [LPURPLE, PURPLE],
+    "6_": [LGREEN, GREEN],                                 # rejection: light green -> green
+    "8_": [PURPLE, LPURPLE, rgb(255, 255, 255), LGREEN, GREEN],  # CS-Pi: purple -> white -> green
+    "5_": [PURPLE, LPURPLE, rgb(255, 255, 255), LGREEN, GREEN],
 }
-A, B = SCHEMES["2_"]
+# figures that get an outline around the arrow
+BORDER = {"3_projection_failure.png": PURPLE, "8_cspi_1.png": PURPLE, "8_cspi_2.png": PURPLE}
+
+
+def grad(stops, t):
+    x = t * (len(stops) - 1)
+    i = min(int(x), len(stops) - 2)
+    return stops[i] + (stops[i + 1] - stops[i]) * (x - i)
 
 
 def catmull(p, n=40):
@@ -54,26 +63,35 @@ def smooth(p, frac=0.12, n=400):
     return out
 
 
-def draw_arrow(img, pts, W=13, A=A, B=B):
+def draw_arrow(img, pts, W=13, stops=SCHEMES["2_"], border=None, bw=3.0):
     s = smooth(pts) * SS
     W *= SS
     L = np.r_[0, np.cumsum(np.hypot(*np.diff(s, axis=0).T))]
     tot = L[-1]
     head = min(W * 2.6, tot * 0.4)
-    for i in range(1, len(s)):
-        if L[i] > tot - head + 1:
-            break
-        c = A + (B - A) * (L[i] / tot)
-        cv2.line(img, tuple(s[i-1].astype(int)), tuple(s[i].astype(int)),
-                 tuple(int(v) for v in c), int(W), cv2.LINE_AA)
     e = s[-1]
     far = s[np.hypot(*(s - e).T) > head * 0.6]
     q = far[-1] if len(far) else s[0]
     d = (e - q) / (np.hypot(*(e - q)) + 1e-9)
     n = np.array([-d[1], d[0]])
     tri = np.array([e + d * head * .35, e - d * head * .65 + n * W * 1.5,
-                    e - d * head * .65 - n * W * 1.5]).astype(np.int32)
-    cv2.fillConvexPoly(img, tri, tuple(int(v) for v in B), cv2.LINE_AA)
+                    e - d * head * .65 - n * W * 1.5])
+    body = [i for i in range(1, len(s)) if L[i] <= tot - head + 1]
+
+    if border is not None:      # outline pass underneath the fill
+        B2 = int(bw * W / 13 * 2)
+        for i in body:
+            cv2.line(img, tuple(s[i-1].astype(int)), tuple(s[i].astype(int)),
+                     tuple(int(v) for v in border), int(W) + B2, cv2.LINE_AA)
+            cv2.circle(img, tuple(s[i].astype(int)), (int(W) + B2) // 2, tuple(int(v) for v in border), -1, cv2.LINE_AA)
+        cv2.fillConvexPoly(img, tri.astype(np.int32), tuple(int(v) for v in border), cv2.LINE_AA)
+        cv2.polylines(img, [tri.astype(np.int32)], True, tuple(int(v) for v in border), B2, cv2.LINE_AA)
+
+    for i in body:
+        c = grad(stops, L[i] / tot)
+        cv2.line(img, tuple(s[i-1].astype(int)), tuple(s[i].astype(int)),
+                 tuple(int(v) for v in c), int(W), cv2.LINE_AA)
+    cv2.fillConvexPoly(img, tri.astype(np.int32), tuple(int(v) for v in stops[-1]), cv2.LINE_AA)
 
 
 def main():
@@ -87,8 +105,9 @@ def main():
             continue
         im = cv2.imread(base)
         big = cv2.resize(im, None, fx=SS, fy=SS, interpolation=cv2.INTER_CUBIC)
-        A_, B_ = next((v for k, v in SCHEMES.items() if name.startswith(k)), (A, B))
-        draw_arrow(big, pts, W=13 * im.shape[1] / 720, A=A_, B=B_)
+        stops = next((v for k, v in SCHEMES.items() if name.startswith(k)), SCHEMES["2_"])
+        draw_arrow(big, pts, W=13 * im.shape[1] / 720, stops=stops, border=BORDER.get(name),
+                   bw=3.0 * im.shape[1] / 720)
         cv2.imwrite(os.path.join(out, name),
                     cv2.resize(big, (im.shape[1], im.shape[0]), interpolation=cv2.INTER_AREA))
         print("wrote", os.path.join(out, name))
