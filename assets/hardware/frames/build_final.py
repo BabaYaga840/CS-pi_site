@@ -1,4 +1,4 @@
-"""usage: python3 build_final.py [masked]   (masked -> white-background bases from masked/)
+"""usage: python3 build_final.py [masked|transparent]   (masked -> white background, transparent -> alpha background)
 Merge waypoints, render coloured arrows, and collect the 9 final figures into ../final_figures."""
 import json, os, shutil, subprocess, sys
 
@@ -9,10 +9,11 @@ m = {k: v for k, v in old.items() if k[:2] in ("2_", "3_", "5_")}
 m.update(new)
 m.update(json.load(open("waypoints_post.json")))
 json.dump(m, open("waypoints_all.json", "w"), indent=1)
-MASKED = "masked" in sys.argv[1:]
-WT = "with_trajectories_masked" if MASKED else "with_trajectories"
-OUT = "../final_figures_masked" if MASKED else "../final_figures"
-subprocess.run(["python3", "render_trajectories.py", "waypoints_all.json", WT] + (["masked"] if MASKED else []), check=True)
+MODE = "transparent" if "transparent" in sys.argv[1:] else "masked" if "masked" in sys.argv[1:] else ""
+WT = {"": "with_trajectories", "masked": "with_trajectories_masked", "transparent": "with_trajectories_transparent"}[MODE]
+OUT = {"": "../final_figures", "masked": "../final_figures_masked", "transparent": "../final_figures_transparent"}[MODE]
+extra = {"": [], "masked": ["masked"], "transparent": [".", "transparent"]}[MODE]
+subprocess.run(["python3", "render_trajectories.py", "waypoints_all.json", WT] + extra, check=True)
 
 os.makedirs(OUT, exist_ok=True)
 mp = {"2_gradient_guidance_failure": "1_gradient_guidance",

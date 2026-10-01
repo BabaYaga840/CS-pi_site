@@ -88,10 +88,35 @@ def draw_arrow(img, pts, W=13, stops=SCHEMES["2_"], border=None, bw=3.0):
     cv2.fillConvexPoly(img, tri.astype(np.int32), tuple(int(v) for v in stops[-1]), cv2.LINE_AA)
 
 
+def arrow_layer(shape, pts, **kw):
+    """Arrow-only RGBA layer (float, straight alpha), recovered exactly from white/black renders."""
+    h, w = shape
+    out = []
+    for bg in (255, 0):
+        big = np.full((h * SS, w * SS, 3), bg, np.uint8)
+        draw_arrow(big, pts, **kw)
+        out.append(cv2.resize(big, (w, h), interpolation=cv2.INTER_AREA).astype(np.float32))
+    on_white, on_black = out
+    alpha = np.clip(1 - (on_white - on_black).mean(axis=2) / 255, 0, 1)
+    color = np.where(alpha[..., None] > 1e-4, on_black / np.maximum(alpha[..., None], 1e-4), 0)
+    return np.clip(color, 0, 255), alpha
+
+
+def render_transparent(im, mask, pts, **kw):
+    """Source frame with everything outside `mask` transparent, arrows on top, as BGRA uint8."""
+    h, w = im.shape[:2]
+    a_b = cv2.GaussianBlur(mask.astype(np.float32), (0, 0), 0.8)
+    c_a, a_a = arrow_layer((h, w), pts, **kw)
+    a_o = a_a + a_b * (1 - a_a)
+    rgb = (c_a * a_a[..., None] + im.astype(np.float32) * (a_b * (1 - a_a))[..., None]) / np.maximum(a_o[..., None], 1e-4)
+    return np.dstack([np.clip(rgb, 0, 255), a_o * 255]).round().astype(np.uint8)
+
+
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else "waypoints.json"
     out = sys.argv[2] if len(sys.argv) > 2 else "with_trajectories"
     base_dir = sys.argv[3] if len(sys.argv) > 3 else "."
+    transparent = len(sys.argv) > 4 and sys.argv[4] == "transparent"
     os.makedirs(out, exist_ok=True)
     for name, v in json.load(open(src)).items():
         # old format: {file: [pts]}; new format: {file: {"image": base, "points": [pts]}}
@@ -99,12 +124,16 @@ def main():
         if len(pts) < 2:
             continue
         im = cv2.imread(os.path.join(base_dir, base))
-        big = cv2.resize(im, None, fx=SS, fy=SS, interpolation=cv2.INTER_CUBIC)
         stops = next((v for k, v in SCHEMES.items() if name.startswith(k)), SCHEMES["2_"])
-        draw_arrow(big, pts, W=20 * im.shape[1] / 720, stops=stops, border=BORDER.get(name),
-                   bw=10.0 * im.shape[1] / 720)
-        cv2.imwrite(os.path.join(out, name),
-                    cv2.resize(big, (im.shape[1], im.shape[0]), interpolation=cv2.INTER_AREA))
+        kw = dict(W=20 * im.shape[1] / 720, stops=stops, border=BORDER.get(name), bw=10.0 * im.shape[1] / 720)
+        if transparent:         # mask comes from masks/<base stem>_mask.png; source pixels from the original frame
+            mask = cv2.imread(os.path.join("masks", os.path.splitext(base)[0] + "_mask.png"), 0) > 127
+            res = render_transparent(cv2.imread(base), mask, pts, **kw)
+        else:
+            big = cv2.resize(im, None, fx=SS, fy=SS, interpolation=cv2.INTER_CUBIC)
+            draw_arrow(big, pts, **kw)
+            res = cv2.resize(big, (im.shape[1], im.shape[0]), interpolation=cv2.INTER_AREA)
+        cv2.imwrite(os.path.join(out, name), res)
         print("wrote", os.path.join(out, name))
 
 
