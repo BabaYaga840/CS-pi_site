@@ -79,7 +79,7 @@ def draw_arrow(img, pts, W=13, stops=SCHEMES["2_"], border=None, bw=3.0):
     body = [i for i in range(1, len(s)) if L[i] <= tot - head + 1]
 
     if border is not None:      # outline pass underneath the fill
-        B2 = int(bw * W / 13 * 2)
+        B2 = int(bw * W / 20 * 2)
         for i in body:
             cv2.line(img, tuple(s[i-1].astype(int)), tuple(s[i].astype(int)),
                      tuple(int(v) for v in border), int(W) + B2, cv2.LINE_AA)
@@ -106,7 +106,7 @@ def main():
         im = cv2.imread(base)
         big = cv2.resize(im, None, fx=SS, fy=SS, interpolation=cv2.INTER_CUBIC)
         stops = next((v for k, v in SCHEMES.items() if name.startswith(k)), SCHEMES["2_"])
-        draw_arrow(big, pts, W=13 * im.shape[1] / 720, stops=stops, border=BORDER.get(name),
+        draw_arrow(big, pts, W=20 * im.shape[1] / 720, stops=stops, border=BORDER.get(name),
                    bw=3.0 * im.shape[1] / 720)
         cv2.imwrite(os.path.join(out, name),
                     cv2.resize(big, (im.shape[1], im.shape[0]), interpolation=cv2.INTER_AREA))
