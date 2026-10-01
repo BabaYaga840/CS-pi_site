@@ -101,7 +101,7 @@ def main():
         big = cv2.resize(im, None, fx=SS, fy=SS, interpolation=cv2.INTER_CUBIC)
         stops = next((v for k, v in SCHEMES.items() if name.startswith(k)), SCHEMES["2_"])
         draw_arrow(big, pts, W=20 * im.shape[1] / 720, stops=stops, border=BORDER.get(name),
-                   bw=6.0 * im.shape[1] / 720)
+                   bw=10.0 * im.shape[1] / 720)
         cv2.imwrite(os.path.join(out, name),
                     cv2.resize(big, (im.shape[1], im.shape[0]), interpolation=cv2.INTER_AREA))
         print("wrote", os.path.join(out, name))
