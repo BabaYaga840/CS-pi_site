@@ -10,7 +10,8 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 UNGUIDED = [f"unguided_f{k:04d}.png" for k in [0, 604, 1208, 1816, 2420, 3028, 3632, 4236]]
-BASES = UNGUIDED + ["2_gradient_guidance_failure.png", "7_projection_before_3s.png", "3_projection_failure.png",
+CLASSES = [f"1_start_position.png@{c}" for c in ("obstacle", "robot", "apple")]   # one frame, one mask per class
+BASES = CLASSES + UNGUIDED + ["2_gradient_guidance_failure.png", "7_projection_before_3s.png", "3_projection_failure.png",
                     "6_rejection_base.png", "8_cspi_base.png", "5_cspi.png"]
 MODEL = "facebook/sam2.1-hiera-large"
 PORT = 8765
@@ -21,10 +22,20 @@ print("loading", MODEL, "on", dev, flush=True)
 proc = Sam2Processor.from_pretrained(MODEL)
 model = Sam2Model.from_pretrained(MODEL).to(dev).eval()
 print("model ready", flush=True)
-cache = {}   # image name -> (PIL image, image embeddings, original_sizes)
+cache = {}   # image file -> (PIL image, image embeddings, original_sizes)
+
+
+def file_of(name):
+    return name.split("@")[0]                      # "frame.png@class" -> "frame.png"
+
+
+def mask_file(name):
+    f, _, c = name.partition("@")
+    return os.path.join(HERE, "masks", os.path.splitext(f)[0] + ("@" + c if c else "") + "_mask.png")
 
 
 def embed(name):
+    name = file_of(name)
     if name not in cache:
         img = Image.open(os.path.join(HERE, name)).convert("RGB")
         inp = proc(images=img, input_points=[[[[0, 0]]]], input_labels=[[[1]]], return_tensors="pt")
@@ -55,10 +66,12 @@ def predict(name, pts):
 
 def save(name, mask_b64):
     mask = np.array(Image.open(io.BytesIO(base64.b64decode(mask_b64))).convert("L")) > 127
-    img = np.array(Image.open(os.path.join(HERE, name)).convert("RGB"))
+    img = np.array(Image.open(os.path.join(HERE, file_of(name))).convert("RGB"))
     os.makedirs(os.path.join(HERE, "masks"), exist_ok=True)
+    Image.fromarray((mask * 255).astype(np.uint8)).save(mask_file(name))
+    if "@" in name:                                # per-class masks only; no white-background image
+        return
     os.makedirs(os.path.join(HERE, "masked"), exist_ok=True)
-    Image.fromarray((mask * 255).astype(np.uint8)).save(os.path.join(HERE, "masks", os.path.splitext(name)[0] + "_mask.png"))
     out = np.full_like(img, 255)
     out[mask] = img[mask]
     Image.fromarray(out).save(os.path.join(HERE, "masked", name))
@@ -83,12 +96,12 @@ class H(BaseHTTPRequestHandler):
         if p == "/":
             return self.send(open(os.path.join(HERE, "segment_tool.html"), "rb").read(), "text/html")
         if p == "/images":
-            done = [n for n in BASES if os.path.exists(os.path.join(HERE, "masked", n))]
+            done = [n for n in BASES if os.path.exists(mask_file(n))]
             return self.send({"images": BASES, "done": done})
         if p.startswith("/img/") and os.path.basename(p) in BASES:
-            return self.send(open(os.path.join(HERE, os.path.basename(p)), "rb").read(), "image/png")
+            return self.send(open(os.path.join(HERE, file_of(os.path.basename(p))), "rb").read(), "image/png")
         if p.startswith("/mask/") and os.path.basename(p) in BASES:
-            f = os.path.join(HERE, "masks", os.path.splitext(os.path.basename(p))[0] + "_mask.png")
+            f = mask_file(os.path.basename(p))
             if os.path.exists(f):
                 return self.send(open(f, "rb").read(), "image/png")
         self.send(b"not found", "text/plain", 404)
