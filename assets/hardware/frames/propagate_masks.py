@@ -113,7 +113,17 @@ def run(key):
         cur, cur_seeds = seed, objs
         while (cur < T - 1) if not reverse else (cur > 0):
             lo, hi = (cur, min(T, cur + CHUNK)) if not reverse else (max(0, cur - CHUNK + 1), cur + 1)
-            res = track_subprocess(path, lo, hi, cur - lo, cur_seeds, reverse)
+            cache = os.path.join(HERE, "video_masks", "cache", f"{key}_{'rev' if reverse else 'fwd'}_{lo}_{hi}.npz")
+            if os.path.exists(cache):                       # resume: this chunk was already tracked
+                z = np.load(cache)
+                m = np.unpackbits(z["packed"], axis=-1)[..., :W].astype(bool)
+                res = {int(f): {int(o): m[k, j] for j, o in enumerate(z["ids"])} for k, f in enumerate(z["frames"])}
+            else:
+                res = track_subprocess(path, lo, hi, cur - lo, cur_seeds, reverse)
+                os.makedirs(os.path.dirname(cache), exist_ok=True)
+                fr, ids = sorted(res), sorted(cur_seeds)
+                np.savez(cache, frames=np.array(fr), ids=np.array(ids),
+                         packed=np.packbits(np.stack([np.stack([res[f][o] for o in ids]) for f in fr]), axis=-1))
             for li, d in res.items():
                 union[lo + li] |= np.any(list(d.values()), axis=0) if d else False
             end_local = (hi - lo - 1) if not reverse else 0

@@ -9,8 +9,9 @@ import numpy as np, torch
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-BASES = ["2_gradient_guidance_failure.png", "7_projection_before_3s.png", "3_projection_failure.png",
-         "6_rejection_base.png", "8_cspi_base.png", "5_cspi.png"]
+UNGUIDED = [f"unguided_f{k:04d}.png" for k in [0, 604, 1208, 1816, 2420, 3028, 3632, 4236]]
+BASES = UNGUIDED + ["2_gradient_guidance_failure.png", "7_projection_before_3s.png", "3_projection_failure.png",
+                    "6_rejection_base.png", "8_cspi_base.png", "5_cspi.png"]
 MODEL = "facebook/sam2.1-hiera-large"
 PORT = 8765
 
