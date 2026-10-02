@@ -9,10 +9,12 @@ import numpy as np, torch
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-UNGUIDED = [f"unguided_f{k:04d}.png" for k in [0, 604, 1208, 1816, 2420, 3028, 3632, 4236]]
+UNGUIDED = [f"unguided_f{k:04d}.png" for k in [0, 64, 136, 208, 604, 1208, 1816, 2420, 3028, 3632, 4236]]
 CLASSES = [f"1_start_position.png@{c}" for c in ("obstacle", "robot", "apple")]   # one frame, one mask per class
-BASES = CLASSES + UNGUIDED + ["2_gradient_guidance_failure.png", "7_projection_before_3s.png", "3_projection_failure.png",
-                    "6_rejection_base.png", "8_cspi_base.png", "5_cspi.png"]
+NEW_KEYFRAMES = UNGUIDED[1:4]                                                    # frames 64, 136, 208: the arm enters the view
+OTHERS = ["2_gradient_guidance_failure.png", "7_projection_before_3s.png", "3_projection_failure.png",
+          "6_rejection_base.png", "8_cspi_base.png", "5_cspi.png"]
+BASES = NEW_KEYFRAMES + CLASSES + [u for u in UNGUIDED if u not in NEW_KEYFRAMES] + OTHERS
 MODEL = "facebook/sam2.1-hiera-large"
 PORT = 8765
 
