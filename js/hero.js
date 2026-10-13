@@ -1,7 +1,8 @@
 // =============================================================================
 // Animated CS-Pi loop. A 2D Avoidance toy: the policy wants to go start -> goal,
 // a deployment-time obstacle blocks the straight path. CS-Pi draws a sample,
-// projects the violation onto the feasible boundary, renoises to depth
+// projects it pointwise onto the feasible set (the violating stretch is lifted
+// onto the obstacle boundary, so c hugs the constraint), renoises to depth
 // n = k/(k+delta), re-runs the flow, and converges. Loops forever; click to restart.
 // =============================================================================
 (function () {
@@ -23,8 +24,9 @@
   const K = 1.0;                                // CS-Pi hyperparameter (display)
   const TAU = 0.012;                            // feasibility threshold
 
-  // control-point offset (perpendicular bow away from obstacle). Larger -> clears.
-  // sample of Bezier S->P->G; deepest penetration into O defines delta.
+  const R = O.r + MARGIN;                       // inflated (feasible) boundary
+  const NPTS = 64;
+
   function bezier(t, P) {
     const u = 1 - t;
     return {
@@ -32,35 +34,53 @@
       y: u * u * S.y + 2 * u * t * P.y + t * t * G.y
     };
   }
-  function controlPoint(offset) {
-    // bow upward (decreasing y) from the straight-line midpoint
-    const mid = { x: (S.x + G.x) / 2, y: (S.y + G.y) / 2 };
-    return { x: mid.x + 0.02, y: mid.y - offset };
+  // the policy's preferred sample: a near-straight line through the obstacle
+  const CP = { x: (S.x + G.x) / 2 + 0.02, y: (S.y + G.y) / 2 };
+  const BASE = [];
+  for (let i = 0; i <= NPTS; i++) BASE.push(bezier(i / NPTS, CP));
+
+  // y of the feasible boundary directly above p (p.y if p is already feasible)
+  function liftY(p) {
+    const dx = p.x - O.x;
+    if (Math.abs(dx) >= R) return p.y;
+    const h = Math.sqrt(R * R - dx * dx);
+    return (p.y > O.y - h && p.y < O.y + h) ? O.y - h : p.y;
   }
-  function penetration(offset) {
-    const P = controlPoint(offset);
-    let minD = Infinity, deep = null, deepT = 0;
-    for (let i = 0; i <= 60; i++) {
-      const t = i / 60, p = bezier(t, P);
+  // pointwise projection onto the feasible set: violating points land on the
+  // boundary, the rest stay put, so the projected path hugs the constraint
+  function project(pts) { return pts.map(p => ({ x: p.x, y: liftY(p) })); }
+
+  function violation(pts) {
+    let minD = Infinity, deep = pts[0];
+    for (const p of pts) {
       const d = Math.hypot(p.x - O.x, p.y - O.y);
-      if (d < minD) { minD = d; deep = p; deepT = t; }
+      if (d < minD) { minD = d; deep = p; }
     }
-    return { delta: Math.max(0, O.r + MARGIN - minD), deep, deepT, minD };
+    return { delta: Math.max(0, R - minD), deep };
   }
-  // feasible offset: grow until clear
-  let OFFSET_FEAS = 0.0;
-  for (let o = 0; o <= 0.6; o += 0.005) {
-    if (penetration(o).delta <= TAU) { OFFSET_FEAS = o; break; }
+
+  // What the re-run flow lands on: the base sample pulled toward the projection.
+  // LIFT is a locally relaxed envelope of the required lift (relax toward the
+  // neighbour average, never below the requirement): it follows the arc and
+  // only rounds the shoulders where the path meets the boundary. LIFT >= need,
+  // so h=1 is feasible and the converged path hugs the constraint.
+  const need = BASE.map(p => p.y - liftY(p));
+  let LIFT = need.slice();
+  for (let it = 0; it < 40; it++) {
+    const next = LIFT.slice();
+    for (let i = 1; i < NPTS; i++) next[i] = Math.max(need[i], 0.5 * (LIFT[i - 1] + LIFT[i + 1]));
+    LIFT = next;
   }
-  const OFFSET_START = 0.0;     // straight through the obstacle
-  const GAIN = 0.90;            // contraction per iteration (Phase-2-like): ~3 iters
+  function sampleAt(h) { return BASE.map((p, i) => ({ x: p.x, y: p.y - h * LIFT[i] })); }
+  function lerpPts(a, b, k) { return a.map((p, i) => ({ x: p.x + (b[i].x - p.x) * k, y: p.y + (b[i].y - p.y) * k })); }
+
+  const RHO = 0.20;             // residual kept per re-run (Phase-2-like): ~3 iters
 
   // stable noise pattern so the "denoising" settles instead of flickering
-  const NPTS = 64;
   const noisePat = [];
-  for (let i = 0; i < NPTS; i++) noisePat.push((Math.random() * 2 - 1));
+  for (let i = 0; i <= NPTS; i++) noisePat.push((Math.random() * 2 - 1));
   const noisePat2 = [];
-  for (let i = 0; i < NPTS; i++) noisePat2.push((Math.random() * 2 - 1));
+  for (let i = 0; i <= NPTS; i++) noisePat2.push((Math.random() * 2 - 1));
 
   // ---- state machine -------------------------------------------------------
   const PH = { DRAW: 'draw', EVAL: 'eval', PROJECT: 'project', RENOISE: 'renoise', DONE: 'done' };
@@ -69,8 +89,8 @@
   function reset() {
     st = {
       phase: PH.DRAW, t0: performance.now(), iter: 1,
-      offset: OFFSET_START, projOffset: OFFSET_START,
-      delta: penetration(OFFSET_START).delta, n: 0.0, denoiseFrom: 0.0
+      h: 0.0, from: null,
+      delta: violation(sampleAt(0)).delta, n: 0.0, denoiseFrom: 0.0
     };
     hud();
   }
@@ -80,7 +100,7 @@
   function hud() {
     const stageNames = {
       draw: 'flow ODE  ·  draw clean sample â', eval: 'evaluate violation  δ',
-      project: 'project   â → c  (nearest feasible)', renoise: 'renoise c to depth n',
+      project: 'project   â → c  (onto the constraint)', renoise: 'renoise c to depth n',
       done: 'feasible ✓'
     };
     if (elStage) elStage.textContent = stageNames[st.phase] || '';
@@ -153,24 +173,17 @@
     ctx.fillStyle = '#14233a'; ctx.beginPath(); ctx.arc(s.x, s.y, 5, 0, 7); ctx.fill();
     ctx.textBaseline = 'top'; ctx.fillText('start', s.x, s.y + 8);
   }
-  function pathPoints(offset, denoise) {
+  function noisy(pts, denoise) {
     // denoise in [0,1]: 0 = full noise amplitude, 1 = clean
-    const P = controlPoint(offset);
     const amp = (1 - denoise) * 0.085;
-    const pts = [];
-    for (let i = 0; i <= NPTS; i++) {
-      const t = i / NPTS;
-      const b = bezier(t, P);
-      // perpendicular direction
-      const t2 = Math.min(1, t + 0.01), b2 = bezier(t2, P);
-      let dx = b2.x - b.x, dy = b2.y - b.y; const L = Math.hypot(dx, dy) || 1;
-      const nx = -dy / L, ny = dx / L;
-      const env = Math.sin(Math.PI * t); // 0 at ends, 1 mid -> sample anchored at S,G
-      const k = i % NPTS;
-      const jitter = amp * env * (0.7 * noisePat[k] + 0.3 * noisePat2[k]);
-      pts.push({ x: b.x + nx * jitter, y: b.y + ny * jitter });
-    }
-    return pts;
+    if (amp <= 0) return pts;
+    return pts.map((p, i) => {
+      const q = pts[Math.min(NPTS, i + 1)], r = pts[Math.max(0, i - 1)];
+      let dx = q.x - r.x, dy = q.y - r.y; const L = Math.hypot(dx, dy) || 1;
+      const env = Math.sin(Math.PI * i / NPTS); // 0 at ends -> sample anchored at S,G
+      const jitter = amp * env * (0.7 * noisePat[i] + 0.3 * noisePat2[i]);
+      return { x: p.x - dy / L * jitter, y: p.y + dx / L * jitter };
+    });
   }
   function strokePath(pts, color, width, alpha) {
     ctx.globalAlpha = alpha == null ? 1 : alpha;
@@ -186,26 +199,20 @@
     ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
   }
 
-  // Draw the projection residual for a given display offset: the deepest path
-  // point, the nearest feasible point c on the (inflated) boundary, and the gap δ.
-  function drawProjection(off, opts) {
-    const pen = penetration(off);
-    if (!pen.deep) return;
-    const deep = px(pen.deep);
-    // project straight up to the (inflated) boundary: the feasible side the bow uses
-    const R = O.r + MARGIN, dxc = pen.deep.x - O.x;
-    const cN = (Math.abs(dxc) < R)
-      ? { x: pen.deep.x, y: O.y - Math.sqrt(R * R - dxc * dxc) }
-      : { x: O.x + Math.sign(dxc) * R, y: O.y };
-    const c = px(cN);
-    if (pen.delta > TAU) {
+  // Draw the projection residual for a clean path: the deepest path point, the
+  // feasible point c directly above it on the (inflated) boundary, and the gap δ.
+  function drawProjection(pts, opts) {
+    const v = violation(pts);
+    const cN = { x: v.deep.x, y: liftY(v.deep) };
+    const deep = px(v.deep), c = px(cN);
+    if (v.delta > TAU) {
       ctx.strokeStyle = '#1d6fd4'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
       ctx.beginPath(); ctx.moveTo(deep.x, deep.y); ctx.lineTo(c.x, c.y); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.arc(deep.x, deep.y, 4, 0, 7); ctx.fill();
     }
     ctx.fillStyle = '#1d6fd4'; ctx.beginPath(); ctx.arc(c.x, c.y, 5, 0, 7); ctx.fill();
     ctx.font = '600 12px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
-    if (opts.delta && pen.delta > TAU) {
+    if (opts.delta && v.delta > TAU) {
       ctx.fillStyle = '#c0392b';
       ctx.fillText('δ', (deep.x + c.x) / 2 + 6, (deep.y + c.y) / 2);
     }
@@ -229,36 +236,35 @@
     layoutIfNeeded();
     ctx.clearRect(0, 0, W, Hh);
 
-    // Per phase: which path offset to display, how denoised, where the noise
-    // marker sits. Project happens at t=1 (clean), distinct from renoise.
-    let off = st.offset, denoise = 1, barT = 1;
+    // Per phase: which clean path to show, how denoised, where the noise marker
+    // sits. Project happens at t=1 (clean), distinct from renoise.
+    const a = sampleAt(st.h);
+    let clean = a, denoise = 1, barT = 1;
     if (st.phase === PH.DRAW) {
-      off = st.offset; denoise = st.denoiseFrom + (1 - st.denoiseFrom) * prog; barT = denoise;
-    } else if (st.phase === PH.EVAL) {
-      off = st.offset; denoise = 1; barT = 1;
+      denoise = st.denoiseFrom + (1 - st.denoiseFrom) * prog; barT = denoise;
+      if (st.from) clean = lerpPts(st.from, a, ease(prog));   // re-run starts from renoised c
     } else if (st.phase === PH.PROJECT) {
-      // morph the clean sample onto the feasible set: â -> c
-      off = st.offset + (OFFSET_FEAS - st.offset) * ease(prog); denoise = 1; barT = 1;
+      // move each violating point onto the boundary: â -> c hugs the obstacle
+      clean = lerpPts(a, project(a), ease(prog));
     } else if (st.phase === PH.RENOISE) {
       // renoise the projected (feasible) path c back to depth n
-      off = OFFSET_FEAS; denoise = 1 - prog * (1 - st.n); barT = st.n + (1 - st.n) * (1 - prog);
-    } else if (st.phase === PH.DONE) {
-      off = st.offset; denoise = 1; barT = 1;
+      clean = project(a); denoise = 1 - prog * (1 - st.n); barT = st.n + (1 - st.n) * (1 - prog);
     }
 
     drawNoiseBar(barT);
     drawScene();
 
-    const feasibleNow = penetration(off).delta <= TAU;
+    if (st.phase === PH.PROJECT) strokePath(a, '#1d6fd4', 2, 0.25);   // ghost of â
+    const feasibleNow = violation(clean).delta <= TAU;
     const pathColor = (st.phase === PH.DONE || feasibleNow) ? '#1f9d57' : '#1d6fd4';
-    strokePath(pathPoints(off, denoise), pathColor, 3.2, 1);
+    strokePath(noisy(clean, denoise), pathColor, 3.2, 1);
 
-    if (st.phase === PH.EVAL) drawProjection(off, { delta: true });
-    else if (st.phase === PH.PROJECT) drawProjection(off, { delta: true, label: true });
-    else if (st.phase === PH.RENOISE) drawProjection(off, {});
+    if (st.phase === PH.EVAL) drawProjection(clean, { delta: true });
+    else if (st.phase === PH.PROJECT) drawProjection(clean, { delta: true, label: true });
+    else if (st.phase === PH.RENOISE) drawProjection(clean, {});
     else if (st.phase === PH.DONE) drawCheck();
 
-    st.delta = penetration(off).delta;
+    st.delta = violation(clean).delta;
     if (st.phase !== PH.DONE) hudStats();   // live δ / n as the sample morphs
     if (prog >= 1) advance();
     requestAnimationFrame(frame);
@@ -267,20 +273,21 @@
   function advance() {
     switch (st.phase) {
       case PH.DRAW: {
-        const feasible = penetration(st.offset).delta <= TAU;
-        go(feasible ? PH.DONE : PH.EVAL);
+        st.from = null;
+        go(violation(sampleAt(st.h)).delta <= TAU ? PH.DONE : PH.EVAL);
         break;
       }
       case PH.EVAL: {
-        // renoise depth from the violation; the re-run lands partway to feasible
-        st.n = nVal(penetration(st.offset).delta);
-        st.projOffset = st.offset + (OFFSET_FEAS - st.offset) * GAIN;
+        // renoise depth from the violation
+        st.n = nVal(violation(sampleAt(st.h)).delta);
         go(PH.PROJECT);
         break;
       }
       case PH.PROJECT: go(PH.RENOISE); break;
       case PH.RENOISE: {
-        st.offset = st.projOffset;          // re-run from the renoised projection
+        // re-run from the renoised projection; it lands closer to c each time
+        st.from = project(sampleAt(st.h));
+        st.h = 1 - RHO * (1 - st.h);
         st.iter += 1; st.denoiseFrom = st.n;
         go(PH.DRAW);
         break;
