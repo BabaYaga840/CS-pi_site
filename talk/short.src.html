@@ -2543,7 +2543,7 @@ body.notes-on #deck{right:396px;}
 
     var S = {x:0.13, y:0.50}, G = {x:0.87, y:0.50};
     var O = {x:0.50, y:0.50, r:0.105};
-    var MARGIN = 0.03, K = 1.0, TAU = 0.012;
+    var K = 1.0, TAU = 0.012;
 
     function bezier(t,P){ var u=1-t; return {
       x: u*u*S.x + 2*u*t*P.x + t*t*G.x,
@@ -2558,7 +2558,7 @@ body.notes-on #deck{right:396px;}
         var t=i/60, p=bezier(t,P), d=Math.hypot(p.x-O.x, p.y-O.y);
         if (d<minD){ minD=d; deep=p; }
       }
-      return { delta: Math.max(0, O.r + MARGIN - minD), deep: deep };
+      return { delta: Math.max(0, O.r - minD), deep: deep };
     }
     var OFFSET_FEAS = 0;
     for (var o=0; o<=0.6; o+=0.005){ if (penetration(o).delta <= TAU){ OFFSET_FEAS=o; break; } }
@@ -2567,9 +2567,9 @@ body.notes-on #deck{right:396px;}
     // clears the constraint. The second pass has to still cut into the
     // obstacle: a violation that shrank is the reason to go round again, and a
     // draw that already looks clear makes the pass after it read as busywork.
-    // The last one clears the rim with room to spare so feasible reads at a
+    // The last one clears the obstacle with room to spare so feasible reads at a
     // glance rather than as a graze.
-    var SCHEDULE = [0, 0.50, 1.25];
+    var SCHEDULE = [0, 0.50, 1.40];
     // Scale of the prior: the noise the flow starts from at t = 0, and so the
     // noise a renoise to depth n puts back, which is (1-n) of it. Sized so the
     // first renoise -- the deep one, n = 0.55, because δ was large -- actually
@@ -2583,7 +2583,7 @@ body.notes-on #deck{right:396px;}
     // The two beats worth dwelling on are the ones the method is made of:
     // renoise puts the noise back, draw is the flow re-running from that depth.
     // Both run roughly twice as long as the bookkeeping around them.
-    var DUR = {draw:4000, eval:700, project:1100, renoise:3200, done:1700};
+    var DUR = {draw:4000, eval:700, project:500, renoise:3200, done:1700};
     var st;
     function nVal(d){ return K/(K + d*6.0); }
     function ease(t){ return t<0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2; }
@@ -2652,8 +2652,6 @@ body.notes-on #deck{right:396px;}
       ctx.fillText('goal', g.x, g.y-16);
       ctx.fillStyle='rgba(224,83,61,.13)'; ctx.strokeStyle='#e0533d'; ctx.lineWidth=2;
       ctx.beginPath(); ctx.arc(oc.x,oc.y,pr(O.r),0,7); ctx.fill(); ctx.stroke();
-      ctx.setLineDash([4,4]); ctx.strokeStyle='rgba(224,83,61,.4)';
-      ctx.beginPath(); ctx.arc(oc.x,oc.y,pr(O.r+MARGIN),0,7); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle='#c0392b'; ctx.textBaseline='middle'; ctx.fillText('obstacle', oc.x, oc.y);
       ctx.fillStyle='#14233a'; ctx.beginPath(); ctx.arc(s.x,s.y,5,0,7); ctx.fill();
       ctx.textBaseline='top'; ctx.fillText('start', s.x, s.y+8);
@@ -2682,7 +2680,7 @@ body.notes-on #deck{right:396px;}
     }
 
     // ---- the projection ----------------------------------------------------
-    // Π_C waypoint by waypoint: a point already clear of the safety circle does
+    // Π_C waypoint by waypoint: a point already clear of the obstacle does
     // not move at all, and a point inside it goes to the nearest point of the
     // rim. So the projected chunk runs straight along the draw until the
     // circle, wraps it, and runs straight on to the goal -- and the corners
@@ -2694,11 +2692,11 @@ body.notes-on #deck{right:396px;}
     // resolve that tie the way the scene already reads -- go over the top --
     // by lifting each interior point onto the upper rim above it, which is the
     // limit of the radial map and agrees with it everywhere else.
-    var R_SAFE = O.r + MARGIN, DENSE = 600;
+    var R_OBS = O.r, DENSE = 600;
     function liftPoint(p){
       var dx=p.x-O.x, dy=p.y-O.y;
-      if (Math.hypot(dx,dy) >= R_SAFE) return p;
-      return {x: p.x, y: O.y - Math.sqrt(Math.max(0, R_SAFE*R_SAFE - dx*dx))};
+      if (Math.hypot(dx,dy) >= R_OBS) return p;
+      return {x: p.x, y: O.y - Math.sqrt(Math.max(0, R_OBS*R_OBS - dx*dx))};
     }
     function projectPath(off){
       var P=controlPoint(off), raw=[], moved=[], i, j;

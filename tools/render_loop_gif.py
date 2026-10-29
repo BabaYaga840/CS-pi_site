@@ -38,9 +38,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DECK = os.path.join(ROOT, "talk", "short.html")
 OUTGIF = os.path.join(ROOT, "assets", "cspi_loop.gif")
 
-# One full period of the loop. Keep STEP an exact divisor of it, or the GIF
-# will not join back to its first frame.
-LOOP_MS = 23700
+# One full period of the loop, read from the deck's DUR table at run time (see
+# loop_ms) so retiming the slide never needs an edit here. STEP must divide it
+# exactly or the GIF will not join back to its first frame.
+LOOP_MS = None
 STEP_MS = 30
 S = 3                                    # supersample factor
 CW, CH = 900, 330                        # canvas size the animation lays out for
@@ -132,6 +133,21 @@ def caption(hud, seen):
 # --------------------------------------------------------------------------
 # 1 + 2: run the deck's animation and record its canvas calls
 # --------------------------------------------------------------------------
+def loop_ms(hero):
+    """Period of the loop from the animation's own phase durations.
+
+    Two full draw/eval/project/renoise passes, then the feasible draw and the
+    hold on the result, after which the animation resets to pass 1.
+    """
+    import re
+    m = re.search(r"var DUR = \{([^}]*)\}", hero)
+    if not m:
+        sys.exit("could not find the DUR table in the hero block")
+    d = {k.strip(): int(v) for k, v in
+         (kv.split(":") for kv in m.group(1).split(","))}
+    return 2 * (d["draw"] + d["eval"] + d["project"] + d["renoise"]) + d["draw"] + d["done"]
+
+
 def hero_source(deck_path):
     """The live-loop IIFE, verbatim, out of the built deck."""
     with open(deck_path, encoding="utf-8") as fh:
@@ -531,8 +547,11 @@ def main():
     ap.add_argument("--frame", type=int, help="render only this frame, as a PNG")
     args = ap.parse_args()
 
+    global LOOP_MS
+    LOOP_MS = loop_ms(hero_source(args.deck))
     if LOOP_MS % STEP_MS:
-        sys.exit("STEP_MS must divide LOOP_MS or the GIF will not loop cleanly")
+        sys.exit("the loop is %d ms, which STEP_MS=%d does not divide: the output "
+                 "would not join back to its first frame" % (LOOP_MS, STEP_MS))
 
     work = tempfile.mkdtemp(prefix="loopgif-")
     try:
