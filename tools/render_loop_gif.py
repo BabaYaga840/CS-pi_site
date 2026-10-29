@@ -503,15 +503,22 @@ def ffmpeg_bin():
 
 
 def encode(frame_dir, out):
-    # A generated palette, then Bayer dithering: without it the noise bar's
-    # gradient bands visibly, and the dithering costs almost nothing in size.
-    vf = ("[0:v] split [a][b];"
-          "[a] palettegen=max_colors=256:stats_mode=full [p];"
-          "[b][p] paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle")
-    cmd = [ffmpeg_bin(), "-y", "-v", "error",
-           "-framerate", "%.3f" % (1000.0 / STEP_MS),
-           "-i", os.path.join(frame_dir, "%04d.png"),
-           "-filter_complex", vf, "-loop", "0", out]
+    rate = "1000/%d" % STEP_MS                 # exact, not a rounded 33.333
+    src = ["-framerate", rate, "-i", os.path.join(frame_dir, "%04d.png")]
+    if out.lower().endswith(".mp4"):
+        # H.264 in yuv420p plays everywhere (Keynote, PowerPoint, browsers,
+        # QuickTime); faststart puts the index first so it streams.
+        cmd = [ffmpeg_bin(), "-y", "-v", "error", *src,
+               "-c:v", "libx264", "-preset", "slow", "-crf", "16",
+               "-pix_fmt", "yuv420p", "-movflags", "+faststart", out]
+    else:
+        # A generated palette, then Bayer dithering: without it the noise bar's
+        # gradient bands visibly, and the dithering costs almost nothing in size.
+        vf = ("[0:v] split [a][b];"
+              "[a] palettegen=max_colors=256:stats_mode=full [p];"
+              "[b][p] paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle")
+        cmd = [ffmpeg_bin(), "-y", "-v", "error", *src,
+               "-filter_complex", vf, "-loop", "0", out]
     subprocess.run(cmd, check=True)
 
 
@@ -519,7 +526,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--deck", default=DECK, help="built deck to lift the loop from")
-    ap.add_argument("--out", default=OUTGIF, help="GIF to write")
+    ap.add_argument("--out", default=OUTGIF,
+                    help="file to write: .gif, or .mp4 for an H.264 video")
     ap.add_argument("--frame", type=int, help="render only this frame, as a PNG")
     args = ap.parse_args()
 
