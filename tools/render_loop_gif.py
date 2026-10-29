@@ -53,10 +53,16 @@ FINAL = (1350, 650)                      # 1.5x the 900x433 layout
 PANEL, LINE, SLIDE = (245, 248, 252), (226, 232, 242), (255, 255, 255)
 BLUEDP, INKSOFT = (15, 63, 134), (74, 90, 114)
 CAP_INK, CAP_DELTA, CAP_N = (32, 48, 74), (192, 57, 43), (29, 111, 212)
-LEGEND = [((29, 111, 212), "draw / project"),
+LEGEND = [((29, 111, 212), "sample / project"),
           ((31, 157, 87), "feasible · goal"),
           ((224, 83, 61), "obstacle (unseen at training)")]
-RECIPE = "draw → project → renoise to n = k/(k+δ) → re-run"
+RECIPE = "sample → project → noise to level n = k/(k+δ) → sample again"
+
+# The deck's status-bar labels, reworded for the video only: the GIF and video
+# say "sample from the flow policy" and "noise to a level", never "draw" or
+# "deep". The slide keeps its own wording.
+STAGE = {"flow ODE · draw clean sample â": "flow policy · sample â",
+         "renoise c to depth n": "noise c to level n"}
 
 # Inter and JetBrains Mono are webfonts the deck pulls from Google; they are not
 # on the machine. Lucida Grande is the only local UI sans carrying the arrow,
@@ -104,29 +110,27 @@ def caption(hud, seen):
     if talking and it in seen:
         d, n = seen[it]
         if it == "iter 1":
-            return [("pass 1 — projection error ", CAP_INK, False),
+            return [("pass 1: projection error ", CAP_INK, False),
                     ("δ = " + d, CAP_DELTA, True),
-                    (" is large, so renoise deep to ", CAP_INK, False),
-                    ("n = " + n, CAP_N, True),
-                    (": a lot of noise goes back", CAP_INK, False)]
+                    (" is large, so noise to a high noise level, ", CAP_INK, False),
+                    ("n = " + n, CAP_N, True)]
         prev = seen.get("iter 1", (None, None))[0]
-        return [("pass 2 — projection error ", CAP_INK, False),
+        return [("pass 2: projection error ", CAP_INK, False),
                 ("δ = " + d, CAP_DELTA, True),
                 ((", down from %s, " % prev) if prev else ", smaller, ", CAP_INK, False),
-                ("so renoise only to ", CAP_INK, False),
-                ("n = " + n, CAP_N, True),
-                (": less noise goes back", CAP_INK, False)]
+                ("so noise to a lower noise level, ", CAP_INK, False),
+                ("n = " + n, CAP_N, True)]
     if "feasible" in stage:
-        return [("δ = 0 — feasible, and it is an ordinary draw from the policy",
+        return [("δ = 0: feasible, and an ordinary sample from the flow policy",
                  CAP_INK, False)]
     if "draw" in stage:
         if it == "iter 1":
-            return [("the flow draws a sample — it runs straight through the obstacle",
+            return [("sample from the flow policy: the trajectory runs straight through the obstacle",
                      CAP_INK, False)]
         if it == "iter 2":
-            return [("re-run from the renoised chunk — a new sample, closer but not clear",
+            return [("sample again from the noised trajectory: closer, but not yet clear",
                      CAP_INK, False)]
-        return [("re-run again — this draw clears the obstacle", CAP_INK, False)]
+        return [("sample again: this trajectory clears the obstacle", CAP_INK, False)]
     return []
 
 
@@ -472,9 +476,10 @@ def render(fr, seen):
     hud = fr["hud"]
     fm, fmb = font("mono", 11.5 * S), font("mono", 11.5 * S, True)
     cy = BAR_H * S / 2
-    dr.text((PADX * S, cy), hud["stage"], font=fmb, fill=BLUEDP + (255,), anchor="lm")
+    dr.text((PADX * S, cy), STAGE.get(hud["stage"], hud["stage"]), font=fmb, fill=BLUEDP + (255,), anchor="lm")
     x = W * S - PADX * S
-    for txt in (hud["n"], hud["delta"], hud["iter"]):
+    # once feasible the deck shows n as an em dash; the video just drops it
+    for txt in [t for t in (hud["n"], hud["delta"], hud["iter"]) if "—" not in t]:
         dr.text((x, cy), txt, font=fm, fill=INKSOFT + (255,), anchor="rm")
         x -= dr.textlength(txt, font=fm) + 12 * S
 
