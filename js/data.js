@@ -166,8 +166,10 @@ window.RESULTS = {
              'success. logL is the mean log-likelihood the prior assigns to a ' +
              'method’s samples (nats/dim; the prior’s own samples score 15.0; ' +
              'higher is more in-distribution). NFE is flow-model calls per ' +
-             'trajectory. SafeDiffuser and SafeFlowMatcher are reported at their ' +
-             'swept-best admissible grids; their log-likelihood is not available.',
+             'trajectory. SafeDiffuser and SafeFlowMatcher are re-implementations ' +
+             'on the same prior at their swept-best admissible grids. †9 of ' +
+             'SafeDiffuser’s 2000 scored chunks have non-finite log-density ' +
+             '(off-manifold samples), so its mean is undefined.',
     cols: ['Method', 'Safe-SR (%) ↑', 'Goal reach (%) ↑',
            'Collision (%) ↓', 'logL ↑', 'NFE ↓'],
     rows: [
@@ -176,24 +178,26 @@ window.RESULTS = {
       { c: ['Trust Sampling (w=0.01, j=5)', '27.3', '28.0', '0.7',  '10.5', '1242'] },
       { c: ['Rejection (B=100)',            '33.3', '67.3', '40.7', '14.2', '8676'] },
       { c: ['Projection',                   '62.0', '66.0', '4.0',  '11.2', '240'] },
-      { c: ['SafeDiffuser',                 '15.0', '24.0', '24.0', '—',    '240'] },
-      { c: ['SafeFlowMatcher',              '58.0', '62.0', '5.0',  '—',    '432'] },
+      { c: ['SafeDiffuser',                 '11.3', '18.7', '24.7', 'n/a†', '240'] },
+      { c: ['SafeFlowMatcher',              '56.0', '59.3', '4.0',  '10.9', '432'] },
       { c: ['CS-Pi (k=10, Kmax=5) (ours)',  '73.3', '78.7', '6.7',  '18.0', '285'],
         ours: true, best: [1, 2, 4] }
     ]
   },
   d3il: {
     title: '2D Avoidance (macro over 6 scenarios)',
-    lead: 'Among methods that stay near the prior in log-likelihood, CS-Pi has ' +
-          'the best safe-success and keeps the most trajectories fully on the ' +
-          'demonstration support. Projection reaches higher raw safe-success ' +
-          '(100%) only by collapsing log-likelihood to −3.34.',
+    lead: 'Among methods that stay near the prior in log-likelihood, CS-Pi keeps ' +
+          'the most trajectories fully on the demonstration support, at 99% ' +
+          'safe-success. SafeDiffuser and SafeFlowMatcher match it here (100% ' +
+          'safe-success; SafeDiffuser keeps 0.828 fully on-support), the one ' +
+          'benchmark where the CBF samplers are competitive; projection reaches ' +
+          '100% only by collapsing log-likelihood to −3.34.',
     caption: '200 rollouts per cell, best hyperparameter per method. Safe-SR: ' +
              'rollouts reaching the goal collision-free. Fully-in-supp.: fraction ' +
              'of rollouts whose every waypoint lies inside the training-demonstration ' +
-             'support. Log-lik.: mean log-likelihood under the prior. SafeDiffuser ' +
-             'and SafeFlowMatcher are re-implementations on the same prior; support ' +
-             'and log-likelihood were not scored for those runs.',
+             'support. Log-lik.: median per-chunk log-likelihood under the prior ' +
+             '(nats/dim); a few off-manifold chunks dominate the mean. SafeDiffuser ' +
+             'and SafeFlowMatcher are re-implementations on the same prior.',
     cols: ['Method', 'Safe-SR (%) ↑', 'Fully-in-supp. ↑',
            'Log-lik. ↑', 'NFE ↓'],
     rows: [
@@ -202,8 +206,8 @@ window.RESULTS = {
       { c: ['Trust Sampling',     '45.5',  '0.444', '1.53',  '3161'] },
       { c: ['Rejection',          '68.1',  '0.831', '+1.71', '6732'], best: [3] },
       { c: ['Projection',         '100.0', '0.650', '-3.34', '112'], best: [1] },
-      { c: ['SafeDiffuser',       '100.0', '—',     '—',     '92'],  best: [1, 4] },
-      { c: ['SafeFlowMatcher',    '43.0',  '—',     '—',     '223'] },
+      { c: ['SafeDiffuser',       '100.0', '0.828', '1.51',  '92'],  best: [1, 4] },
+      { c: ['SafeFlowMatcher',    '100.0', '—',     '—',     '—'],   best: [1] },
       { c: ['CS-Pi (ours)',       '99.0',  '0.857', '1.53',  '283'],
         ours: true, best: [2] }
     ]
@@ -214,23 +218,30 @@ window.RESULTS = {
           'up the reach: 68.9% success, with reach and smoothness within a ' +
           'millimetre of the unguided policy. The guidance baselines lower the ' +
           'orientation cost but push the end effector up to 0.70 m off target and ' +
-          'roughen the path, so their success stays below 10%. CS-Pi reads the ' +
-          'cost only on fully formed samples.',
+          'roughen the path, so their success stays at or below 10%. The CBF ' +
+          'samplers fare no better: SafeDiffuser and SafeFlowMatcher reach 7.8% ' +
+          'success and the goal in only 2.2% of rollouts. CS-Pi reads the cost ' +
+          'only on fully formed samples.',
     caption: '90 rollouts per cell. Success: a step simultaneously within 10 cm ' +
              'of the target position and 0.36 rad of the target orientation. ' +
              'Goal reach: rollouts ending within 10 cm of the target position. ' +
              'logL comparisons are meaningful only at comparable constraint ' +
              'satisfaction, since the guidance configurations reach only 3.3% and ' +
              '8.9% success. Max EE step: largest single-step end-effector jump ' +
-             '(m; smoothness proxy). NFE: model evaluations per rollout.',
+             '(m; smoothness proxy). NFE: model evaluations per rollout. ' +
+             '†Re-implementations on the same prior at their swept-best admissible ' +
+             'configurations, evaluated in a later run on the same 90 tasks; their ' +
+             'logL is the Unguided value plus the gap to Unguided measured in that run.',
     cols: ['Method', 'Success ↑', 'Goal reach ↑', 'logL ↑',
            'Max EE step', 'NFE ↓'],
     rows: [
       { c: ['Unguided',                    '1.1%',  '100%',  '13.55', '0.107', '135'],
-        best: [2, 4, 5] },
+        best: [2, 4] },
       { c: ['Gradient Guidance (α=0.003)', '3.3%',  '77.8%', '12.55', '0.120', '153'] },
       { c: ['Gradient Guidance (α=0.03)',  '8.9%',  '10.0%', '9.41',  '0.928', '160'] },
       { c: ['Trust Sampling (w=0.001)',    '10.0%', '11.1%', '13.56', '1.310', '1358'], best: [3] },
+      { c: ['SafeDiffuser†',               '7.8%',  '2.2%',  '3.83',  '0.772', '160'] },
+      { c: ['SafeFlowMatcher†',            '7.8%',  '2.2%',  '8.02',  '0.700', '96'],   best: [5] },
       { c: ['CS-Pi + EE-prox (ours)',      '68.9%', '98.9%', '10.26', '0.108', '210'],
         ours: true, best: [1] }
     ]
@@ -269,7 +280,7 @@ window.HEADLINE = [
   { big: '55%',   small: 'safe-success on a real Franka',
     sub: 'zero-shot with π₀.₅; vs 40% projection, 25% guidance, 10% unguided' },
   { big: '73.3%', small: 'safe-success on the shelf',
-    sub: 'vs 62% projection, 58% SafeFlowMatcher, 28% guidance' },
+    sub: 'vs 62% projection, 56% SafeFlowMatcher, 28% guidance' },
   { big: '18.0',  small: 'in-distribution (log-likelihood)',
     sub: 'the only shelf sampler at or above the prior (15.0); projection 11.2, guidance 10.2' },
   { big: '0',     small: 'constraint gradients needed',
