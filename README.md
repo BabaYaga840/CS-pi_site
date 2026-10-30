@@ -1,7 +1,7 @@
 # CS-Pi project page
 
 Static project page for **CS-Pi: Constraint-Satisfying Flow Policy Sampling**
-(CoRL 2026 submission). No build step, no dependencies: plain HTML, CSS, and
+(CoRL 2026). No build step, no dependencies: plain HTML, CSS, and
 vanilla JS, hosted on GitHub Pages.
 
 ## What is here
@@ -56,9 +56,9 @@ In both cases the task's method buttons come from its `methods` list in
 there. The `2d` task is still a placeholder (`available: false`); set it true and
 add its scenarios once its GIFs land.
 
-## Deanonymize (after review)
+## Authors, venue, links
 
-`js/data.js` → `SITE.anonymous`, `SITE.authors`, `SITE.affiliation`, and the
+`js/data.js` → `SITE.authors` (comma-separated; also feeds the BibTeX), `SITE.affiliation`, `SITE.venue`, and the
 `SITE.links` block. One edit, nothing else changes.
 
 ## Deploy on GitHub Pages
