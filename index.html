@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CS-Pi: Constraint-Satisfying Flow Policy Sampling</title>
-<meta name="description" content="CS-Pi: training-free sampling of safe, in-distribution actions from a flow-matching robot policy. Draw, project, renoise, re-run. No gradients based on proxies.">
-<meta property="og:title" content="CS-Pi: Constraint-Satisfying Flow Policy Sampling">
-<meta property="og:description" content="Training-free sampling of safe, in-distribution actions from a flow-matching robot policy.">
+<meta name="description" content="CS-Pi (CoRL 2026): training-free sampling of safe, plausible actions from a frozen flow-matching robot policy. Draw, project, renoise, re-run. No gradients based on proxies.">
+<meta property="og:title" content="CS-Pi: Constraint-Satisfying Flow Policy Sampling (CoRL 2026)">
+<meta property="og:description" content="Training-free sampling of safe, plausible actions from a frozen flow-matching robot policy.">
 <meta property="og:image" content="assets/concept.png">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -44,11 +44,11 @@
 
 <!-- hero -->
 <header class="hero"><div class="wrap hero-center">
-  <span class="badge" id="heroBadge">CoRL 2026 submission</span>
+  <span class="badge" id="heroBadge">CoRL 2026</span>
   <h1 id="heroTitle">CS-Pi</h1>
   <div class="sub" id="heroSub">Constraint-Satisfying Flow Policy Sampling</div>
   <div class="authors" id="heroAuthors">Anonymous Authors</div>
-  <div class="affil" id="heroAffil">CoRL 2026 submission</div>
+  <div class="affil" id="heroAffil">Conference on Robot Learning (CoRL) 2026</div>
   <p class="tagline" id="heroTagline"></p>
   <div class="btnrow" id="btnrow"></div>
 
@@ -82,15 +82,23 @@
 <section id="hardware" class="faceoff"><div class="wrap">
   <p class="section-kicker">Hardware</p>
   <h2>Zero-shot on a Franka with π₀.₅</h2>
-  <p class="lead mt">Task: pick the apple, place it on the blue plate. The constraint set is obstacle
-    bounding boxes from a ZED 2 RGB-D vision pipeline; deployment is zero-shot, no finetuning.
-    <span class="cs">CS-Pi</span> completes the pick-and-place while the baselines fail.
+  <p class="lead mt">A Franka arm with a Robotiq 2F-85 gripper runs a DROID-finetuned π₀.₅,
+    used without further finetuning, on <i>pick up the apple and place it on the blue plate</i>.
+    A vision pipeline on the ZED 2 RGB and depth images generates obstacle bounding boxes that
+    form the constraint set; deployment is zero-shot. Over two layouts and 10 trials per method
+    per layout, <span class="cs">CS-Pi</span> reaches <b>55%</b> safe success against 40% for
+    projection, 25% for gradient guidance, and 10% for the unguided policy.
     <b>All clips play at 4× speed.</b></p>
   <div class="hw-video-grid" id="hwVideos"></div>
 
   <h3 class="hw-subhead">Annotated rollout frames</h3>
-  <p class="lead" style="font-size:15px">Green strips are <span class="cs">CS-Pi</span>;
-    red strips are the same policy run unguided. Frames run left to right.</p>
+  <p class="lead" style="font-size:15px">Frames run left to right. Green strips are
+    <span class="cs">CS-Pi</span>, which enforces the deployment-time obstacle constraint and
+    completes the pick-and-place; red strips are the same π₀.₅ policy run unguided.
+    <b>Layout 1:</b> <span class="cs">CS-Pi</span> grasps the apple and places it, while the
+    unguided policy clips the cup and loses the grasp. <b>Layout 2:</b>
+    <span class="cs">CS-Pi</span> reaches down and lifts the apple cleanly, while the unguided
+    policy crashes into the obstacle.</p>
   <div class="hw-strip" id="hwStrips"></div>
 </div></section>
 
@@ -101,22 +109,24 @@
   <p class="lead mt">
     A flow-matching policy deployed in the field must often satisfy a constraint that
     was absent from its demonstrations, such as a collision-free path or a particular
-    grasp orientation. Existing training-free samplers either guide the denoising
-    trajectory with a constraint gradient at noisy intermediates, where a hard
-    constraint gives no usable gradient, or project the finished sample onto the
-    feasible set and execute it, which yields an action the policy would never draw.
+    grasp orientation. Existing training-free samplers take one of two approaches.
+    <i>Guidance</i> steers the denoising trajectory with a constraint gradient at noisy
+    intermediates: the gradient at a noisy sample need not point toward a clean feasible
+    one. <i>Projection</i> maps the finished sample onto the feasible set and executes it:
+    it is efficient, but the result is an action the policy would never draw.
   </p>
   <p class="lead mt">
-    Our key insight is that the projection is a cheap, clean, feasible signal, and the
-    only mistake is executing it. <span class="cs">CS-Pi</span> draws from the policy,
-    projects the clean sample to the nearest feasible point, and resamples from the
-    flow model biased toward that point rather than executing it. Iterating drives the
-    samples toward constraint satisfaction, with no noisy-state gradient, no auxiliary
-    network, and no per-deployment tuning; it extends to arbitrary costs with just a
-    change to the projection. Across a 2D diagnostic, a 7-DoF shelf pick-and-place, and
-    a zero-shot Franka deployment, <span class="cs">CS-Pi</span> is the only sampler
-    that stays in-distribution wherever the constraint permits, departing from the
-    policy only as far as the constraint forces.
+    We find that this dichotomy need not hold. Our key insight is that the projection is
+    a cheap, clean, feasible signal, and the only mistake is executing it. We introduce
+    Constraint-Satisfying Flow Policy Sampling (<span class="cs">CS-Pi</span>): we draw
+    from the policy, project the clean sample to the nearest feasible point, and resample
+    from the flow model biased toward that point. Iterating drives the samples toward
+    constraint satisfaction with no noisy-state gradient and no auxiliary network; the
+    method extends to arbitrary costs with a single tweak in the projection function. We
+    evaluate on a 2D diagnostic, a 7-DoF shelf pick-and-place, and a zero-shot Franka
+    deployment. Among constraint-satisfying samplers, <span class="cs">CS-Pi</span> stays
+    closest to the policy, and it attains the highest safe-success on a real-world
+    obstacle avoidance task.
   </p>
 </div></section>
 
@@ -124,20 +134,32 @@
 <section id="idea"><div class="wrap">
   <p class="section-kicker">The idea</p>
   <h2>Four ways to enforce a constraint, one that keeps the policy</h2>
-  <p class="lead mt">Guidance steers with a proxy gradient and drifts off-manifold.
-    Projection is feasible but off-distribution. Rejection is in-distribution but slow.
-    <span class="cs">CS-Pi</span> runs the unmodified flow, projects, and renoises to a
-    depth set by the violation, so every draw stays in-distribution while iterating to
-    feasibility.</p>
+  <p class="lead mt">The sampled action must be both <b>safe</b>, satisfying the constraint,
+    and <b>plausible</b>, remaining likely under the policy. An action the policy would
+    essentially never draw may be jerky, dynamically infeasible, or task-incoherent even when
+    it is geometrically safe, since the policy distribution encodes smoothness, kinematic
+    feasibility, and task structure that the constraint alone does not.</p>
+  <p class="lead mt">Gradient guidance perturbs each denoising step by the gradient of a
+    constraint cost, and that reliance on a gradient is exactly what limits it. A hard
+    constraint such as collision-freeness carries no usable gradient. Even for a smooth cost,
+    the constraint lives on the clean action while guidance acts at noisy states, so it must
+    approximate the gradient of the <i>expected</i> cost by the cost of the <i>expected</i>
+    action, a proxy that is least accurate exactly when the policy is uncertain between modes.</p>
+  <p class="lead mt">Rejection and projection act only on the final action. Rejection keeps
+    every output in-distribution, but the wait is intractable when feasible actions are rare;
+    projection is efficient, but its output can be jerky or task-irrelevant.
+    <span class="cs">CS-Pi</span> keeps projection's efficiency and rejection's plausibility:
+    when a projected action is out-of-distribution, it does not restart from fresh noise, but
+    resamples from a <i>reduced</i> noise level around the projection.</p>
   <figure class="figcard mt">
     <img src="assets/concept.png" alt="Concept: gradient guidance vs projection vs rejection vs CS-Pi">
-    <figcaption><b>Inference-time constraint enforcement on a flow-matching policy.</b>
-      Gradient guidance steers each ODE step with the constraint gradient at an estimate of
-      the final sample. Projection runs the unmodified flow and snaps the endpoint onto the
-      feasible set. Rejection redraws complete samples until one is feasible.
-      <span class="cs">CS-Pi</span> (ours) runs the flow, projects, and renoises to a depth
-      set by the projection residual δ (deeper for the larger δ₁, shallower for δ₂), then
-      re-runs the flow; every draw stays in-distribution and iterating drives δ toward zero.</figcaption>
+    <figcaption><b>Inference-time constraint enforcement on a frozen flow-matching policy.</b>
+      Gradient guidance steers each ODE step with the constraint gradient evaluated at an
+      estimate of the final sample. Projection runs the unmodified flow and snaps the endpoint
+      onto the feasible set 𝒞. Rejection sampling redraws complete samples until one is
+      feasible. <span class="cs">CS-Pi</span> (ours) runs the flow, projects, and renoises to a
+      depth set by the projection residual δ (deeper for the larger δ₁, shallower for δ₂), then
+      re-runs the flow; every draw stays in-distribution, and iterating drives δ toward zero.</figcaption>
   </figure>
   <div class="methodgrid" id="methodGrid"></div>
 </div></section>
@@ -146,17 +168,51 @@
 <section id="method"><div class="wrap">
   <p class="section-kicker">Method</p>
   <h2>Draw, project, renoise to n = k/(k+δ), re-run</h2>
-  <p class="lead mt">The renoising depth is the whole algorithm: a large violation triggers
-    deep renoising so the next draw can reach a different policy mode (a different route
-    around the obstacle); a small violation triggers shallow renoising that refines the
-    current mode. The depth n = k/(k+δ) follows directly from the violation δ.</p>
+  <p class="lead mt"><b>Projection as a resampling target.</b> The projection
+    a<sub>c</sub> = 𝒫(â) of the current clean draw is cheap to compute, feasible by
+    construction, and closer than â to the feasible actions the policy is likely to draw. It
+    tells us <i>where</i> the next draw should concentrate, without executing it. The
+    idealized target biases the policy toward a<sub>c</sub> while preserving its structure:
+    q(a) ∝ π<sub>θ</sub>(a) · 𝒩(a; a<sub>c</sub>, σ²I).</p>
+  <p class="lead mt"><b>The residual sets the width.</b> We set σ = δ/k from the projection
+    residual δ = ‖â − a<sub>c</sub>‖. A small δ means the previous draw was nearly feasible,
+    so the policy almost certainly has in-distribution mass near a<sub>c</sub> and the next
+    draw should concentrate there. A large δ means a<sub>c</sub> may sit where the policy
+    assigns vanishing mass, so the next draw should be loose enough to reach a different policy
+    mode (right of the obstacle rather than left). The coefficient k is the only
+    hyperparameter, and it slides between the two classical extremes: k → 0 recovers
+    rejection, k → ∞ recovers project-and-execute.</p>
+  <p class="lead mt"><b>Partial renoising realises the target.</b> Sampling q exactly is
+    intractable, since the policy density is defined only through the ODE. Instead we renoise
+    the projection to level n = k/(k+δ) and re-run the unmodified policy from there, feeding
+    each new sample back until it lands in 𝒞.</p>
   <figure class="figcard mt" style="max-width:860px;margin-left:auto;margin-right:auto">
     <img src="assets/method.png" alt="CS-Pi algorithm: flow ODE, project, renoise by depth n, iterate">
-    <figcaption><b>One <span class="cs">CS-Pi</span> trajectory.</b> Run the flow ODE to a clean
-      sample, project to the feasible set with residual δ₁, renoise to depth n₁ = k/(k+δ₁) = 0.6
-      and re-run; the next sample has a smaller residual δ₂, so it renoises shallower
-      (n₂ = 0.8) and converges. The renoise depth shrinks with the projection error.</figcaption>
+    <figcaption>Each <b><span class="cs">CS-Pi</span></b> iteration projects the current clean
+      draw onto 𝒞, renoises the projection to a depth n = k/(k+δ) set by the projection
+      residual δ, and re-runs the unmodified flow. A larger residual produces deeper renoising
+      (n₁ = 0.6 from δ₁); a smaller residual produces shallower renoising (n₂ = 0.8 from δ₂).
+      The loop terminates when a draw lands in 𝒞.</figcaption>
   </figure>
+  <pre class="algo"><span class="ttl">Algorithm 1  Constraint-Satisfying Flow Policy Sampling</span>
+ 1  a₀ ~ 𝒩(0, I);  â⁽⁰⁾ ← π<sub>θ</sub>(a₀; 0)                <span class="c">▷ initial policy draw</span>
+ 2  for i = 0, …, K<sub>max</sub>−1:
+ 3      a<sub>c</sub>⁽ⁱ⁾ ← 𝒫(â⁽ⁱ⁾);  δ⁽ⁱ⁾ ← ‖â⁽ⁱ⁾ − a<sub>c</sub>⁽ⁱ⁾‖
+ 4      if δ⁽ⁱ⁾ ≤ τ:  return â⁽ⁱ⁾
+ 5      n⁽ⁱ⁾ ← k / (k + δ⁽ⁱ⁾);  ε⁽ⁱ⁾ ~ 𝒩(0, I)
+ 6      a<sub>n</sub>⁽ⁱ⁾ ← n⁽ⁱ⁾ a<sub>c</sub>⁽ⁱ⁾ + (1 − n⁽ⁱ⁾) ε⁽ⁱ⁾
+ 7      â⁽ⁱ⁺¹⁾ ← π<sub>θ</sub>(a<sub>n</sub>⁽ⁱ⁾; n⁽ⁱ⁾)              <span class="c">▷ re-denoise from level n</span>
+ 8  return 𝒫(â⁽ᴷᵐᵃˣ⁾)                            <span class="c">▷ optional terminal projection</span></pre>
+  <p class="lead mt"><b>Soft preferences as continuous costs.</b> Deployment also brings
+    preferences, behaviours to favour rather than boundaries to clear, such as keeping the
+    gripper near-vertical while carrying a full cup. <span class="cs">CS-Pi</span> uses the
+    projection only to produce a target for the next draw, so for a continuous cost L that
+    target comes instead from the proximal operator
+    prox<sub>βL</sub>(â) = argmin<sub>a′</sub> L(a′) + ‖a′ − â‖² / 2β; the rest of the
+    algorithm is unchanged. Hard and soft requirements then compose by priority: applied in
+    sequence, the operators pull toward the preferred orientation first, then project onto
+    the collision-free set, where a gradient method would have to merge both into a single
+    objective.</p>
 </div></section>
 
 <!-- face-off -->
@@ -215,11 +271,49 @@
 <!-- results -->
 <section id="results"><div class="wrap">
   <p class="section-kicker">Results</p>
-  <h2><span class="cs">CS-Pi</span> wins safe-success while staying in-distribution</h2>
-  <p class="lead mt">Highest safe-success in every benchmark, with the highest log-likelihood among the
-    constraint-enforcing methods. The CS-Pi row is highlighted; best per column is bold.</p>
+  <h2><span class="cs">CS-Pi</span> departs from the policy only as far as the constraint forces</h2>
+  <p class="lead mt">For each sampler we measure two things: whether it satisfies the
+    constraint, and whether its samples stay likely under the policy. The primary metric is
+    <i>safe success</i>, the fraction of rollouts that satisfy the constraint and complete the
+    task. We compare against gradient guidance, Trust Sampling, rejection, projection, the
+    unconstrained prior, and two control-barrier-function samplers (SafeDiffuser and
+    SafeFlowMatcher), each swept over its main hyperparameter and reported at its best
+    configuration; <span class="cs">CS-Pi</span> has a single hyperparameter, k. NFE counts
+    flow-network forward passes and is not comparable across benchmarks. The
+    <span class="cs">CS-Pi</span> row is highlighted; best per column is bold.</p>
   <div class="tabs-results" id="resTabs"></div>
   <div id="resTable"></div>
+
+  <h3 class="subhead">2D Avoidance: seeing the whole distribution</h3>
+  <p class="lead" style="font-size:16px">Demonstrations reach the goal along distinct paths,
+    so the prior is genuinely multimodal, mirroring manipulation data where demonstrations of
+    one task take different routes. Because the action space is two-dimensional, we can plot
+    every sampler's entire output distribution. At inference we impose obstacles the prior
+    never saw, in six scenarios of varying difficulty.</p>
+  <figure class="figcard mt">
+    <img src="assets/2d_distributions.png" loading="lazy" alt="2D Avoidance trajectory distributions for gradient guidance, Trust Sampling, rejection, CS-Pi and projection">
+    <figcaption><b>2D Avoidance trajectory distributions, one scenario per method.</b> 20
+      rollouts overlaid on the demonstration support (shaded); the obstacles are outlined.
+      Gradient guidance and Trust Sampling visibly leave the support to reach the goal or cut
+      through the obstacle; rejection stays on-support but only a few draws survive;
+      <span class="cs">CS-Pi</span> and projection keep every trajectory in-distribution while
+      routing around the obstacle.</figcaption>
+  </figure>
+
+  <h3 class="subhead">Composing a hard constraint with a soft preference</h3>
+  <p class="lead" style="font-size:16px">A feasibility set cannot express a preference among
+    feasible actions. On the same 2D environment we add to the obstacle constraint a soft
+    preference toward a height y<sub>ref</sub> = 0.7. <span class="cs">CS-Pi</span> applies
+    the two in sequence by priority, whereas the baselines must fold them into one weighted
+    cost; only <span class="cs">CS-Pi</span> satisfies both.</p>
+  <figure class="figcard mt">
+    <img src="assets/2d_hard_soft.png" loading="lazy" alt="Hard obstacle constraint plus soft height preference: gradient guidance at three weights, Trust Sampling, and CS-Pi">
+    <figcaption><b>Composite hard + soft cost on 2D Avoidance (cluttered).</b> Tuning the
+      guidance weight α never lets gradient guidance satisfy both the obstacle (hard) and the
+      (y − 0.7)² preference (soft): low α collides, high α overshoots y* = 0.7. Trust Sampling
+      is flat in α. <span class="cs">CS-Pi</span> (k = 1) is the only method with high joint
+      success. Projection-only and rejection cannot target a soft cost and are omitted.</figcaption>
+  </figure>
 </div></section>
 
 <!-- cite -->
@@ -231,7 +325,7 @@
 </div></section>
 
 <footer><div class="wrap">
-  <span>© <span id="year">2026</span> · <span class="cs">CS-Pi</span> · CoRL 2026 submission (anonymous)</span>
+  <span>© <span id="year">2026</span> · <span class="cs">CS-Pi</span> · <span id="footVenue">CoRL 2026</span></span>
   <span>Project page. Rollout GIFs render lazily.</span>
 </div></footer>
 

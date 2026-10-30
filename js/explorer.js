@@ -34,11 +34,12 @@
   function header() {
     const s = window.SITE;
     $('#brand').textContent = s.method;
-    $('#heroBadge').textContent = s.affiliation;
+    $('#heroBadge').textContent = s.venue;
     $('#heroTitle').innerHTML = csName(s.title);
-    $('#heroSub').textContent = 'Training-free sampling of safe, in-distribution actions';
+    $('#heroSub').textContent = 'Training-free sampling of safe, plausible actions';
     $('#heroAuthors').textContent = s.authors;
-    $('#heroAffil').textContent = s.affiliation;
+    $('#heroAffil').textContent = s.affiliation || s.venueLong;
+    $('#footVenue').textContent = s.venue;
     $('#heroTagline').textContent = s.tagline;
     const row = $('#btnrow');
     const L = s.links;
@@ -70,7 +71,7 @@
   // ---- method cards --------------------------------------------------------
   function methodCards() {
     const g = $('#methodGrid');
-    METHODS.forEach(m => {
+    METHODS.filter(m => m.card !== false).forEach(m => {
       const c = el('div', 'mcard');
       c.style.setProperty('--c', m.color);
       c.innerHTML =
@@ -292,6 +293,7 @@
       const card = el('div', 'tablecard');
       const head = el('div', 'thead'); head.innerHTML = `<h3>${r.title}</h3>`;
       card.appendChild(head);
+      if (r.lead) card.appendChild(el('p', 'tlead', csName(r.lead)));
       const scroll = el('div', 'tablescroll');
       const tbl = el('table', 'results');
       const thead = el('thead');
@@ -378,7 +380,7 @@
   function bibtex() {
     const bib = `@inproceedings{cspi2026,
   title     = {CS-Pi: Constraint-Satisfying Flow Policy Sampling},
-  author    = {Anonymous Authors},
+  author    = {${window.SITE.authors.replace(/, /g, ' and ')}},
   booktitle = {Conference on Robot Learning (CoRL)},
   year      = {2026}
 }`;

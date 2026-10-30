@@ -5,17 +5,22 @@
 
 window.SITE = {
   // --- Authorship -----------------------------------------------------------
-  // Anonymous for double-blind review. To deanonymize later, set anonymous:false
-  // and fill in `authors` / `affiliation`. One edit, nothing else changes.
+  // Accepted at CoRL 2026. The camera-ready author list is not filled in yet:
+  // set `authors` (and `affiliation`, shown under the authors when non-empty).
+  // The BibTeX block reads `authors` too.
   anonymous: true,
   authors: 'Anonymous Authors',
-  affiliation: 'CoRL 2026 submission',
+  affiliation: '',
+  venue: 'CoRL 2026',
+  venueLong: 'Conference on Robot Learning (CoRL) 2026',
 
   method: 'CS-Pi',
   title: 'CS-Pi: Constraint-Satisfying Flow Policy Sampling',
   tagline:
-    'Enforce hard safety constraints on a flow-matching robot policy ' +
-    'at inference, with no gradient, no retraining, and no per-deployment tuning.',
+    'Sample actions from a frozen flow-matching robot policy that are both ' +
+    'safe, satisfying a constraint absent from its demonstrations, and ' +
+    'plausible, remaining likely under the policy. No retraining, no ' +
+    'constraint gradient at noisy states.',
 
   // Links. Empty string hides the button. Fill in when public.
   links: {
@@ -26,38 +31,54 @@ window.SITE = {
   }
 };
 
-// --- The four samplers (our method first) -----------------------------------
+// --- The samplers (our method first). `card: false` keeps a method out of the
+//     method-card grid while leaving it available to the explorer.
 window.METHODS = [
   {
     key: 'amr', label: 'CS-Pi', short: 'Ours', ours: true, color: '#1d6fd4',
-    blurb: 'Draw, project to the nearest feasible action, renoise to a depth ' +
-           'set by the violation, and re-run the unmodified flow. Iterates to ' +
-           'feasibility while every draw stays in-distribution.'
+    blurb: 'Draw an action, project it onto the constraint set, and rather than ' +
+           'executing the projection, renoise it to a depth set by how far the ' +
+           'action had to move and re-run the unmodified policy from there. ' +
+           'Iterating drives the draws to the constraint while each stays in-distribution.'
   },
   {
     key: 'projection', label: 'Projection', short: 'Project + execute', color: '#8b5cf6',
-    blurb: 'Run the unmodified flow, then snap the finished action onto the ' +
-           'feasible set and execute it. Feasible, but the executed action is ' +
-           'one the policy itself would never draw.'
+    blurb: 'Map the sampled action to the nearest constraint-satisfying point ' +
+           'and execute it. Efficient, but the projected action need not be ' +
+           'in-distribution and can be jerky or task-irrelevant.'
+  },
+  {
+    key: 'rejection', label: 'Rejection', short: 'Redraw', color: '#c98a12',
+    blurb: 'Redraw complete actions from the policy until one satisfies the ' +
+           'constraint. Every output is in-distribution, but the wait is ' +
+           'intractable when feasible actions are rare.'
   },
   {
     key: 'tweedie', label: 'Gradient Guidance', short: 'Guidance', color: '#e0533d',
-    blurb: 'Steer every ODE step by the gradient of the constraint evaluated at ' +
-           'a one-step guess of the clean action. The proxy gradient is ' +
-           'uninformative when the policy is still uncertain between modes.'
+    blurb: 'Perturb each denoising step by the gradient of a constraint cost. ' +
+           'A hard constraint such as collision-freeness carries no usable ' +
+           'gradient, and at noisy states the cost of the expected action is a ' +
+           'poor proxy for the expected cost when the policy is uncertain between modes.'
   },
   {
     key: 'trust', label: 'Trust Sampling', short: 'Trust', color: '#2a9d8f',
-    blurb: 'Schedule-aware guidance that limits early steps and adds inner ' +
-           'iterations. Reduces proxy variance but pays a large compute cost ' +
-           'and still leaves the policy distribution.'
+    blurb: 'Gradient guidance that halts each step at the estimated edge of ' +
+           'the policy distribution. It shares our goal but inherits the same ' +
+           'proxy bias, at a much larger compute cost.'
   },
-  // --- extra baselines used by the 3D-Orient comparison -------------------
   {
-    key: 'unguided', label: 'Unguided', short: 'Prior', color: '#6b7c93',
-    blurb: 'The flow prior alone, with no orientation enforcement. It ' +
-           'reaches the goal but ignores the orientation preference, which is ' +
-           'out-of-distribution for the prior.'
+    key: 'cbf', label: 'CBF samplers', short: 'SafeDiffuser · SafeFlowMatcher', color: '#475569',
+    blurb: 'SafeDiffuser and SafeFlowMatcher correct each denoising step with a ' +
+           'control-barrier function. They certify feasibility, but the ' +
+           'certificate does not constrain likelihood under the policy, and a ' +
+           'continuous correction cannot redraw from a surviving policy mode.'
+  },
+  // --- extra baseline used by the 3D-Orient comparison --------------------
+  {
+    key: 'unguided', label: 'Unguided', short: 'Prior', color: '#6b7c93', card: false,
+    blurb: 'The policy alone, with no constraint enforcement. It reaches the ' +
+           'goal but ignores the orientation preference, which was absent from ' +
+           'its demonstrations.'
   }
 ];
 
@@ -97,17 +118,20 @@ window.TASKS = [
     outcomes: false,
     methods: ['amr', 'unguided', 'tweedie', 'trust'],
     blurb:
-      'A 7-DoF Panda reach where every step must stay within 10 cm of the goal ' +
-      'and within 0.5 (Frobenius) of a target end-effector orientation. The ' +
-      'orientation lock is absent from the prior’s training, so only the ' +
-      'inference-time method enforces it. CS-Pi here uses the EE-orientation ' +
-      'proximal step (fixed reference).',
+      'A 7-DoF reach to a goal sampled anywhere in the reachable workspace, with ' +
+      'a soft preference added on top: hold a top-down end-effector orientation ' +
+      'R*, encoded as the cost λ Σₜ ‖R(qₜ) − R*‖²_F. The test is whether a ' +
+      'method can honour the orientation without giving up the reach. CS-Pi ' +
+      'swaps its projection for the proximal operator of this cost; nothing ' +
+      'else changes.',
     rolloutCaption:
       'Reach-and-orient under the orientation preference. Each frame is annotated ' +
       'with the live end-effector distance and orientation error. CS-Pi is the ' +
-      'only method that reliably holds the orientation (it pays in log-likelihood, ' +
-      'off-manifold by construction); the gradient baselines mostly fail to orient, ' +
-      'and the unguided prior and trust sampling essentially never do.',
+      'only method that does both, with reach and smoothness within a millimetre ' +
+      'of the unguided policy. The guidance baselines lower the orientation cost ' +
+      'but push the end effector up to 0.70 m off target: IK redundancy means the ' +
+      'half-denoised guess they steer on averages several valid configurations ' +
+      'into an invalid one.',
     scenarios: [
       { key: 'config1', label: 'Config 1',
         desc: 'A goal where the target orientation can be held all the way in.' },
@@ -125,31 +149,51 @@ window.TASKS = [
 
 // --- Result tables (from the paper) -----------------------------------------
 // `ours` flags the CS-Pi row; `best` lists column indices where this row holds
-// the best value (for bolding). Values are display strings.
+// the best value (for bolding). Values are display strings; '—' = not scored.
+// `lead` is the takeaway shown above the table.
 window.RESULTS = {
   shelf: {
     title: 'Shelf pick-and-place',
-    caption: '5 scenarios, 150 tasks (30 per scenario). logL is the mean ' +
-             'log-likelihood the prior assigns to a method’s samples ' +
-             '(prior’s own samples score 15.0; higher is more in-distribution). ' +
-             'NFE is flow-model calls per trajectory.',
+    lead: 'CS-Pi reaches the highest safe-success (73.3%) and is the only method ' +
+          'whose samples stay at or above the prior in log-likelihood; projection ' +
+          'and the gradient baselines satisfy the obstacle only by pushing the chunk ' +
+          'out of the policy’s distribution. Every obstacle-aware method avoids ' +
+          'collision, so what separates them is whether the gripper still reaches ' +
+          'the cube: CS-Pi re-denoises a trajectory that threads the obstacles and ' +
+          'keeps the prior’s grasp. CS-Pi and projection share the same L-BFGS ' +
+          'proximal step, so the gap between them is the iterative loop.',
+    caption: '5 scenarios, 150 tasks (30 per scenario). Safe-SR: collision-free ' +
+             'success. logL is the mean log-likelihood the prior assigns to a ' +
+             'method’s samples (nats/dim; the prior’s own samples score 15.0; ' +
+             'higher is more in-distribution). NFE is flow-model calls per ' +
+             'trajectory. SafeDiffuser and SafeFlowMatcher are reported at their ' +
+             'swept-best admissible grids; their log-likelihood is not available.',
     cols: ['Method', 'Safe-SR (%) ↑', 'Goal reach (%) ↑',
            'Collision (%) ↓', 'logL ↑', 'NFE ↓'],
     rows: [
-      { c: ['Unguided (prior)',            '3.3',  '72.0', '82.0', '15.0', '240'] },
-      { c: ['Gradient Guidance',           '28.0', '28.0', '0.0',  '10.2', '240'], best: [3] },
-      { c: ['Trust Sampling',              '27.3', '28.0', '0.7',  '10.5', '1242'] },
-      { c: ['Rejection (B=100)',           '33.3', '67.3', '40.7', '14.2', '8676'] },
-      { c: ['Projection',                  '62.0', '66.0', '4.0',  '11.2', '240'] },
-      { c: ['CS-Pi (ours)',                '73.3', '78.7', '6.7',  '18.0', '285'],
+      { c: ['Unguided (prior)',             '3.3',  '72.0', '82.0', '15.0', '240'] },
+      { c: ['Gradient Guidance (α=0.20)',   '28.0', '28.0', '0.0',  '10.2', '240'], best: [3] },
+      { c: ['Trust Sampling (w=0.01, j=5)', '27.3', '28.0', '0.7',  '10.5', '1242'] },
+      { c: ['Rejection (B=100)',            '33.3', '67.3', '40.7', '14.2', '8676'] },
+      { c: ['Projection',                   '62.0', '66.0', '4.0',  '11.2', '240'] },
+      { c: ['SafeDiffuser',                 '15.0', '24.0', '24.0', '—',    '240'] },
+      { c: ['SafeFlowMatcher',              '58.0', '62.0', '5.0',  '—',    '432'] },
+      { c: ['CS-Pi (k=10, Kmax=5) (ours)',  '73.3', '78.7', '6.7',  '18.0', '285'],
         ours: true, best: [1, 2, 4] }
     ]
   },
   d3il: {
     title: '2D Avoidance (macro over 6 scenarios)',
-    caption: '200 rollouts per cell, best hyperparameter per method. ' +
-             'fully-in-supp. is the fraction of rollouts whose every waypoint ' +
-             'lies inside the demonstration support (a strict in-distribution check).',
+    lead: 'Among methods that stay near the prior in log-likelihood, CS-Pi has ' +
+          'the best safe-success and keeps the most trajectories fully on the ' +
+          'demonstration support. Projection reaches higher raw safe-success ' +
+          '(100%) only by collapsing log-likelihood to −3.34.',
+    caption: '200 rollouts per cell, best hyperparameter per method. Safe-SR: ' +
+             'rollouts reaching the goal collision-free. Fully-in-supp.: fraction ' +
+             'of rollouts whose every waypoint lies inside the training-demonstration ' +
+             'support. Log-lik.: mean log-likelihood under the prior. SafeDiffuser ' +
+             'and SafeFlowMatcher are re-implementations on the same prior; support ' +
+             'and log-likelihood were not scored for those runs.',
     cols: ['Method', 'Safe-SR (%) ↑', 'Fully-in-supp. ↑',
            'Log-lik. ↑', 'NFE ↓'],
     rows: [
@@ -157,41 +201,64 @@ window.RESULTS = {
       { c: ['Gradient Guidance',  '75.7',  '0.595', '1.51',  '485'] },
       { c: ['Trust Sampling',     '45.5',  '0.444', '1.53',  '3161'] },
       { c: ['Rejection',          '68.1',  '0.831', '+1.71', '6732'], best: [3] },
-      { c: ['Projection',         '100.0', '0.650', '-3.34', '112'], best: [1, 4] },
+      { c: ['Projection',         '100.0', '0.650', '-3.34', '112'], best: [1] },
+      { c: ['SafeDiffuser',       '100.0', '—',     '—',     '92'],  best: [1, 4] },
+      { c: ['SafeFlowMatcher',    '43.0',  '—',     '—',     '223'] },
       { c: ['CS-Pi (ours)',       '99.0',  '0.857', '1.53',  '283'],
         ours: true, best: [2] }
     ]
   },
   orient: {
     title: '3D-Orient (reach with an orientation preference)',
+    lead: 'CS-Pi is the only method that honours the orientation without giving ' +
+          'up the reach: 68.9% success, with reach and smoothness within a ' +
+          'millimetre of the unguided policy. The guidance baselines lower the ' +
+          'orientation cost but push the end effector up to 0.70 m off target and ' +
+          'roughen the path, so their success stays below 10%. CS-Pi reads the ' +
+          'cost only on fully formed samples.',
     caption: '90 rollouts per cell. Success: a step simultaneously within 10 cm ' +
              'of the target position and 0.36 rad of the target orientation. ' +
-             'max EE step: largest single-step end-effector jump (m; smoothness proxy).',
+             'Goal reach: rollouts ending within 10 cm of the target position. ' +
+             'logL comparisons are meaningful only at comparable constraint ' +
+             'satisfaction, since the guidance configurations reach only 3.3% and ' +
+             '8.9% success. Max EE step: largest single-step end-effector jump ' +
+             '(m; smoothness proxy). NFE: model evaluations per rollout.',
     cols: ['Method', 'Success ↑', 'Goal reach ↑', 'logL ↑',
-           'max EE step', 'NFE ↓'],
+           'Max EE step', 'NFE ↓'],
     rows: [
-      { c: ['Unguided',                 '1.1%',  '100%',  '13.55', '0.107', '135'],
+      { c: ['Unguided',                    '1.1%',  '100%',  '13.55', '0.107', '135'],
         best: [2, 4, 5] },
-      { c: ['Gradient Guidance', '8.9%', '10.0%', '9.41', '0.928', '160'] },
-      { c: ['Trust Sampling',           '10.0%', '11.1%', '13.56', '1.310', '1358'], best: [3] },
-      { c: ['CS-Pi + EE-prox (ours)',   '68.9%', '98.9%', '10.26', '0.108', '210'],
+      { c: ['Gradient Guidance (α=0.003)', '3.3%',  '77.8%', '12.55', '0.120', '153'] },
+      { c: ['Gradient Guidance (α=0.03)',  '8.9%',  '10.0%', '9.41',  '0.928', '160'] },
+      { c: ['Trust Sampling (w=0.001)',    '10.0%', '11.1%', '13.56', '1.310', '1358'], best: [3] },
+      { c: ['CS-Pi + EE-prox (ours)',      '68.9%', '98.9%', '10.26', '0.108', '210'],
         ours: true, best: [1] }
     ]
   },
   hw: {
     title: 'Hardware: pick the apple, place it on the blue plate',
-    caption: 'Zero-shot on a Franka with π₀.₅; the constraint set is obstacle ' +
-             'bounding boxes from a ZED 2 RGB-D vision pipeline. Two layouts, ' +
-             '10 trials per method per layout. logL is the log-likelihood the ' +
-             'prior assigns to executed actions (prior’s own draws: -470.2).',
+    lead: 'CS-Pi reaches the highest safe-success in both layouts (60% and 50%) ' +
+          'and pooled (55% of 20 trials), versus 40% for projection, 25% for ' +
+          'gradient guidance, and 10% for the unguided policy. Its per-step ' +
+          'latency (0.143 s) matches gradient guidance (0.139 s). Projection is ' +
+          'cheaper (0.099 s), but its one-shot snap drops it below the prior in ' +
+          'log-likelihood (−473.2 against the prior’s −470.2), while CS-Pi stays ' +
+          'close (−471.8). The runs are small (10 per layout), but the ordering ' +
+          'holds in both layouts.',
+    caption: 'Safe-success rate (%). Zero-shot on a Franka with a DROID-finetuned ' +
+             'π₀.₅; the constraint set is obstacle bounding boxes from a ZED 2 ' +
+             'RGB-D vision pipeline. Two layouts, 10 trials per method per layout. ' +
+             'logL is the log-likelihood the frozen prior assigns to executed ' +
+             'actions (the prior’s own draws score −470.2; higher is more ' +
+             'in-distribution).',
     cols: ['Method', 'Layout 1 ↑', 'Layout 2 ↑', 'Aggregated ↑',
            'Time/step (s) ↓', 'logL ↑'],
     rows: [
-      { c: ['Unguided (prior)',  '20', '0',  '10', '0.069', '-470.2'], best: [4] },
-      { c: ['Gradient Guidance', '40', '10', '25', '0.139', '-464.9'], best: [5] },
-      { c: ['Trust Sampling',    '20', '20', '20', '0.135', '-474.8'] },
-      { c: ['Projection',        '40', '40', '40', '0.099', '-473.2'] },
-      { c: ['CS-Pi (ours)',      '60', '50', '55', '0.143', '-471.8'],
+      { c: ['Unguided (prior)',  '20', '0',  '10', '0.069', '−470.2 ± 1.0'], best: [4] },
+      { c: ['Gradient Guidance', '40', '10', '25', '0.139', '−464.9 ± 1.4'], best: [5] },
+      { c: ['Trust Sampling',    '20', '20', '20', '0.135', '−474.8 ± 2.1'] },
+      { c: ['Projection',        '40', '40', '40', '0.099', '−473.2 ± 2.3'] },
+      { c: ['CS-Pi (ours)',      '60', '50', '55', '0.143', '−471.8 ± 1.7'],
         ours: true, best: [1, 2, 3] }
     ]
   }
@@ -199,12 +266,12 @@ window.RESULTS = {
 
 // --- Headline numbers for the abstract strip --------------------------------
 window.HEADLINE = [
+  { big: '55%',   small: 'safe-success on a real Franka',
+    sub: 'zero-shot with π₀.₅; vs 40% projection, 25% guidance, 10% unguided' },
   { big: '73.3%', small: 'safe-success on the shelf',
-    sub: 'vs 62% projection, 28% guidance' },
+    sub: 'vs 62% projection, 58% SafeFlowMatcher, 28% guidance' },
   { big: '18.0',  small: 'in-distribution (log-likelihood)',
-    sub: 'higher than gradient guidance (10.2), trust sampling (10.5), projection (11.2)' },
+    sub: 'the only shelf sampler at or above the prior (15.0); projection 11.2, guidance 10.2' },
   { big: '0',     small: 'constraint gradients needed',
-    sub: 'No gradients based on proxies' },
-  { big: '285',   small: 'average flow-model calls',
-    sub: 'more than gradient guidance (240); far below trust sampling (1242) and rejection (8676)' }
+    sub: 'No gradients based on proxies' }
 ];

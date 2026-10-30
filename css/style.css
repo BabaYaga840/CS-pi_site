@@ -248,6 +248,7 @@ figcaption b { color: var(--ink); }
 .tablecard { background: var(--bg-panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-top: 22px; }
 .tablecard .thead { padding: 16px 18px 0; }
 .tablecard .thead h3 { margin: 0; font-size: 18px; }
+.tablecard .tlead { margin: 8px 18px 2px; color: var(--ink-soft); font-size: 14.5px; max-width: 900px; }
 .tablescroll { overflow-x: auto; padding: 8px 6px 6px; }
 table.results { width: 100%; border-collapse: collapse; font-size: 14.5px; min-width: 520px; }
 table.results th, table.results td { padding: 9px 14px; text-align: right; white-space: nowrap; }
@@ -294,6 +295,17 @@ pre.bib {
   overflow-x: auto; font-family: var(--mono); font-size: 13.5px; line-height: 1.6; margin-top: 18px;
 }
 .copybtn { margin-top: 10px; }
+
+/* ---- method: algorithm box + 2D figures ---------------------------------- */
+pre.algo {
+  background: var(--bg-panel); color: var(--ink); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px 20px; overflow-x: auto;
+  font-family: var(--mono); font-size: 13.5px; line-height: 1.7;
+  max-width: 760px; margin: 22px auto 0;
+}
+pre.algo .ttl { font-weight: 700; }
+pre.algo .c { color: var(--ink-faint); }
+.subhead { font-size: 20px; margin: 44px 0 4px; }
 
 footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 14px; border-top: 1px solid var(--line); }
 footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
